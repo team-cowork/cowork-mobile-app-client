@@ -1,4 +1,4 @@
-import 'package:cowork_app/core/theme/app_theme.dart';
+import 'package:cowork_design_system/design_system.dart';
 import 'package:flutter/material.dart';
 
 void main() {
