@@ -19,7 +19,7 @@ Use this skill after changes and before commits or PRs.
 3. Run the strongest practical verification:
    - `flutter analyze`
    - `flutter test`
-   - `flutter pub run build_runner build --delete-conflicting-outputs` when model/codegen sources changed
+   - `dart run build_runner build --delete-conflicting-outputs` when model/codegen sources changed
 4. If a command cannot run, record why and do not claim it passed.
 5. If validation fails, report failures and block commit/PR until fixed.
 6. If validation succeeds, report evidence and allow the next workflow step.

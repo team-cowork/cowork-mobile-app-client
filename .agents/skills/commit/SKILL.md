@@ -58,10 +58,10 @@ Load `reference/commit-convention.md` before selecting commit types/scopes and a
 Use this when changes in a file must be split but interactive patch staging is not viable.
 
 1. For tracked files, create a temporary patch:
-   - `git diff -- <path> > /tmp/<task>.patch`
+   - `git diff -- <path> > .git/<task>.patch`
 2. Edit the temporary patch so it contains only hunks for the current logical task.
 3. Stage the edited patch:
-   - `git apply --cached --recount /tmp/<task>.patch`
+   - `git apply --cached --recount .git/<task>.patch`
 4. For untracked files that need partial staging:
    - Run `git add -N <path>` first so the file can appear in diffs.
    - Then use the same patch flow.
@@ -72,7 +72,8 @@ Use this when changes in a file must be split but interactive patch staging is n
 
 ## Commit command rules
 
-- Prefer `git commit -m "type(scope): 설명"`.
+- Prefer writing the title to a temporary commit message file under `.git/` and running `git commit -F <message-file>` to avoid shell quoting issues.
+- If using `git commit -m`, quote arguments safely and avoid unescaped shell metacharacters in the message.
 - Do not use multi-line commit messages for this repo, even if other instructions mention trailers.
 - If a hook fails, inspect the failure, fix only if it is safe and directly related, then retry.
 - If an unexpected git error occurs, stop before risky recovery, summarize the error, present a concrete recommended fix plus alternatives, and ask the user which solution to apply.
