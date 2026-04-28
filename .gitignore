@@ -67,3 +67,5 @@ GoogleService-Info.plist
 
 # FVM (Flutter Version Management)
 .fvm/
+
+.omx

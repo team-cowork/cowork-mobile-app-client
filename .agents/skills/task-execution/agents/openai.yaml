@@ -1,0 +1,3 @@
+display_name: Task Execution Gate
+short_description: 이슈와 브랜치 기반 작업에서 구현 금지 조건을 강제합니다.
+default_prompt: 현재 작업이 구현 작업인지 확인하고, 구현 금지 조건을 적용하세요.

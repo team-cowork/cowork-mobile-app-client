@@ -1,0 +1,3 @@
+display_name: Issue Branch Create
+short_description: 작업 목적 확인 후 GitHub 이슈와 작업 브랜치를 준비합니다.
+default_prompt: 작업 목적을 확인하고, 이슈 생성 확인을 받은 뒤 브랜치를 생성하세요.
