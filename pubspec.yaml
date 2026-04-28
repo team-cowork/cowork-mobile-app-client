@@ -21,6 +21,9 @@ version: 1.0.0+1
 environment:
   sdk: ^3.9.2
 
+workspace:
+  - packages/design_system
+
 # Dependencies specify other packages that your package needs in order to work.
 # To automatically upgrade your package dependencies to the latest versions
 # consider running `flutter pub upgrade --major-versions`. Alternatively,
@@ -30,6 +33,9 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+
+  cowork_design_system:
+    path: packages/design_system
 
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
