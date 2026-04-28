@@ -78,27 +78,11 @@ Use this when changes in a file must be split but interactive patch staging is n
 - If an unexpected git error occurs, stop before risky recovery, summarize the error, present a concrete recommended fix plus alternatives, and ask the user which solution to apply.
 - Do not run destructive git commands (`reset --hard`, `checkout --`, `clean`) unless explicitly requested.
 
-## Scope selection quick guide
+## Convention source of truth
 
-- `apps/<app-name>/<layer>/...` → `<app-name>/<layer>`
-- `packages/<layer>/...` or package-owned shared code → `<layer>`
-- Anything outside `apps/` and `packages/` → `global`
-- If a task spans multiple apps/packages in the same logical product change, prefer separate commits per app/layer when the changes can stand alone.
-- Use `global` for intentionally cross-cutting tasks that cannot honestly be assigned to one app/layer, such as repo config, CI, root scripts, or shared migration wiring.
-- If one logical task touches an app and a shared package, prefer two commits when separable: one `shared` commit for the package change and one `<app>/<layer>` commit for app adoption.
-
-## Multi-app handling examples
-
-- Chat feature + issue feature changed independently:
-  - `feat(cowork-chat/features): 메시지 입력 기능 추가`
-  - `feat(cowork-issue/features): 이슈 필터 기능 추가`
-- Shared API change plus app adoption:
-  - `refactor(shared): 공통 API 응답 타입 정리`
-  - `fix(cowork-chat/entities): 채팅 응답 타입 변경 반영`
-- Shell routing change affecting multiple MFEs but implemented in shell only:
-  - `feat(shell/app): MFE 라우팅 가드 추가`
-- Root config enabling all apps:
-  - `chore(global): 워크스페이스 빌드 설정 갱신`
+- Commit type, scope, multi-app handling, and examples live in `reference/commit-convention.md` as the single source of truth.
+- Do not duplicate or reinterpret scope rules in this file; load the reference before selecting a title.
+- If AGENTS.md and the reference appear to differ, prefer `reference/commit-convention.md` for commit title details and report the drift.
 
 ## Post-commit verification checklist
 

@@ -17,7 +17,7 @@ Load `reference/pr-template.md` immediately after branch/base inspection, before
    - `git branch --show-current`
    - `git status --short`
    - `git remote -v`
-   - Identify the base branch, preferring `origin/main` when present unless the user specifies another base.
+   - Identify the PR base branch from AGENTS.md/branch rules when present. For this repo, PRs target `develop` unless the user specifies another base; work branches should be created from `develop`, but never work or push directly on `develop`. Use `origin/develop` for remote comparisons when available.
 2. Load the PR template reference before drafting:
    - Read `reference/pr-template.md`.
    - If `.github/PULL_REQUEST_TEMPLATE.md` exists, read it too and prefer its live contents if different.
@@ -74,7 +74,7 @@ Load `reference/pr-template.md` immediately after branch/base inspection, before
 
 - Never silently include uncommitted changes in the PR summary.
 - If uncommitted changes are unrelated to the branch work, list them under risks/missing information and exclude them from the PR body.
-- If they are related but not committed, mention that the PR body is based on committed changes and that the uncommitted files should be committed or intentionally excluded before opening the PR.
+- If they are related but not committed, explicitly recommend running `$commit` first, mention that the PR body is based on committed changes unless the user asks for a draft including uncommitted work, and state that the files should be committed or intentionally excluded before opening the PR.
 
 ## Git error handling
 
