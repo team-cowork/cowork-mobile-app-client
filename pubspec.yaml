@@ -20,6 +20,7 @@ version: 1.0.0+1
 
 environment:
   sdk: ^3.9.2
+  flutter: ">=3.35.0"
 
 workspace:
   - packages/design_system
