@@ -1,5 +1,5 @@
+import 'package:cowork_app/core/theme/app_theme.dart';
 import 'package:flutter/material.dart';
-import 'package:project_setting/core/theme/app_theme.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
