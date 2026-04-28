@@ -1,3 +1,0 @@
-display_name: Pull Request
-short_description: 커밋과 검증이 끝난 작업 브랜치에서 PR을 생성합니다.
-default_prompt: 현재 브랜치의 커밋과 검증 상태를 확인한 뒤 PR을 생성하세요.
