@@ -25,7 +25,7 @@ Use this skill only after work is complete, committed, and validated.
 3. Read `.github/PULL_REQUEST_TEMPLATE.md` if present.
 4. Draft a Korean PR title from the issue/work summary.
 5. Fill the PR body with changes and test evidence; do not invent issue numbers, screenshots, or tests.
-6. Link the issue when known.
+6. Link the issue when known; if no issue is discoverable, write `해당 없음` in the related issue section instead of leaving `Closes #`.
 7. Create the PR with the available project tool or `gh pr create` only when all preconditions hold.
 
 ## Output

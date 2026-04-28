@@ -33,7 +33,7 @@ Load `reference/pr-template.md` immediately after branch/base inspection, before
 5. If uncommitted changes are related and should be part of the PR, recommend running `$commit` first instead of silently including them. If the user asked only for a draft, continue with a clear note that the body is based on committed changes unless otherwise stated.
 6. Draft the PR body in Korean using the repository template sections exactly.
 7. Be honest about uncertainty:
-   - Do not invent issue numbers. Leave `Closes #` only if the issue is unknown.
+   - Do not invent issue numbers. If no issue is discoverable, replace the `Closes #` placeholder with `해당 없음` instead of leaving a dangling issue closure.
    - Do not claim tests were run unless tool output proves it.
    - If no screenshots are needed, write `해당 없음` in the screenshot section.
    - If uncommitted changes exist, clearly state whether the PR body includes only committed changes or also notes uncommitted work.
@@ -56,7 +56,7 @@ Load `reference/pr-template.md` immediately after branch/base inspection, before
 ## Template filling rules
 
 - `💡 개요`: one short paragraph explaining purpose and result.
-- `🔗 관련 이슈`: keep `Closes #` if no issue is discoverable from branch name, commits, or user input.
+- `🔗 관련 이슈`: use a concrete closure such as `Closes #123` only when the issue is known; otherwise write `해당 없음`.
 - `📃 작업내용`: bullet list of concrete changes from committed diffs.
 - `🔍 테스트 방법`: list only performed verifications; if none were run, write `- 미실행: ...` with a reason.
 - `🖼️ 스크린샷`: `해당 없음` unless visual/UI evidence exists or the user provides screenshots.
