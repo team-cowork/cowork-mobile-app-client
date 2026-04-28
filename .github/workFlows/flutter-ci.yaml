@@ -1,0 +1,123 @@
+name: Flutter CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  flutter_test_and_build:
+    runs-on: ubuntu-latest
+    # PR은 항상 실행, push는 커밋 메시지에 [CI] 포함 시에만 실행
+    if: github.event_name == 'pull_request' || contains(github.event.head_commit.message, '[CI]')
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Read FVM config
+        run: |
+          if [ -f ".fvm/fvm_config.json" ]; then
+            FLUTTER_VERSION=$(jq -r '.flutterSdkVersion' .fvm/fvm_config.json)
+          else
+            FLUTTER_VERSION="stable"
+            echo "::notice::FVM 설정 파일 없음, stable 채널 사용"
+          fi
+          echo "FLUTTER_VERSION=$FLUTTER_VERSION" >> $GITHUB_ENV
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: 'stable'
+          cache: true
+
+      # FVM 설정 파일이 있을 때만 FVM 설치 및 PATH 주입
+      - name: Set up FVM
+        if: hashFiles('.fvm/fvm_config.json') != ''
+        run: |
+          dart pub global activate fvm
+          echo "$HOME/.pub-cache/bin" >> $GITHUB_PATH
+          fvm install
+          fvm use --force
+          echo "${{ github.workspace }}/.fvm/flutter_sdk/bin" >> $GITHUB_PATH
+
+      - name: Check Flutter version
+        run: flutter --version
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Analyze
+        run: flutter analyze --no-fatal-infos
+
+      - name: Run tests
+        run: flutter test
+
+      - name: Build Android APK
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: flutter build apk --release
+
+      - name: Upload APK
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: warn
+
+      - name: Discord notification
+        if: always()
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+          JOB_STATUS: ${{ job.status }}
+          EVENT_NAME: ${{ github.event_name }}
+          PR_NUMBER: ${{ github.event.number }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          COMMIT_MSG: ${{ github.event.head_commit.message }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+          SERVER_URL: ${{ github.server_url }}
+          FLUTTER_VER: ${{ env.FLUTTER_VERSION }}
+        run: |
+          if [ -z "$DISCORD_WEBHOOK" ]; then
+            echo "::notice::Discord webhook URL이 설정되지 않았습니다."
+            exit 0
+          fi
+          python3 << 'EOF'
+          import json, os, urllib.request
+
+          webhook = os.environ['DISCORD_WEBHOOK']
+          flutter_ver = os.environ.get('FLUTTER_VER', 'stable')
+
+          if os.environ.get('EVENT_NAME') == 'pull_request':
+              event_info = "PR #{}: {} ({})".format(
+                  os.environ.get('PR_NUMBER', ''),
+                  os.environ.get('PR_TITLE', ''),
+                  os.environ.get('PR_URL', '')
+              )
+          else:
+              event_info = "커밋: {} ({}/{}/commit/{})".format(
+                  os.environ.get('COMMIT_MSG', ''),
+                  os.environ.get('SERVER_URL', ''),
+                  os.environ.get('REPO', ''),
+                  os.environ.get('SHA', '')
+              )
+
+          if os.environ.get('JOB_STATUS') == 'success':
+              title = "✅ CI/CD 파이프라인 성공"
+              description = "모든 작업이 성공적으로 완료되었습니다! 🎉"
+          else:
+              title = "❌ CI/CD 파이프라인 실패"
+              description = "GitHub Actions 로그를 확인해주세요. 🔍"
+
+          content = "{}\n{}\nFlutter 버전: {}\n{}".format(title, description, flutter_ver, event_info)
+          payload = json.dumps({"content": content}).encode()
+          req = urllib.request.Request(
+              webhook, data=payload,
+              headers={"Content-Type": "application/json"},
+              method="POST"
+          )
+          urllib.request.urlopen(req)
+          EOF
