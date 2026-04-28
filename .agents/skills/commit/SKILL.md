@@ -1,6 +1,6 @@
 ---
 name: commit
-description: Use when the user invokes $commit or asks to commit, create commits, split commits, stage git changes, or apply the repo commit convention to staged/unstaged/untracked changes. Inspect the worktree, group files/hunks by logical task, stage only intended changes, commit each task with this repository's one-line Korean conventional commit format, and handle unexpected git errors by asking before risky recovery.
+description: Use when the user invokes $commit or asks to commit current work, make one or more git commits, split changes into logical commits, stage files or hunks, commit only selected changes, apply the repository commit message convention, or recover from a commit/staging problem. Inspect staged, unstaged, and untracked changes; preserve unrelated user work; handle merge/rebase/conflict/detached-head/no-change edge cases safely; and create title-only Korean conventional commits.
 ---
 
 # Commit Skill
@@ -9,15 +9,17 @@ description: Use when the user invokes $commit or asks to commit, create commits
 
 Create one or more git commits from the current worktree according to the repo commit convention.
 
-Load `reference/commit-convention.md` when choosing commit types/scopes or validating commit messages.
+Load `reference/commit-convention.md` before selecting commit types/scopes and again when validating final commit titles.
 
 ## Required workflow
 
 1. Inspect state before touching git:
+   - `git status --short --branch`
    - `git status --short`
    - `git diff --stat`
    - `git diff --name-only`
    - `git diff --cached --name-only`
+   - `git rev-parse --abbrev-ref HEAD`
    - For untracked files, inspect filenames and contents before staging.
 2. Review diffs enough to understand intent:
    - Use `git diff -- <path>` and `git diff --cached -- <path>`.
@@ -39,6 +41,17 @@ Load `reference/commit-convention.md` when choosing commit types/scopes or valid
    - Use Korean for `설명`.
    - Commit with a title line only. Do not add a body or trailers.
 6. Verify after every commit and again after all commits using the post-commit verification checklist.
+
+
+## Edge case handling
+
+- **No changes:** if there are no staged, unstaged, or untracked changes, do not create an empty commit. Report that there is nothing to commit.
+- **Pre-staged changes:** treat existing staged changes as user intent but still inspect them. If staged changes are unrelated to the requested task, ask before unstaging or mixing them with new staging.
+- **Merge/rebase/cherry-pick in progress:** detect via `git status`. Do not create normal commits until the in-progress operation is understood. Present the safest next step and ask the user before continuing, aborting, or resolving.
+- **Conflicts/unmerged paths:** do not stage or commit conflict markers blindly. Summarize conflicted files and ask for the intended resolution path unless the fix is explicit and safe.
+- **Detached HEAD:** do not commit silently. Explain that the commit may be hard to find, recommend creating/switching to a branch, and ask before proceeding.
+- **Ignored/generated files:** do not force-add ignored files unless the user explicitly requests it and the file is inspected.
+- **Large or binary files:** confirm they are intentional before staging when they are newly added or unexpected.
 
 ## Patch staging fallback
 
