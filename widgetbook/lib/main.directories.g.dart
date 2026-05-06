@@ -19,6 +19,21 @@ final directories = <_widgetbook.WidgetbookNode>[
     name: 'Design System',
     children: [
       _widgetbook.WidgetbookFolder(
+        name: 'components',
+        children: [
+          _widgetbook.WidgetbookComponent(
+            name: 'CoworkButtonPreview',
+            useCases: [
+              _widgetbook.WidgetbookUseCase(
+                name: 'Button',
+                builder: _widgetbook_workspace_design_system_use_cases
+                    .coworkButtonPreview,
+              ),
+            ],
+          ),
+        ],
+      ),
+      _widgetbook.WidgetbookFolder(
         name: 'theme',
         children: [
           _widgetbook.WidgetbookComponent(
