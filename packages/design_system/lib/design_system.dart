@@ -1,5 +1,6 @@
 library;
 
+export 'src/components/button/cowork_button.dart';
 export 'src/constants/app_spacing.dart';
 export 'src/theme/app_theme.dart';
 export 'src/theme/color/app_colors.dart';
