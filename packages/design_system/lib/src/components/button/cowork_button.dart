@@ -39,6 +39,7 @@ class CoworkButton extends StatelessWidget {
       size: size,
       variant: variant,
       color: color,
+      enabled: enabled,
     );
 
     return Semantics(
@@ -98,6 +99,7 @@ class _CoworkButtonTokens {
     required CoworkButtonSize size,
     required CoworkButtonVariant variant,
     required CoworkButtonColor color,
+    required bool enabled,
   }) {
     final dimension = switch (size) {
       CoworkButtonSize.small => const _CoworkButtonDimension(
@@ -119,6 +121,17 @@ class _CoworkButtonTokens {
         textStyle: AppFont.labelM,
       ),
     };
+
+    if (!enabled) {
+      return _CoworkButtonTokens(
+        height: dimension.height,
+        horizontalPadding: dimension.horizontalPadding,
+        radius: dimension.radius,
+        textStyle: dimension.textStyle,
+        backgroundColor: colorScheme.surfaceContainerHighest,
+        foregroundColor: colorScheme.onSurface.withValues(alpha: 0.38),
+      );
+    }
 
     final (:backgroundColor, :foregroundColor) = switch ((variant, color)) {
       (CoworkButtonVariant.fill, CoworkButtonColor.brand) => (
