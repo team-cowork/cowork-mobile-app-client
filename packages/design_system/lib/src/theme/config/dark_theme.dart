@@ -9,16 +9,13 @@ class DarkTheme {
   static ThemeData get theme => ThemeData(
     useMaterial3: true,
     brightness: Brightness.dark,
-    colorScheme: ColorScheme.fromSeed(
-      seedColor: AppColors.primary,
-      brightness: Brightness.dark,
-    ),
+    colorScheme: AppColors.darkColorScheme,
     scaffoldBackgroundColor: AppColors.bgDark,
     appBarTheme: const AppBarTheme(
       centerTitle: true,
       elevation: 0,
       backgroundColor: AppColors.bgDark,
-      foregroundColor: AppColors.white,
+      foregroundColor: Color(0xFFDBDEE1),
     ),
   );
 }

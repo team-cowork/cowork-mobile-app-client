@@ -9,16 +9,13 @@ class LightTheme {
   static ThemeData get theme => ThemeData(
     useMaterial3: true,
     brightness: Brightness.light,
-    colorScheme: ColorScheme.fromSeed(
-      seedColor: AppColors.primary,
-      brightness: Brightness.light,
-    ),
+    colorScheme: AppColors.lightColorScheme,
     scaffoldBackgroundColor: AppColors.bgLight,
     appBarTheme: const AppBarTheme(
       centerTitle: true,
       elevation: 0,
       backgroundColor: AppColors.bgLight,
-      foregroundColor: AppColors.grey900,
+      foregroundColor: AppColors.ink,
     ),
   );
 }
