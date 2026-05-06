@@ -1,5 +1,3 @@
-// ignore_for_file: deprecated_member_use
-
 import 'package:cowork_design_system/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -23,10 +21,9 @@ void main() {
       expect(scheme.onPrimary, AppColors.white);
       expect(scheme.primaryContainer, AppColors.red50);
       expect(scheme.onPrimaryContainer, AppColors.red900);
-      expect(scheme.background, AppColors.neutral50);
-      expect(scheme.onBackground, AppColors.ink);
       expect(scheme.surface, AppColors.white);
       expect(scheme.onSurface, AppColors.ink);
+      expect(scheme.surfaceContainerHighest, AppColors.neutral100);
       expect(scheme.inversePrimary, AppColors.red300);
     });
 
@@ -37,10 +34,9 @@ void main() {
       expect(scheme.onPrimary, AppColors.white);
       expect(scheme.primaryContainer, AppColors.red900);
       expect(scheme.onPrimaryContainer, AppColors.red100);
-      expect(scheme.background, AppColors.neutral850);
-      expect(scheme.onBackground, const Color(0xFFDBDEE1));
       expect(scheme.surface, AppColors.neutral800);
-      expect(scheme.onSurface, const Color(0xFFDBDEE1));
+      expect(scheme.onSurface, AppColors.darkOnSurface);
+      expect(scheme.surfaceContainerHighest, AppColors.neutral700);
       expect(scheme.inversePrimary, AppColors.red600);
     });
   });

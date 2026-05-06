@@ -1,5 +1,3 @@
-// ignore_for_file: deprecated_member_use
-
 import 'package:flutter/material.dart';
 
 /// Cowork 디자인 시스템 색상 토큰.
@@ -13,6 +11,7 @@ class AppColors {
   static const Color black = Color(0xFF000000);
   static const Color white = Color(0xFFFFFFFF);
   static const Color ink = Color(0xFF060607);
+  static const Color darkOnSurface = Color(0xFFDBDEE1);
 
   // Red primitive palette
   static const Color red50 = Color(0xFFFFEEEE);
@@ -105,11 +104,9 @@ class AppColors {
         onTertiary: white,
         tertiaryContainer: blue50,
         onTertiaryContainer: blue900,
-        background: neutral50,
-        onBackground: ink,
         surface: white,
         onSurface: ink,
-        surfaceVariant: neutral100,
+        surfaceContainerHighest: neutral100,
         onSurfaceVariant: neutral500,
         surfaceContainer: neutral50,
         surfaceContainerLow: white,
@@ -143,11 +140,9 @@ class AppColors {
         onTertiary: blue900,
         tertiaryContainer: blue900,
         onTertiaryContainer: blue100,
-        background: neutral850,
-        onBackground: const Color(0xFFDBDEE1),
         surface: neutral800,
-        onSurface: const Color(0xFFDBDEE1),
-        surfaceVariant: neutral700,
+        onSurface: darkOnSurface,
+        surfaceContainerHighest: neutral700,
         onSurfaceVariant: neutral300,
         surfaceContainer: neutral750,
         surfaceContainerLow: neutral800,
