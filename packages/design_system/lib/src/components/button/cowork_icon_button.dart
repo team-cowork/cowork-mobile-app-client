@@ -42,7 +42,7 @@ class CoworkIconButton extends StatelessWidget {
       size: size,
       variant: variant,
       color: color,
-      enabled: enabled,
+      enabled: _isInteractive,
     );
 
     return Semantics(
@@ -57,10 +57,12 @@ class CoworkIconButton extends StatelessWidget {
           customBorder: const CircleBorder(),
           child: SizedBox.square(
             dimension: tokens.diameter,
-            child: Icon(
-              icon,
-              size: tokens.iconSize,
-              color: tokens.foregroundColor,
+            child: Center(
+              child: Icon(
+                icon,
+                size: tokens.iconSize,
+                color: tokens.foregroundColor,
+              ),
             ),
           ),
         ),
