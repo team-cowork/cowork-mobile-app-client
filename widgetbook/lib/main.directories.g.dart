@@ -31,6 +31,26 @@ final directories = <_widgetbook.WidgetbookNode>[
               ),
             ],
           ),
+          _widgetbook.WidgetbookComponent(
+            name: 'CoworkIconButtonPreview',
+            useCases: [
+              _widgetbook.WidgetbookUseCase(
+                name: 'IconButton',
+                builder: _widgetbook_workspace_design_system_use_cases
+                    .coworkIconButtonPreview,
+              ),
+            ],
+          ),
+          _widgetbook.WidgetbookComponent(
+            name: 'CoworkSwitchPreview',
+            useCases: [
+              _widgetbook.WidgetbookUseCase(
+                name: 'Switch',
+                builder: _widgetbook_workspace_design_system_use_cases
+                    .coworkSwitchPreview,
+              ),
+            ],
+          ),
         ],
       ),
       _widgetbook.WidgetbookFolder(
