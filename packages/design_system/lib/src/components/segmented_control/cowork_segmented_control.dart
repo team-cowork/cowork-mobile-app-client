@@ -45,6 +45,7 @@ class CoworkSegmentedControl<T> extends StatelessWidget {
     final trackRadius = dimension.height / 2;
     final innerHeight = dimension.height - _trackPadding * 2;
     final innerRadius = innerHeight / 2;
+    final indicatorAlignmentX = -1.0 + 2.0 * selectedIndex / (segments.length - 1);
 
     return SizedBox(
       height: dimension.height,
@@ -55,55 +56,53 @@ class CoworkSegmentedControl<T> extends StatelessWidget {
         ),
         child: Padding(
           padding: const EdgeInsets.all(_trackPadding),
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              final segmentWidth = constraints.maxWidth / segments.length;
-              return Stack(
-                children: [
-                  if (selectedIndex >= 0)
-                    AnimatedPositioned(
-                      duration: _duration,
-                      curve: _curve,
-                      left: segmentWidth * selectedIndex,
-                      top: 0,
-                      bottom: 0,
-                      width: segmentWidth,
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          color: enabled
-                              ? colorScheme.surface
-                              : colorScheme.surface.withValues(alpha: 0.6),
-                          borderRadius: BorderRadius.circular(innerRadius),
-                          boxShadow: [
-                            BoxShadow(
-                              color: AppColors.black.withValues(alpha: 0.06),
-                              blurRadius: 6,
-                              offset: const Offset(0, 1),
-                            ),
-                          ],
-                        ),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              if (selectedIndex >= 0)
+                AnimatedAlign(
+                  duration: _duration,
+                  curve: _curve,
+                  alignment: Alignment(indicatorAlignmentX, 0),
+                  child: FractionallySizedBox(
+                    widthFactor: 1 / segments.length,
+                    heightFactor: 1,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: enabled
+                            ? colorScheme.surface
+                            : colorScheme.surface.withValues(alpha: 0.6),
+                        borderRadius: BorderRadius.circular(innerRadius),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.black.withValues(alpha: 0.06),
+                            blurRadius: 6,
+                            offset: const Offset(0, 1),
+                          ),
+                        ],
                       ),
                     ),
-                  Row(
-                    children: [
-                      for (var i = 0; i < segments.length; i++)
-                        _Segment(
-                          width: segmentWidth,
-                          height: innerHeight,
-                          label: segments[i].label,
-                          selected: i == selectedIndex,
-                          enabled: _isInteractive,
-                          textStyle: dimension.textStyle,
-                          colorScheme: colorScheme,
-                          onTap: _isInteractive && i != selectedIndex
-                              ? () => onChanged!(segments[i].value)
-                              : null,
-                        ),
-                    ],
                   ),
+                ),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  for (var i = 0; i < segments.length; i++)
+                    Expanded(
+                      child: _Segment(
+                        label: segments[i].label,
+                        selected: i == selectedIndex,
+                        enabled: _isInteractive,
+                        textStyle: dimension.textStyle,
+                        colorScheme: colorScheme,
+                        onTap: _isInteractive && i != selectedIndex
+                            ? () => onChanged!(segments[i].value)
+                            : null,
+                      ),
+                    ),
                 ],
-              );
-            },
+              ),
+            ],
           ),
         ),
       ),
@@ -130,8 +129,6 @@ class CoworkSegmentedControl<T> extends StatelessWidget {
 
 class _Segment extends StatelessWidget {
   const _Segment({
-    required this.width,
-    required this.height,
     required this.label,
     required this.selected,
     required this.enabled,
@@ -140,8 +137,6 @@ class _Segment extends StatelessWidget {
     this.onTap,
   });
 
-  final double width;
-  final double height;
   final String label;
   final bool selected;
   final bool enabled;
@@ -160,26 +155,22 @@ class _Segment extends StatelessWidget {
       foreground = colorScheme.onSurfaceVariant;
     }
 
-    return SizedBox(
-      width: width,
-      height: height,
-      child: Semantics(
-        button: true,
-        selected: selected,
-        enabled: enabled,
-        label: label,
-        child: GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: onTap,
-          child: Center(
-            child: Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: textStyle.copyWith(
-                color: foreground,
-                fontWeight: selected ? AppFont.semiBold : AppFont.medium,
-              ),
+    return Semantics(
+      button: true,
+      selected: selected,
+      enabled: enabled,
+      label: label,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: Center(
+          child: Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: textStyle.copyWith(
+              color: foreground,
+              fontWeight: selected ? AppFont.semiBold : AppFont.medium,
             ),
           ),
         ),
