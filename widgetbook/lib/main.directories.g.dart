@@ -42,6 +42,16 @@ final directories = <_widgetbook.WidgetbookNode>[
             ],
           ),
           _widgetbook.WidgetbookComponent(
+            name: 'CoworkSegmentedControlPreview',
+            useCases: [
+              _widgetbook.WidgetbookUseCase(
+                name: 'SegmentedControl',
+                builder: _widgetbook_workspace_design_system_use_cases
+                    .coworkSegmentedControlPreview,
+              ),
+            ],
+          ),
+          _widgetbook.WidgetbookComponent(
             name: 'CoworkSwitchPreview',
             useCases: [
               _widgetbook.WidgetbookUseCase(
