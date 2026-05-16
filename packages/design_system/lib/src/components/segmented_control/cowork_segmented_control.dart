@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
 
 import '../../constants/app_size.dart';
+import '../../constants/app_spacing.dart';
 import '../../theme/color/app_colors.dart';
 import '../../theme/text_style/app_font.dart';
 
-/// Cowork 디자인 시스템 세그먼티드 컨트롤 크기.
 enum CoworkSegmentedControlSize { medium, large }
 
-/// [CoworkSegmentedControl]의 개별 세그먼트.
 class CoworkSegment<T> {
   const CoworkSegment({required this.value, required this.label});
 
@@ -15,7 +14,6 @@ class CoworkSegment<T> {
   final String label;
 }
 
-/// 채팅/파일/이슈 같은 탭성 전환에 사용하는 세그먼티드 컨트롤.
 class CoworkSegmentedControl<T> extends StatelessWidget {
   const CoworkSegmentedControl({
     required this.segments,
@@ -36,7 +34,7 @@ class CoworkSegmentedControl<T> extends StatelessWidget {
 
   static const Duration _duration = Duration(milliseconds: 200);
   static const Curve _curve = Curves.easeOut;
-  static const double _trackPadding = 3;
+  static const double _trackPadding = AppSpacing.s4;
 
   @override
   Widget build(BuildContext context) {
