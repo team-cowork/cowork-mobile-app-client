@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../constants/app_size.dart';
 import '../../theme/color/app_colors.dart';
 import '../../theme/text_style/app_font.dart';
 
@@ -115,12 +116,12 @@ class CoworkSegmentedControl<T> extends StatelessWidget {
     return switch (size) {
       CoworkSegmentedControlSize.medium =>
         const _CoworkSegmentedControlDimension(
-          height: 44,
+          height: AppSize.componentMedium,
           textStyle: AppFont.labelS,
         ),
       CoworkSegmentedControlSize.large =>
         const _CoworkSegmentedControlDimension(
-          height: 52,
+          height: AppSize.componentLarge,
           textStyle: AppFont.labelM,
         ),
     };

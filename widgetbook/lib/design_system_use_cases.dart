@@ -367,21 +367,21 @@ class DesignSystemPreview extends StatelessWidget {
       child: Scaffold(
         appBar: AppBar(title: const Text('Cowork Design System')),
         body: SingleChildScrollView(
-          padding: const EdgeInsets.all(AppSpacing.md),
+          padding: const EdgeInsets.all(AppSpacing.s16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text('Typography', style: AppFont.headlineM),
-              const SizedBox(height: AppSpacing.sm),
+              const SizedBox(height: AppSpacing.s8),
               const Text('Headline Large', style: AppFont.headlineL),
               const Text('Body Large', style: AppFont.bodyL),
               const Text('Label Medium', style: AppFont.labelM),
-              const SizedBox(height: AppSpacing.lg),
+              const SizedBox(height: AppSpacing.s24),
               const Text('Colors', style: AppFont.headlineM),
-              const SizedBox(height: AppSpacing.sm),
+              const SizedBox(height: AppSpacing.s8),
               const Wrap(
-                spacing: AppSpacing.sm,
-                runSpacing: AppSpacing.sm,
+                spacing: AppSpacing.s8,
+                runSpacing: AppSpacing.s8,
                 children: [
                   _ColorTile(label: 'Primary', color: AppColors.primary),
                   _ColorTile(label: 'Success', color: AppColors.success),
@@ -389,7 +389,7 @@ class DesignSystemPreview extends StatelessWidget {
                   _ColorTile(label: 'Error', color: AppColors.error),
                 ],
               ),
-              const SizedBox(height: AppSpacing.lg),
+              const SizedBox(height: AppSpacing.s24),
               ElevatedButton.icon(
                 onPressed: () {},
                 icon: const Icon(AppIcon.home),
@@ -417,11 +417,11 @@ class _ColorTile extends StatelessWidget {
         DecoratedBox(
           decoration: BoxDecoration(
             color: color,
-            borderRadius: BorderRadius.circular(AppSpacing.sm),
+            borderRadius: BorderRadius.circular(AppRadius.r8),
           ),
           child: const SizedBox.square(dimension: 64),
         ),
-        const SizedBox(height: AppSpacing.xs),
+        const SizedBox(height: AppSpacing.s4),
         Text(label, style: AppFont.labelS),
       ],
     );
