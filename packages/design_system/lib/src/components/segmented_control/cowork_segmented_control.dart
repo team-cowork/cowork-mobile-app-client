@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../constants/app_radius.dart';
 import '../../constants/app_size.dart';
 import '../../constants/app_spacing.dart';
 import '../../theme/color/app_colors.dart';
@@ -34,7 +35,6 @@ class CoworkSegmentedControl<T> extends StatelessWidget {
 
   static const Duration _duration = Duration(milliseconds: 200);
   static const Curve _curve = Curves.easeOut;
-  static const double _trackPadding = AppSpacing.s4;
 
   @override
   Widget build(BuildContext context) {
@@ -47,10 +47,10 @@ class CoworkSegmentedControl<T> extends StatelessWidget {
       child: DecoratedBox(
         decoration: BoxDecoration(
           color: colorScheme.surfaceContainerHigh,
-          borderRadius: BorderRadius.circular(dimension.height / 2),
+          borderRadius: BorderRadius.circular(AppRadius.r14),
         ),
         child: Padding(
-          padding: const EdgeInsets.all(_trackPadding),
+          padding: const EdgeInsets.all(AppSpacing.s4),
           child: Stack(
             fit: StackFit.expand,
             children: [
@@ -70,9 +70,7 @@ class CoworkSegmentedControl<T> extends StatelessWidget {
                         color: enabled
                             ? colorScheme.surface
                             : colorScheme.surface.withValues(alpha: 0.6),
-                        borderRadius: BorderRadius.circular(
-                          (dimension.height - _trackPadding * 2) / 2,
-                        ),
+                        borderRadius: BorderRadius.circular(AppRadius.r10),
                         boxShadow: [
                           BoxShadow(
                             color: AppColors.black.withValues(alpha: 0.06),
@@ -109,6 +107,7 @@ class CoworkSegmentedControl<T> extends StatelessWidget {
     );
   }
 
+  // 사이즈 불러오는 함수
   _CoworkSegmentedControlDimension _dimensionFor(
     CoworkSegmentedControlSize size,
   ) {
