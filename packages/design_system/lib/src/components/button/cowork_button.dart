@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../constants/app_radius.dart';
+import '../../constants/app_size.dart';
 import '../../theme/text_style/app_font.dart';
 
 /// Cowork 디자인 시스템 버튼 크기.
@@ -103,21 +105,21 @@ class _CoworkButtonTokens {
   }) {
     final dimension = switch (size) {
       CoworkButtonSize.small => const _CoworkButtonDimension(
-        height: 36,
+        height: AppSize.componentSmall,
         horizontalPadding: 14,
-        radius: 10,
+        radius: AppRadius.r10,
         textStyle: AppFont.labelS,
       ),
       CoworkButtonSize.medium => const _CoworkButtonDimension(
-        height: 44,
+        height: AppSize.componentMedium,
         horizontalPadding: 18,
-        radius: 12,
+        radius: AppRadius.r12,
         textStyle: AppFont.labelM,
       ),
       CoworkButtonSize.large => const _CoworkButtonDimension(
-        height: 52,
+        height: AppSize.componentLarge,
         horizontalPadding: 22,
-        radius: 14,
+        radius: AppRadius.r14,
         textStyle: AppFont.labelM,
       ),
     };

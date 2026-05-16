@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../constants/app_size.dart';
+
 /// Cowork 디자인 시스템 아이콘 버튼 크기.
 enum CoworkIconButtonSize { small, medium, large }
 
@@ -93,16 +95,16 @@ class _CoworkIconButtonTokens {
   }) {
     final dimension = switch (size) {
       CoworkIconButtonSize.small => const _CoworkIconButtonDimension(
-        diameter: 36,
-        iconSize: 18,
+        diameter: AppSize.componentSmall,
+        iconSize: AppSize.iconSmall,
       ),
       CoworkIconButtonSize.medium => const _CoworkIconButtonDimension(
-        diameter: 44,
-        iconSize: 20,
+        diameter: AppSize.componentMedium,
+        iconSize: AppSize.iconMedium,
       ),
       CoworkIconButtonSize.large => const _CoworkIconButtonDimension(
-        diameter: 52,
-        iconSize: 24,
+        diameter: AppSize.componentLarge,
+        iconSize: AppSize.iconLarge,
       ),
     };
 

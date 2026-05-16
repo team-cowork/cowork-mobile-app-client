@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 
+import '../../constants/app_radius.dart';
+import '../../constants/app_size.dart';
+import '../../constants/app_spacing.dart';
 import '../../theme/color/app_colors.dart';
 import '../../theme/text_style/app_font.dart';
 
-/// Cowork 디자인 시스템 세그먼티드 컨트롤 크기.
 enum CoworkSegmentedControlSize { medium, large }
 
-/// [CoworkSegmentedControl]의 개별 세그먼트.
 class CoworkSegment<T> {
   const CoworkSegment({required this.value, required this.label});
 
@@ -14,7 +15,6 @@ class CoworkSegment<T> {
   final String label;
 }
 
-/// 채팅/파일/이슈 같은 탭성 전환에 사용하는 세그먼티드 컨트롤.
 class CoworkSegmentedControl<T> extends StatelessWidget {
   const CoworkSegmentedControl({
     required this.segments,
@@ -35,27 +35,22 @@ class CoworkSegmentedControl<T> extends StatelessWidget {
 
   static const Duration _duration = Duration(milliseconds: 200);
   static const Curve _curve = Curves.easeOut;
-  static const double _trackPadding = 3;
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final dimension = _dimensionFor(size);
     final selectedIndex = segments.indexWhere((s) => s.value == groupValue);
-    final trackRadius = dimension.height / 2;
-    final innerHeight = dimension.height - _trackPadding * 2;
-    final innerRadius = innerHeight / 2;
-    final indicatorAlignmentX = -1.0 + 2.0 * selectedIndex / (segments.length - 1);
 
     return SizedBox(
       height: dimension.height,
       child: DecoratedBox(
         decoration: BoxDecoration(
           color: colorScheme.surfaceContainerHigh,
-          borderRadius: BorderRadius.circular(trackRadius),
+          borderRadius: BorderRadius.circular(AppRadius.r14),
         ),
         child: Padding(
-          padding: const EdgeInsets.all(_trackPadding),
+          padding: const EdgeInsets.all(AppSpacing.s4),
           child: Stack(
             fit: StackFit.expand,
             children: [
@@ -63,7 +58,10 @@ class CoworkSegmentedControl<T> extends StatelessWidget {
                 AnimatedAlign(
                   duration: _duration,
                   curve: _curve,
-                  alignment: Alignment(indicatorAlignmentX, 0),
+                  alignment: Alignment(
+                    -1.0 + 2.0 * selectedIndex / (segments.length - 1),
+                    0,
+                  ),
                   child: FractionallySizedBox(
                     widthFactor: 1 / segments.length,
                     heightFactor: 1,
@@ -72,7 +70,7 @@ class CoworkSegmentedControl<T> extends StatelessWidget {
                         color: enabled
                             ? colorScheme.surface
                             : colorScheme.surface.withValues(alpha: 0.6),
-                        borderRadius: BorderRadius.circular(innerRadius),
+                        borderRadius: BorderRadius.circular(AppRadius.r10),
                         boxShadow: [
                           BoxShadow(
                             color: AppColors.black.withValues(alpha: 0.06),
@@ -109,18 +107,19 @@ class CoworkSegmentedControl<T> extends StatelessWidget {
     );
   }
 
+  // 사이즈 불러오는 함수
   _CoworkSegmentedControlDimension _dimensionFor(
     CoworkSegmentedControlSize size,
   ) {
     return switch (size) {
       CoworkSegmentedControlSize.medium =>
         const _CoworkSegmentedControlDimension(
-          height: 44,
+          height: AppSize.componentMedium,
           textStyle: AppFont.labelS,
         ),
       CoworkSegmentedControlSize.large =>
         const _CoworkSegmentedControlDimension(
-          height: 52,
+          height: AppSize.componentLarge,
           textStyle: AppFont.labelM,
         ),
     };
