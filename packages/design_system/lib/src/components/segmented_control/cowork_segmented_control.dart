@@ -41,17 +41,13 @@ class CoworkSegmentedControl<T> extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
     final dimension = _dimensionFor(size);
     final selectedIndex = segments.indexWhere((s) => s.value == groupValue);
-    final trackRadius = dimension.height / 2;
-    final innerHeight = dimension.height - _trackPadding * 2;
-    final innerRadius = innerHeight / 2;
-    final indicatorAlignmentX = -1.0 + 2.0 * selectedIndex / (segments.length - 1);
 
     return SizedBox(
       height: dimension.height,
       child: DecoratedBox(
         decoration: BoxDecoration(
           color: colorScheme.surfaceContainerHigh,
-          borderRadius: BorderRadius.circular(trackRadius),
+          borderRadius: BorderRadius.circular(dimension.height / 2),
         ),
         child: Padding(
           padding: const EdgeInsets.all(_trackPadding),
@@ -62,7 +58,10 @@ class CoworkSegmentedControl<T> extends StatelessWidget {
                 AnimatedAlign(
                   duration: _duration,
                   curve: _curve,
-                  alignment: Alignment(indicatorAlignmentX, 0),
+                  alignment: Alignment(
+                    -1.0 + 2.0 * selectedIndex / (segments.length - 1),
+                    0,
+                  ),
                   child: FractionallySizedBox(
                     widthFactor: 1 / segments.length,
                     heightFactor: 1,
@@ -71,7 +70,9 @@ class CoworkSegmentedControl<T> extends StatelessWidget {
                         color: enabled
                             ? colorScheme.surface
                             : colorScheme.surface.withValues(alpha: 0.6),
-                        borderRadius: BorderRadius.circular(innerRadius),
+                        borderRadius: BorderRadius.circular(
+                          (dimension.height - _trackPadding * 2) / 2,
+                        ),
                         boxShadow: [
                           BoxShadow(
                             color: AppColors.black.withValues(alpha: 0.06),
