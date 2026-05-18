@@ -32,6 +32,16 @@ final directories = <_widgetbook.WidgetbookNode>[
             ],
           ),
           _widgetbook.WidgetbookComponent(
+            name: 'CoworkDialogPreview',
+            useCases: [
+              _widgetbook.WidgetbookUseCase(
+                name: 'Dialog',
+                builder: _widgetbook_workspace_design_system_use_cases
+                    .coworkDialogPreview,
+              ),
+            ],
+          ),
+          _widgetbook.WidgetbookComponent(
             name: 'CoworkIconButtonPreview',
             useCases: [
               _widgetbook.WidgetbookUseCase(
@@ -66,10 +76,11 @@ final directories = <_widgetbook.WidgetbookNode>[
             useCases: [
               _widgetbook.WidgetbookUseCase(
                 name: 'TextField',
-                builder: _widgetbook_workspace_design_system_use_cases.coworkTextFieldPreview
+                builder: _widgetbook_workspace_design_system_use_cases
+                    .coworkTextFieldPreview,
               ),
-            ]
-          )
+            ],
+          ),
         ],
       ),
       _widgetbook.WidgetbookFolder(
