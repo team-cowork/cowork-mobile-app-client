@@ -48,7 +48,7 @@ class CoworkTextField extends StatelessWidget {
               color: AppColors.neutral500,
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpacing.s8),
         ],
         TextFormField(
           controller: controller,
@@ -79,30 +79,29 @@ class CoworkTextField extends StatelessWidget {
               borderSide: const BorderSide(
                 width: 1,
                 color: AppColors.neutral200,
-              ),
+              )
             ),
 
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: const BorderSide(
                 width: 1, // 색상 추후에 추가
-              ),
+              )
             ),
 
             errorBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: const BorderSide(
                 width: 1, // 색상 추후에 추가
-              ),
+              )
             ),
 
-            disabledBorder: OutlineInputBorder(
+              disabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: const BorderSide(
                 width: 1, // 색상 추후에 추가
-              ),
-            ),
-          ),
+              )
+          ),),
         ),
       ],
     );
