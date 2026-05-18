@@ -61,6 +61,15 @@ final directories = <_widgetbook.WidgetbookNode>[
               ),
             ],
           ),
+          _widgetbook.WidgetbookComponent(
+            name: 'CoworkTextFieldPreview',
+            useCases: [
+              _widgetbook.WidgetbookUseCase(
+                name: 'TextField',
+                builder: _widgetbook_workspace_design_system_use_cases.coworkTextFieldPreview
+              ),
+            ]
+          )
         ],
       ),
       _widgetbook.WidgetbookFolder(
