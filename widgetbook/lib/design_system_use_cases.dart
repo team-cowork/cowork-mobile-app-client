@@ -207,16 +207,8 @@ class _CoworkSwitchPreviewState extends State<CoworkSwitchPreview> {
                     value: _offEnabled,
                     onChanged: (next) => setState(() => _offEnabled = next),
                   ),
-                  CoworkSwitch(
-                    value: true,
-                    enabled: false,
-                    onChanged: (_) {},
-                  ),
-                  CoworkSwitch(
-                    value: false,
-                    enabled: false,
-                    onChanged: (_) {},
-                  ),
+                  CoworkSwitch(value: true, enabled: false, onChanged: (_) {}),
+                  CoworkSwitch(value: false, enabled: false, onChanged: (_) {}),
                 ],
               ),
             ],
@@ -286,8 +278,7 @@ class _CoworkSegmentedControlPreviewState
                 child: CoworkSegmentedControl<String>(
                   segments: _twoSegments,
                   groupValue: _twoSegmentValueM,
-                  onChanged: (next) =>
-                      setState(() => _twoSegmentValueM = next),
+                  onChanged: (next) => setState(() => _twoSegmentValueM = next),
                 ),
               ),
               const SizedBox(height: 16),
@@ -297,8 +288,7 @@ class _CoworkSegmentedControlPreviewState
                   segments: _twoSegments,
                   groupValue: _twoSegmentValueL,
                   size: CoworkSegmentedControlSize.large,
-                  onChanged: (next) =>
-                      setState(() => _twoSegmentValueL = next),
+                  onChanged: (next) => setState(() => _twoSegmentValueL = next),
                 ),
               ),
               const SizedBox(height: 16),
@@ -424,6 +414,50 @@ class _ColorTile extends StatelessWidget {
         const SizedBox(height: AppSpacing.s4),
         Text(label, style: AppFont.labelS),
       ],
+    );
+  }
+}
+
+@widgetbook.UseCase(
+  name: 'TextField',
+  type: CoworkTextFieldPreview,
+  path: '[Design System]/components',
+)
+Widget coworkTextFieldPreview(BuildContext context) {
+  return const CoworkTextFieldPreview();
+}
+
+class CoworkTextFieldPreview extends StatelessWidget {
+  const CoworkTextFieldPreview({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Theme(
+      data: AppTheme.light(),
+      child: const Scaffold(
+        body: SingleChildScrollView(
+          padding: EdgeInsets.all(28),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Cowork/TextField', style: AppFont.titleL),
+              SizedBox(height: 12),
+              Text('로그인, 검색, 설정 폼에 사용하는 단일 라인 입력입니다.', style: AppFont.subtextL),
+              SizedBox(height: 16),
+              Wrap(
+                spacing: 16,
+                runSpacing: 12,
+                children: [
+                  CoworkTextField(
+                    hintText: 'name@cowork.dev',
+                    labelText: '이메일',
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
