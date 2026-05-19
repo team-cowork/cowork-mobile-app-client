@@ -16,24 +16,22 @@ class CoworkAvatarPreview extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Theme(
-      data: AppTheme.light(),
-      child: const Scaffold(
-        body: SingleChildScrollView(
-          padding: EdgeInsets.all(28),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Cowork/Avatar', style: AppFont.titleL),
-              SizedBox(height: 12),
-              Text(
-                '팀/사용자 프로필 이미지를 대체하는 기본 아바타입니다.',
-                style: AppFont.subtextL,
-              ),
-              SizedBox(height: 16),
-              CoworkAvatar(initials: 'CW'),
-            ],
-          ),
+    return Scaffold(
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      body: const SingleChildScrollView(
+        padding: EdgeInsets.all(28),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Cowork/Avatar', style: AppFont.titleL),
+            SizedBox(height: 12),
+            Text(
+              '팀/사용자 프로필 이미지를 대체하는 기본 아바타입니다.',
+              style: AppFont.subtextL,
+            ),
+            SizedBox(height: 16),
+            CoworkAvatar(initials: 'CW'),
+          ],
         ),
       ),
     );
