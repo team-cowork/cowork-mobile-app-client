@@ -12,7 +12,7 @@ class CoworkDialog extends StatelessWidget {
     required this.title,
     required this.message,
     required this.confirmLabel,
-    this.cancelLabel = '취소',
+    required this.cancelLabel,
     this.onCancel,
     this.onConfirm,
     this.confirmColor = CoworkButtonColor.brand,
@@ -32,11 +32,15 @@ class CoworkDialog extends StatelessWidget {
     required String title,
     required String message,
     required String confirmLabel,
-    String cancelLabel = '취소',
+    required String cancelLabel,
     CoworkButtonColor confirmColor = CoworkButtonColor.brand,
+    bool barrierDismissible = true,
+    bool useRootNavigator = true,
   }) {
     return showDialog<bool>(
       context: context,
+      barrierDismissible: barrierDismissible,
+      useRootNavigator: useRootNavigator,
       builder: (context) => CoworkDialog(
         title: title,
         message: message,
@@ -55,7 +59,9 @@ class CoworkDialog extends StatelessWidget {
 
     return Dialog(
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.all(Radius.circular(20)),
+        borderRadius: BorderRadius.all(
+          Radius.circular(_CoworkDialogTokens.borderRadius),
+        ),
       ),
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.s24),
@@ -65,7 +71,7 @@ class CoworkDialog extends StatelessWidget {
           children: [
             Text(
               title,
-              style: AppFont.titleS.copyWith(color: colorScheme.onSurface), 
+              style: AppFont.titleS.copyWith(color: colorScheme.onSurface),
             ),
             const SizedBox(height: AppSpacing.s8),
             Text(
@@ -100,4 +106,10 @@ class CoworkDialog extends StatelessWidget {
       ),
     );
   }
+}
+
+class _CoworkDialogTokens {
+  _CoworkDialogTokens._();
+
+  static const double borderRadius = 20.0;
 }
