@@ -1,3 +1,4 @@
+import 'package:cowork_design_system/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:widgetbook/widgetbook.dart';
 import 'package:widgetbook_annotation/widgetbook_annotation.dart' as widgetbook;
@@ -14,6 +15,16 @@ class WidgetbookApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Widgetbook.material(directories: directories, addons: const []);
+    return Widgetbook.material(
+      directories: directories,
+      addons: [
+        MaterialThemeAddon(
+          themes: [
+            WidgetbookTheme(name: 'Light', data: AppTheme.light()),
+            WidgetbookTheme(name: 'Dark', data: AppTheme.dark()),
+          ],
+        ),
+      ],
+    );
   }
 }

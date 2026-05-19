@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'color/app_colors.dart';
+import 'color/app_colors_theme.dart';
 import 'text_style/app_font.dart';
 
 /// 앱 테마 설정
@@ -26,6 +27,11 @@ class AppTheme {
       useMaterial3: useMaterial3,
       brightness: brightness,
       colorScheme: colorScheme,
+      extensions: [
+        brightness == Brightness.light
+            ? AppColorsTheme.light
+            : AppColorsTheme.dark,
+      ],
       textTheme: AppFont.textTheme,
       scaffoldBackgroundColor: brightness == Brightness.light
           ? AppColors.bgLight
