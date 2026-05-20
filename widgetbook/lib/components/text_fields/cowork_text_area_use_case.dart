@@ -3,16 +3,16 @@ import 'package:flutter/material.dart';
 import 'package:widgetbook_annotation/widgetbook_annotation.dart' as widgetbook;
 
 @widgetbook.UseCase(
-  name: 'TextField',
-  type: CoworkTextFieldPreview,
-  path: '[Design System]/components/text_fields/cowork_text_fields',
+  name: 'TextArea',
+  type: CoworkTextAreaPreview,
+  path: '[Design System]/components/text_fields/cowork_text_area',
 )
-Widget coworkTextFieldPreview(BuildContext context) {
-  return const CoworkTextFieldPreview();
+Widget coworkTextAreaPreview(BuildContext context) {
+  return const CoworkTextAreaPreview();
 }
 
-class CoworkTextFieldPreview extends StatelessWidget {
-  const CoworkTextFieldPreview({super.key});
+class CoworkTextAreaPreview extends StatelessWidget {
+  const CoworkTextAreaPreview({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -24,18 +24,15 @@ class CoworkTextFieldPreview extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Cowork/TextField', style: AppFont.titleL),
+              Text('Cowork/TextArea', style: AppFont.titleL),
               SizedBox(height: 12),
-              Text('로그인, 검색, 설정 폼에 사용하는 단일 라인 입력입니다.', style: AppFont.subtextL),
+              Text('회의록, 이슈 설명, 긴 메시지 작성에 사용하는 다중 라인 입력입니다.', style: AppFont.subtextL),
               SizedBox(height: 16),
               Wrap(
                 spacing: 16,
                 runSpacing: 12,
                 children: [
-                  CoworkTextField(
-                    hintText: 'name@cowork.dev',
-                    labelText: '이메일',
-                  ),
+                  CoworkTextArea(hintText: '논의한 내용을 마크다운으로 정리하세요.', labelText: '회의록'),
                 ],
               ),
             ],
