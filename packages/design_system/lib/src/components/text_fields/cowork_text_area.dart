@@ -64,7 +64,7 @@ class CoworkTextArea extends StatelessWidget {
             prefixIcon: prefixIcon,
 
             border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(14),
               borderSide: const BorderSide(
                 width: 1,
                 color: AppColors.neutral200,
@@ -72,7 +72,7 @@ class CoworkTextArea extends StatelessWidget {
             ),
 
             enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(14),
                 borderSide: const BorderSide(
                   width: 1,
                   color: AppColors.neutral200,
@@ -80,21 +80,21 @@ class CoworkTextArea extends StatelessWidget {
             ),
 
             focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(14),
                 borderSide: const BorderSide(
                   width: 1, // 색상 추후에 추가
                 )
             ),
 
             errorBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(14),
                 borderSide: const BorderSide(
                   width: 1, // 색상 추후에 추가
                 )
             ),
 
             disabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(14),
                 borderSide: const BorderSide(
                   width: 1, // 색상 추후에 추가
                 )
