@@ -23,6 +23,8 @@ import 'package:widgetbook_workspace/components/segmented_control/cowork_segment
     as _widgetbook_workspace_components_segmented_control_cowork_segmented_control_use_case;
 import 'package:widgetbook_workspace/components/switch/cowork_switch_use_case.dart'
     as _widgetbook_workspace_components_switch_cowork_switch_use_case;
+import 'package:widgetbook_workspace/components/text_fields/cowork_text_area_use_case.dart'
+    as _widgetbook_workspace_components_text_fields_cowork_text_area_use_case;
 import 'package:widgetbook_workspace/components/text_fields/cowork_text_fields_use_case.dart'
     as _widgetbook_workspace_components_text_fields_cowork_text_fields_use_case;
 import 'package:widgetbook_workspace/theme/design_system_preview.dart'
@@ -129,14 +131,35 @@ final directories = <_widgetbook.WidgetbookNode>[
           _widgetbook.WidgetbookFolder(
             name: 'text_fields',
             children: [
-              _widgetbook.WidgetbookComponent(
-                name: 'CoworkTextFieldPreview',
-                useCases: [
-                  _widgetbook.WidgetbookUseCase(
-                    name: 'TextField',
-                    builder:
-                        _widgetbook_workspace_components_text_fields_cowork_text_fields_use_case
-                            .coworkTextFieldPreview,
+              _widgetbook.WidgetbookFolder(
+                name: 'cowork_text_area',
+                children: [
+                  _widgetbook.WidgetbookComponent(
+                    name: 'CoworkTextAreaPreview',
+                    useCases: [
+                      _widgetbook.WidgetbookUseCase(
+                        name: 'TextArea',
+                        builder:
+                            _widgetbook_workspace_components_text_fields_cowork_text_area_use_case
+                                .coworkTextAreaPreview,
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              _widgetbook.WidgetbookFolder(
+                name: 'cowork_text_fields',
+                children: [
+                  _widgetbook.WidgetbookComponent(
+                    name: 'CoworkTextFieldPreview',
+                    useCases: [
+                      _widgetbook.WidgetbookUseCase(
+                        name: 'TextField',
+                        builder:
+                            _widgetbook_workspace_components_text_fields_cowork_text_fields_use_case
+                                .coworkTextFieldPreview,
+                      ),
+                    ],
                   ),
                 ],
               ),

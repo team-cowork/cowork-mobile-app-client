@@ -1,23 +1,21 @@
 import 'package:cowork_design_system/design_system.dart';
 import 'package:flutter/material.dart';
 
-class CoworkTextField extends StatelessWidget {
-  const CoworkTextField({
+class CoworkTextArea extends StatelessWidget {
+  const CoworkTextArea({
     super.key,
     this.controller,
     this.labelText,
     this.hintText,
     this.validator,
     this.enabled = true,
-    this.obscureText = false,
     this.onChanged,
     this.onSubmitted,
     this.onTap,
-    this.keyboardType,
-    this.textInputAction,
     this.suffixIcon,
     this.prefixIcon,
-    this.maxLines = 1,
+    this.minLines = 5,
+
   });
 
   final TextEditingController? controller;
@@ -25,15 +23,14 @@ class CoworkTextField extends StatelessWidget {
   final String? hintText;
   final String? Function(String?)? validator;
   final bool enabled;
-  final bool obscureText;
   final ValueChanged<String>? onChanged;
   final ValueChanged<String>? onSubmitted;
   final VoidCallback? onTap;
-  final TextInputType? keyboardType;
-  final TextInputAction? textInputAction;
   final Widget? suffixIcon;
   final Widget? prefixIcon;
-  final int? maxLines;
+  final int? minLines;
+
+
 
   @override
   Widget build(BuildContext context) {
@@ -54,20 +51,20 @@ class CoworkTextField extends StatelessWidget {
           controller: controller,
           validator: validator,
           enabled: enabled,
-          obscureText: obscureText,
           onChanged: onChanged,
           onFieldSubmitted: onSubmitted,
           onTap: onTap,
-          keyboardType: keyboardType,
-          textInputAction: textInputAction,
-          maxLines: obscureText ? 1 : maxLines,
+          maxLines: null,
+          minLines: minLines,
+          keyboardType: TextInputType.multiline,
+          textInputAction: TextInputAction.newline,
           decoration: InputDecoration(
             hintText: hintText,
             suffixIcon: suffixIcon,
             prefixIcon: prefixIcon,
 
             border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(AppRadius.r12),
+              borderRadius: BorderRadius.circular(AppRadius.r14),
               borderSide: const BorderSide(
                 width: 1,
                 color: AppColors.neutral200,
@@ -75,33 +72,33 @@ class CoworkTextField extends StatelessWidget {
             ),
 
             enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(AppRadius.r12),
-              borderSide: const BorderSide(
-                width: 1,
-                color: AppColors.neutral200,
-              )
+                borderRadius: BorderRadius.circular(AppRadius.r14),
+                borderSide: const BorderSide(
+                  width: 1,
+                  color: AppColors.neutral200,
+                )
             ),
 
             focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(AppRadius.r12),
-              borderSide: const BorderSide(
-                width: 1, // 색상 추후에 추가
-              )
+                borderRadius: BorderRadius.circular(AppRadius.r14),
+                borderSide: const BorderSide(
+                  width: 1, // 색상 추후에 추가
+                )
             ),
 
             errorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(AppRadius.r12),
-              borderSide: const BorderSide(
-                width: 1, // 색상 추후에 추가
-              )
+                borderRadius: BorderRadius.circular(AppRadius.r14),
+                borderSide: const BorderSide(
+                  width: 1, // 색상 추후에 추가
+                )
             ),
 
-              disabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(AppRadius.r12),
-              borderSide: const BorderSide(
-                width: 1, // 색상 추후에 추가
-              )
-          ),),
+            disabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(AppRadius.r14),
+                borderSide: const BorderSide(
+                  width: 1, // 색상 추후에 추가
+                )
+            ),),
         ),
       ],
     );
