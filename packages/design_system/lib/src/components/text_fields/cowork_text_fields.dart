@@ -67,7 +67,7 @@ class CoworkTextField extends StatelessWidget {
             prefixIcon: prefixIcon,
 
             border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(AppRadius.r12),
               borderSide: const BorderSide(
                 width: 1,
                 color: AppColors.neutral200,
@@ -75,7 +75,7 @@ class CoworkTextField extends StatelessWidget {
             ),
 
             enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(AppRadius.r12),
               borderSide: const BorderSide(
                 width: 1,
                 color: AppColors.neutral200,
@@ -83,21 +83,21 @@ class CoworkTextField extends StatelessWidget {
             ),
 
             focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(AppRadius.r12),
               borderSide: const BorderSide(
                 width: 1, // 색상 추후에 추가
               )
             ),
 
             errorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(AppRadius.r12),
               borderSide: const BorderSide(
                 width: 1, // 색상 추후에 추가
               )
             ),
 
               disabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(AppRadius.r12),
               borderSide: const BorderSide(
                 width: 1, // 색상 추후에 추가
               )
