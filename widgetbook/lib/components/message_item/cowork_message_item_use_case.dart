@@ -19,17 +19,17 @@ class CoworkMessageItemPreview extends StatelessWidget {
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: const SingleChildScrollView(
-        padding: EdgeInsets.all(28),
+        padding: EdgeInsets.all(AppSpacing.s20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text('Cowork/Message Item', style: AppFont.titleL),
-            SizedBox(height: 12),
+            SizedBox(height: AppSpacing.s12),
             Text(
               '마크다운 채팅 메시지 기본 행입니다.',
               style: AppFont.subtextL,
             ),
-            SizedBox(height: 16),
+            SizedBox(height: AppSpacing.s16),
             CoworkMessageItem(
               username: 'junjuny',
               timestamp: '오늘 14:20',
