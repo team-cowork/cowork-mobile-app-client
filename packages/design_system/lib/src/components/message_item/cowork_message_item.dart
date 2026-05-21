@@ -43,21 +43,23 @@ class CoworkMessageItem extends StatelessWidget {
                 '$username · $timestamp',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: AppFont.subtextM.copyWith(
+                style: AppFont.labelXs.copyWith(
                   color: colors.onSurfaceVariant,
                 ),
               ),
-              const SizedBox(height: AppSpacing.s4),
+              const SizedBox(height: AppSpacing.s6),
               MarkdownBody(
                 data: message,
                 shrinkWrap: true,
                 styleSheet: MarkdownStyleSheet(
-                  p: AppFont.bodyM.copyWith(color: colors.onSurface),
-                  code: AppFont.bodyM.copyWith(
+                  p: AppFont.subtextL.copyWith(color: colors.onSurface),
+                  code: AppFont.subtextL.copyWith(
                     color: colors.onSurface,
                     fontFamily: 'monospace',
                     backgroundColor: colors.surfaceContainerHigh,
-                    height: 1.2,
+                  ),
+                  codeblockDecoration: BoxDecoration(
+                    color: colors.surfaceContainerHigh,
                   ),
                 ),
               ),
