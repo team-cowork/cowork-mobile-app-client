@@ -39,13 +39,20 @@ class CoworkMessageComposer extends StatelessWidget {
       ),
       child: Row(
         children: [
-          InkResponse(
-            onTap: onAttach,
-            radius: AppSize.iconMedium,
-            child: Icon(
-              Icons.attach_file_outlined,
-              size: AppSize.iconMedium,
-              color: colors.onSurfaceVariant,
+          Material(
+            color: Colors.transparent,
+            shape: const CircleBorder(),
+            child: InkWell(
+              onTap: onAttach,
+              customBorder: const CircleBorder(),
+              child: SizedBox.square(
+                dimension: AppSize.componentMedium,
+                child: Icon(
+                  Icons.attach_file_outlined,
+                  size: AppSize.iconMedium,
+                  color: colors.onSurfaceVariant,
+                ),
+              ),
             ),
           ),
           const SizedBox(width: AppSpacing.s12),
@@ -53,6 +60,10 @@ class CoworkMessageComposer extends StatelessWidget {
             child: TextField(
               controller: controller,
               onSubmitted: onSubmitted,
+              minLines: 1,
+              maxLines: 5,
+              keyboardType: TextInputType.multiline,
+              textInputAction: TextInputAction.newline,
               style: AppFont.subtextL.copyWith(color: colors.onSurface),
               decoration: InputDecoration(
                 isCollapsed: true,
