@@ -19,6 +19,8 @@ import 'package:widgetbook_workspace/components/button/cowork_icon_button_use_ca
     as _widgetbook_workspace_components_button_cowork_icon_button_use_case;
 import 'package:widgetbook_workspace/components/dialog/cowork_dialog_use_case.dart'
     as _widgetbook_workspace_components_dialog_cowork_dialog_use_case;
+import 'package:widgetbook_workspace/components/message_composer/cowork_message_composer_use_case.dart'
+    as _widgetbook_workspace_components_message_composer_cowork_message_composer_use_case;
 import 'package:widgetbook_workspace/components/message_item/cowork_message_item_use_case.dart'
     as _widgetbook_workspace_components_message_item_cowork_message_item_use_case;
 import 'package:widgetbook_workspace/components/segmented_control/cowork_segmented_control_use_case.dart'
@@ -93,6 +95,22 @@ final directories = <_widgetbook.WidgetbookNode>[
                     builder:
                         _widgetbook_workspace_components_dialog_cowork_dialog_use_case
                             .coworkDialogPreview,
+                  ),
+                ],
+              ),
+            ],
+          ),
+          _widgetbook.WidgetbookFolder(
+            name: 'message_composer',
+            children: [
+              _widgetbook.WidgetbookComponent(
+                name: 'CoworkMessageComposerPreview',
+                useCases: [
+                  _widgetbook.WidgetbookUseCase(
+                    name: 'Message Composer',
+                    builder:
+                        _widgetbook_workspace_components_message_composer_cowork_message_composer_use_case
+                            .coworkMessageComposerPreview,
                   ),
                 ],
               ),
