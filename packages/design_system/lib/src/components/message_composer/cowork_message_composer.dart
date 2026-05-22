@@ -14,6 +14,8 @@ class CoworkMessageComposer extends StatelessWidget {
   const CoworkMessageComposer({
     this.controller,
     this.hintText = '메시지를 입력하세요. Markdown 지원',
+    this.minLines = 1,
+    this.maxLines = 5,
     this.onSubmitted,
     this.onSend,
     this.onAttach,
@@ -22,6 +24,8 @@ class CoworkMessageComposer extends StatelessWidget {
 
   final TextEditingController? controller;
   final String hintText;
+  final int minLines;
+  final int maxLines;
   final ValueChanged<String>? onSubmitted;
   final VoidCallback? onSend;
   final VoidCallback? onAttach;
@@ -60,8 +64,8 @@ class CoworkMessageComposer extends StatelessWidget {
             child: TextField(
               controller: controller,
               onSubmitted: onSubmitted,
-              minLines: 1,
-              maxLines: 5,
+              minLines: minLines,
+              maxLines: maxLines,
               keyboardType: TextInputType.multiline,
               textInputAction: TextInputAction.newline,
               style: AppFont.subtextL.copyWith(color: colors.onSurface),
