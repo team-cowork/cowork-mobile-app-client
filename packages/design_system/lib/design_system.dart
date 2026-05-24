@@ -4,6 +4,7 @@ export 'src/components/avatar/cowork_avatar.dart';
 export 'src/components/button/cowork_button.dart';
 export 'src/components/button/cowork_icon_button.dart';
 export 'src/components/dialog/cowork_dialog.dart';
+export 'src/components/message_composer/cowork_message_composer.dart';
 export 'src/components/message_item/cowork_message_item.dart';
 export 'src/components/segmented_control/cowork_segmented_control.dart';
 export 'src/components/switch/cowork_switch.dart';
