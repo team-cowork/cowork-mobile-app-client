@@ -22,4 +22,7 @@ class AppSize {
 
   /// 아이콘 크기 (large)
   static const double iconLarge = 24.0;
+
+  /// 아이콘을 감싸는 컨테이너(섬네일) 크기
+  static const double iconContainer = 48.0;
 }
