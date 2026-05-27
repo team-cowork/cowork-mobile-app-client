@@ -11,6 +11,8 @@
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 import 'package:widgetbook/widgetbook.dart' as _widgetbook;
+import 'package:widgetbook_workspace/components/attachment_card/cowork_attachment_card_use_case.dart'
+    as _widgetbook_workspace_components_attachment_card_cowork_attachment_card_use_case;
 import 'package:widgetbook_workspace/components/avatar/cowork_avatar_use_case.dart'
     as _widgetbook_workspace_components_avatar_cowork_avatar_use_case;
 import 'package:widgetbook_workspace/components/button/cowork_button_use_case.dart'
@@ -41,6 +43,22 @@ final directories = <_widgetbook.WidgetbookNode>[
       _widgetbook.WidgetbookFolder(
         name: 'components',
         children: [
+          _widgetbook.WidgetbookFolder(
+            name: 'attachment_card',
+            children: [
+              _widgetbook.WidgetbookComponent(
+                name: 'CoworkAttachmentCardPreview',
+                useCases: [
+                  _widgetbook.WidgetbookUseCase(
+                    name: 'Attachment Card',
+                    builder:
+                        _widgetbook_workspace_components_attachment_card_cowork_attachment_card_use_case
+                            .coworkAttachmentCardPreview,
+                  ),
+                ],
+              ),
+            ],
+          ),
           _widgetbook.WidgetbookFolder(
             name: 'avatar',
             children: [
