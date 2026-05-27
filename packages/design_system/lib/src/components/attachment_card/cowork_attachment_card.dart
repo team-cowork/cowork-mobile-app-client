@@ -41,7 +41,7 @@ class CoworkAttachmentCard extends StatelessWidget {
           padding: const EdgeInsets.all(AppSpacing.s14),
           child: Row(
             children: [
-              Container(
+              Ink(
                 width: AppSize.iconContainer,
                 height: AppSize.iconContainer,
                 decoration: BoxDecoration(
