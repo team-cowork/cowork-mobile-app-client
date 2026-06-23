@@ -23,6 +23,8 @@ import 'package:widgetbook_workspace/components/dialog/cowork_dialog_use_case.da
     as _widgetbook_workspace_components_dialog_cowork_dialog_use_case;
 import 'package:widgetbook_workspace/components/empty_state/cowork_empty_state_use_case.dart'
     as _widgetbook_workspace_components_empty_state_cowork_empty_state_use_case;
+import 'package:widgetbook_workspace/components/file_upload_progress/cowork_file_upload_progress_use_case.dart'
+    as _widgetbook_workspace_components_file_upload_progress_cowork_file_upload_progress_use_case;
 import 'package:widgetbook_workspace/components/message_composer/cowork_message_composer_use_case.dart'
     as _widgetbook_workspace_components_message_composer_cowork_message_composer_use_case;
 import 'package:widgetbook_workspace/components/message_item/cowork_message_item_use_case.dart'
@@ -131,6 +133,22 @@ final directories = <_widgetbook.WidgetbookNode>[
                     builder:
                         _widgetbook_workspace_components_empty_state_cowork_empty_state_use_case
                             .coworkEmptyStatePreview,
+                  ),
+                ],
+              ),
+            ],
+          ),
+          _widgetbook.WidgetbookFolder(
+            name: 'file_upload_progress',
+            children: [
+              _widgetbook.WidgetbookComponent(
+                name: 'CoworkFileUploadProgressPreview',
+                useCases: [
+                  _widgetbook.WidgetbookUseCase(
+                    name: 'File Upload Progress',
+                    builder:
+                        _widgetbook_workspace_components_file_upload_progress_cowork_file_upload_progress_use_case
+                            .coworkFileUploadProgressPreview,
                   ),
                 ],
               ),
