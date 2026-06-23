@@ -50,6 +50,7 @@ class CoworkEmptyState extends StatelessWidget {
           Container(
             width: _iconBoxSize,
             height: _iconBoxSize,
+            alignment: Alignment.center,
             decoration: BoxDecoration(
               color: colors.primaryContainer,
               borderRadius: BorderRadius.circular(AppRadius.r20),
