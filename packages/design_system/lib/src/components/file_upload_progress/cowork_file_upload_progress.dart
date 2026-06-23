@@ -31,7 +31,7 @@ class CoworkFileUploadProgress extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    final value = progress.clamp(0.0, 1.0);
+    final value = progress.isFinite ? progress.clamp(0.0, 1.0) : 0.0;
     final percentLabel = label ?? '${(value * 100).round()}%';
 
     return Container(
