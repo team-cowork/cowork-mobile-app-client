@@ -14,6 +14,7 @@ class CoworkFileUploadProgress extends StatelessWidget {
     required this.filename,
     required this.progress,
     this.label,
+    this.animationDuration = const Duration(milliseconds: 300),
     super.key,
   });
 
@@ -25,6 +26,9 @@ class CoworkFileUploadProgress extends StatelessWidget {
 
   /// 진행률 우측에 표시할 라벨. 미지정 시 `progress`를 백분율로 표시한다.
   final String? label;
+
+  /// 진행률 변화 시 바가 차오르는 애니메이션 길이. `Duration.zero`면 즉시 반영.
+  final Duration animationDuration;
 
   static const double _barHeight = AppSpacing.s8;
 
@@ -65,11 +69,16 @@ class CoworkFileUploadProgress extends StatelessWidget {
           const SizedBox(height: AppSpacing.s12),
           ClipRRect(
             borderRadius: BorderRadius.circular(AppRadius.r8),
-            child: LinearProgressIndicator(
-              value: value,
-              minHeight: _barHeight,
-              backgroundColor: colors.outlineVariant,
-              valueColor: AlwaysStoppedAnimation(colors.primary),
+            child: TweenAnimationBuilder<double>(
+              tween: Tween(end: value),
+              duration: animationDuration,
+              curve: Curves.easeOut,
+              builder: (context, animatedValue, _) => LinearProgressIndicator(
+                value: animatedValue,
+                minHeight: _barHeight,
+                backgroundColor: colors.outlineVariant,
+                valueColor: AlwaysStoppedAnimation(colors.primary),
+              ),
             ),
           ),
         ],
