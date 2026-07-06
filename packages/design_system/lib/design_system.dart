@@ -2,6 +2,7 @@ library;
 
 export 'src/components/attachment_card/cowork_attachment_card.dart';
 export 'src/components/avatar/cowork_avatar.dart';
+export 'src/components/badge/cowork_badge.dart';
 export 'src/components/button/cowork_button.dart';
 export 'src/components/button/cowork_icon_button.dart';
 export 'src/components/dialog/cowork_dialog.dart';
