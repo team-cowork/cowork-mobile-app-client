@@ -59,7 +59,11 @@ class CoworkToast extends StatelessWidget {
     CoworkToastStatus status = CoworkToastStatus.success,
     Duration duration = const Duration(seconds: 3),
   }) {
-    final overlay = Overlay.of(context);
+    if (!context.mounted) return;
+
+    final overlay = Overlay.maybeOf(context);
+    if (overlay == null) return;
+
     late final OverlayEntry entry;
     entry = OverlayEntry(
       builder: (_) => _CoworkToastOverlay(
@@ -129,24 +133,25 @@ class _CoworkToastOverlay extends StatefulWidget {
 
 class _CoworkToastOverlayState extends State<_CoworkToastOverlay>
     with SingleTickerProviderStateMixin {
-  late final AnimationController _controller = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 250),
-  );
-  late final Animation<double> _fade = CurvedAnimation(
-    parent: _controller,
-    curve: Curves.easeOut,
-  );
-  late final Animation<Offset> _slide = Tween<Offset>(
-    begin: const Offset(0, -0.4),
-    end: Offset.zero,
-  ).animate(_fade);
+  late final AnimationController _controller;
+  late final Animation<double> _fade;
+  late final Animation<Offset> _slide;
 
   Timer? _timer;
 
   @override
   void initState() {
     super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 250),
+    );
+    _fade = CurvedAnimation(parent: _controller, curve: Curves.easeOut);
+    _slide = Tween<Offset>(
+      begin: const Offset(0, -0.4),
+      end: Offset.zero,
+    ).animate(_fade);
+
     _controller.forward();
     _timer = Timer(widget.duration, _dismiss);
   }
@@ -166,14 +171,15 @@ class _CoworkToastOverlayState extends State<_CoworkToastOverlay>
 
   @override
   Widget build(BuildContext context) {
-    final media = MediaQuery.of(context);
+    final size = MediaQuery.sizeOf(context);
+    final padding = MediaQuery.paddingOf(context);
     final maxWidth = math.min(
       _CoworkToastOverlay._maxWidth,
-      media.size.width - AppSpacing.s16 * 2,
+      size.width - AppSpacing.s16 * 2,
     );
 
     return Positioned(
-      top: media.padding.top + AppSpacing.s16,
+      top: padding.top + AppSpacing.s16,
       right: AppSpacing.s16,
       child: FadeTransition(
         opacity: _fade,
