@@ -6,6 +6,7 @@ export 'src/components/button/cowork_button.dart';
 export 'src/components/button/cowork_icon_button.dart';
 export 'src/components/dialog/cowork_dialog.dart';
 export 'src/components/empty_state/cowork_empty_state.dart';
+export 'src/components/error_state/cowork_error_state.dart';
 export 'src/components/file_upload_progress/cowork_file_upload_progress.dart';
 export 'src/components/loading_pane/cowork_loading_pane.dart';
 export 'src/components/message_composer/cowork_message_composer.dart';

@@ -23,6 +23,8 @@ import 'package:widgetbook_workspace/components/dialog/cowork_dialog_use_case.da
     as _widgetbook_workspace_components_dialog_cowork_dialog_use_case;
 import 'package:widgetbook_workspace/components/empty_state/cowork_empty_state_use_case.dart'
     as _widgetbook_workspace_components_empty_state_cowork_empty_state_use_case;
+import 'package:widgetbook_workspace/components/error_state/cowork_error_state_use_case.dart'
+    as _widgetbook_workspace_components_error_state_cowork_error_state_use_case;
 import 'package:widgetbook_workspace/components/file_upload_progress/cowork_file_upload_progress_use_case.dart'
     as _widgetbook_workspace_components_file_upload_progress_cowork_file_upload_progress_use_case;
 import 'package:widgetbook_workspace/components/loading_pane/cowork_loading_pane_use_case.dart'
@@ -135,6 +137,22 @@ final directories = <_widgetbook.WidgetbookNode>[
                     builder:
                         _widgetbook_workspace_components_empty_state_cowork_empty_state_use_case
                             .coworkEmptyStatePreview,
+                  ),
+                ],
+              ),
+            ],
+          ),
+          _widgetbook.WidgetbookFolder(
+            name: 'error_state',
+            children: [
+              _widgetbook.WidgetbookComponent(
+                name: 'CoworkErrorStatePreview',
+                useCases: [
+                  _widgetbook.WidgetbookUseCase(
+                    name: 'Error State',
+                    builder:
+                        _widgetbook_workspace_components_error_state_cowork_error_state_use_case
+                            .coworkErrorStatePreview,
                   ),
                 ],
               ),
