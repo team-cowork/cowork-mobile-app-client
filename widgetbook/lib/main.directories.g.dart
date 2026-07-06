@@ -17,6 +17,8 @@ import 'package:widgetbook_workspace/components/avatar/cowork_avatar_use_case.da
     as _widgetbook_workspace_components_avatar_cowork_avatar_use_case;
 import 'package:widgetbook_workspace/components/badge/cowork_badge_use_case.dart'
     as _widgetbook_workspace_components_badge_cowork_badge_use_case;
+import 'package:widgetbook_workspace/components/badge/cowork_status_badge_use_case.dart'
+    as _widgetbook_workspace_components_badge_cowork_status_badge_use_case;
 import 'package:widgetbook_workspace/components/button/cowork_button_use_case.dart'
     as _widgetbook_workspace_components_button_cowork_button_use_case;
 import 'package:widgetbook_workspace/components/button/cowork_icon_button_use_case.dart'
@@ -96,6 +98,17 @@ final directories = <_widgetbook.WidgetbookNode>[
                     builder:
                         _widgetbook_workspace_components_badge_cowork_badge_use_case
                             .coworkBadgePreview,
+                  ),
+                ],
+              ),
+              _widgetbook.WidgetbookComponent(
+                name: 'CoworkStatusBadgePreview',
+                useCases: [
+                  _widgetbook.WidgetbookUseCase(
+                    name: 'Status Badge',
+                    builder:
+                        _widgetbook_workspace_components_badge_cowork_status_badge_use_case
+                            .coworkStatusBadgePreview,
                   ),
                 ],
               ),
