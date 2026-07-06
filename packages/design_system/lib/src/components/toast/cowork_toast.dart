@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import '../../constants/app_radius.dart';
@@ -41,29 +44,32 @@ class CoworkToast extends StatelessWidget {
   /// 토스트 상태. 아이콘과 색상을 결정한다. 기본값은 [CoworkToastStatus.success].
   final CoworkToastStatus status;
 
-  /// 화면에 토스트를 띄운다. `ScaffoldMessenger`를 사용하므로
-  /// [context]는 `Scaffold` 하위여야 한다.
+  /// 화면 오른쪽 위에 토스트를 띄운다. [Overlay] 위에 표시되므로
+  /// [context]는 `MaterialApp`(또는 [Overlay]) 하위이면 된다.
+  ///
+  /// 슬라이드 + 페이드로 나타났다가 [duration] 후 사라진다.
   ///
   /// ```dart
   /// CoworkToast.show(context, message: '저장되었습니다.');
   /// CoworkToast.show(context, message: '실패했습니다.', status: CoworkToastStatus.error);
   /// ```
-  static ScaffoldFeatureController<SnackBar, SnackBarClosedReason> show(
+  static void show(
     BuildContext context, {
     required String message,
     CoworkToastStatus status = CoworkToastStatus.success,
     Duration duration = const Duration(seconds: 3),
   }) {
-    return ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: CoworkToast(message: message, status: status),
+    final overlay = Overlay.of(context);
+    late final OverlayEntry entry;
+    entry = OverlayEntry(
+      builder: (_) => _CoworkToastOverlay(
+        message: message,
+        status: status,
         duration: duration,
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        behavior: SnackBarBehavior.floating,
-        padding: EdgeInsets.zero,
+        onDismissed: entry.remove,
       ),
     );
+    overlay.insert(entry);
   }
 
   @override
@@ -96,4 +102,89 @@ class CoworkToast extends StatelessWidget {
   }
 
   static const double _minHeight = 64;
+}
+
+/// [CoworkToast.show]가 오버레이에 삽입하는 애니메이션 래퍼.
+///
+/// 오른쪽 위에 고정되어 슬라이드+페이드로 등장하고, [duration] 후 역재생 뒤
+/// [onDismissed]로 스스로 제거를 요청한다.
+class _CoworkToastOverlay extends StatefulWidget {
+  const _CoworkToastOverlay({
+    required this.message,
+    required this.status,
+    required this.duration,
+    required this.onDismissed,
+  });
+
+  final String message;
+  final CoworkToastStatus status;
+  final Duration duration;
+  final VoidCallback onDismissed;
+
+  @override
+  State<_CoworkToastOverlay> createState() => _CoworkToastOverlayState();
+
+  static const double _maxWidth = 420;
+}
+
+class _CoworkToastOverlayState extends State<_CoworkToastOverlay>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 250),
+  );
+  late final Animation<double> _fade = CurvedAnimation(
+    parent: _controller,
+    curve: Curves.easeOut,
+  );
+  late final Animation<Offset> _slide = Tween<Offset>(
+    begin: const Offset(0, -0.4),
+    end: Offset.zero,
+  ).animate(_fade);
+
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller.forward();
+    _timer = Timer(widget.duration, _dismiss);
+  }
+
+  Future<void> _dismiss() async {
+    _timer?.cancel();
+    await _controller.reverse();
+    if (mounted) widget.onDismissed();
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final media = MediaQuery.of(context);
+    final maxWidth = math.min(
+      _CoworkToastOverlay._maxWidth,
+      media.size.width - AppSpacing.s16 * 2,
+    );
+
+    return Positioned(
+      top: media.padding.top + AppSpacing.s16,
+      right: AppSpacing.s16,
+      child: FadeTransition(
+        opacity: _fade,
+        child: SlideTransition(
+          position: _slide,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: maxWidth),
+            child: CoworkToast(message: widget.message, status: widget.status),
+          ),
+        ),
+      ),
+    );
+  }
 }
