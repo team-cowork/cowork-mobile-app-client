@@ -32,11 +32,15 @@ class CoworkLoadingPanePreview extends StatelessWidget {
             SizedBox(height: AppSpacing.s24),
 
             // 기본 로딩
-            CoworkLoadingPane(),
+            CoworkLoadingPane(message: '불러오는 중...'),
             SizedBox(height: AppSpacing.s16),
 
             // 재시도 대기
             CoworkLoadingPane(message: '다시 시도하는 중...'),
+            SizedBox(height: AppSpacing.s16),
+
+            // 스피너만 표시
+            CoworkLoadingPane(),
           ],
         ),
       ),

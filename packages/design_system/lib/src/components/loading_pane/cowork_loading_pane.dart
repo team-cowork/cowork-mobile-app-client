@@ -11,13 +11,13 @@ import '../../theme/text_style/app_font.dart';
 /// 스피너와 안내 문구를 가운데 정렬로 표시한다.
 class CoworkLoadingPane extends StatelessWidget {
   const CoworkLoadingPane({
-    this.message = '불러오는 중...',
+    this.message,
     this.height = _defaultHeight,
     super.key,
   });
 
-  /// 스피너 아래에 표시할 안내 문구.
-  final String message;
+  /// 스피너 아래에 표시할 안내 문구. `null`이면 스피너만 표시한다.
+  final String? message;
 
   /// 카드 높이. 스피너와 문구가 세로 가운데 정렬된다.
   final double height;
@@ -48,14 +48,19 @@ class CoworkLoadingPane extends StatelessWidget {
           SizedBox(
             width: _spinnerSize,
             height: _spinnerSize,
-            child: CircularProgressIndicator(color: colors.primary),
+            child: CircularProgressIndicator(
+              color: colors.primary,
+              strokeCap: StrokeCap.round,
+            ),
           ),
-          const SizedBox(height: AppSpacing.s16),
-          Text(
-            message,
-            textAlign: TextAlign.center,
-            style: AppFont.labelS.copyWith(color: colors.onSurfaceVariant),
-          ),
+          if (message != null) ...[
+            const SizedBox(height: AppSpacing.s16),
+            Text(
+              message!,
+              textAlign: TextAlign.center,
+              style: AppFont.labelS.copyWith(color: colors.onSurfaceVariant),
+            ),
+          ],
         ],
       ),
     );
