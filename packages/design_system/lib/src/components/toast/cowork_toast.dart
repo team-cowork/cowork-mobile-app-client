@@ -179,9 +179,16 @@ class _CoworkToastOverlayState extends State<_CoworkToastOverlay>
         opacity: _fade,
         child: SlideTransition(
           position: _slide,
-          child: ConstrainedBox(
-            constraints: BoxConstraints(maxWidth: maxWidth),
-            child: CoworkToast(message: widget.message, status: widget.status),
+          // Overlay 는 Material 조상이 없어 Text 에 디버그 밑줄이 그려진다.
+          child: Material(
+            type: MaterialType.transparency,
+            child: ConstrainedBox(
+              constraints: BoxConstraints(maxWidth: maxWidth),
+              child: CoworkToast(
+                message: widget.message,
+                status: widget.status,
+              ),
+            ),
           ),
         ),
       ),
