@@ -41,6 +41,31 @@ class CoworkToast extends StatelessWidget {
   /// 토스트 상태. 아이콘과 색상을 결정한다. 기본값은 [CoworkToastStatus.success].
   final CoworkToastStatus status;
 
+  /// 화면에 토스트를 띄운다. `ScaffoldMessenger`를 사용하므로
+  /// [context]는 `Scaffold` 하위여야 한다.
+  ///
+  /// ```dart
+  /// CoworkToast.show(context, message: '저장되었습니다.');
+  /// CoworkToast.show(context, message: '실패했습니다.', status: CoworkToastStatus.error);
+  /// ```
+  static ScaffoldFeatureController<SnackBar, SnackBarClosedReason> show(
+    BuildContext context, {
+    required String message,
+    CoworkToastStatus status = CoworkToastStatus.success,
+    Duration duration = const Duration(seconds: 3),
+  }) {
+    return ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: CoworkToast(message: message, status: status),
+        duration: duration,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        behavior: SnackBarBehavior.floating,
+        padding: EdgeInsets.zero,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
