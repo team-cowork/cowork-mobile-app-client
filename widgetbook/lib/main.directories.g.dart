@@ -41,6 +41,8 @@ import 'package:widgetbook_workspace/components/text_fields/cowork_text_area_use
     as _widgetbook_workspace_components_text_fields_cowork_text_area_use_case;
 import 'package:widgetbook_workspace/components/text_fields/cowork_text_fields_use_case.dart'
     as _widgetbook_workspace_components_text_fields_cowork_text_fields_use_case;
+import 'package:widgetbook_workspace/components/toast/cowork_toast_use_case.dart'
+    as _widgetbook_workspace_components_toast_cowork_toast_use_case;
 import 'package:widgetbook_workspace/theme/design_system_preview.dart'
     as _widgetbook_workspace_theme_design_system_preview;
 
@@ -286,6 +288,22 @@ final directories = <_widgetbook.WidgetbookNode>[
                                 .coworkTextFieldPreview,
                       ),
                     ],
+                  ),
+                ],
+              ),
+            ],
+          ),
+          _widgetbook.WidgetbookFolder(
+            name: 'toast',
+            children: [
+              _widgetbook.WidgetbookComponent(
+                name: 'CoworkToastPreview',
+                useCases: [
+                  _widgetbook.WidgetbookUseCase(
+                    name: 'Toast',
+                    builder:
+                        _widgetbook_workspace_components_toast_cowork_toast_use_case
+                            .coworkToastPreview,
                   ),
                 ],
               ),

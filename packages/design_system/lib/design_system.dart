@@ -15,6 +15,7 @@ export 'src/components/segmented_control/cowork_segmented_control.dart';
 export 'src/components/switch/cowork_switch.dart';
 export 'src/components/text_fields/cowork_text_fields.dart';
 export 'src/components/text_fields/cowork_text_area.dart';
+export 'src/components/toast/cowork_toast.dart';
 export 'src/constants/app_radius.dart';
 export 'src/constants/app_size.dart';
 export 'src/constants/app_spacing.dart';
