@@ -81,8 +81,10 @@ class CoworkOptionCard extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       // labelXs(13px) 를 스펙(14px)으로 조정.
+                      // height:null 로 Figma leading-normal(폰트 기본 행간) 적용.
                       style: AppFont.labelXs.copyWith(
                         fontSize: 14,
+                        height: null,
                         color: colors.onSurface,
                       ),
                     ),
@@ -92,8 +94,10 @@ class CoworkOptionCard extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       // subtextS(12px) 를 스펙(11px)으로 조정.
+                      // height:null 로 Figma leading-normal(폰트 기본 행간) 적용.
                       style: AppFont.subtextS.copyWith(
                         fontSize: 11,
+                        height: null,
                         color: colors.onSurfaceVariant,
                       ),
                     ),
