@@ -37,6 +37,8 @@ import 'package:widgetbook_workspace/components/message_composer/cowork_message_
     as _widgetbook_workspace_components_message_composer_cowork_message_composer_use_case;
 import 'package:widgetbook_workspace/components/message_item/cowork_message_item_use_case.dart'
     as _widgetbook_workspace_components_message_item_cowork_message_item_use_case;
+import 'package:widgetbook_workspace/components/option_card/cowork_option_card_use_case.dart'
+    as _widgetbook_workspace_components_option_card_cowork_option_card_use_case;
 import 'package:widgetbook_workspace/components/segmented_control/cowork_segmented_control_use_case.dart'
     as _widgetbook_workspace_components_segmented_control_cowork_segmented_control_use_case;
 import 'package:widgetbook_workspace/components/switch/cowork_switch_use_case.dart'
@@ -248,6 +250,22 @@ final directories = <_widgetbook.WidgetbookNode>[
                     builder:
                         _widgetbook_workspace_components_message_item_cowork_message_item_use_case
                             .coworkMessageItemPreview,
+                  ),
+                ],
+              ),
+            ],
+          ),
+          _widgetbook.WidgetbookFolder(
+            name: 'option_card',
+            children: [
+              _widgetbook.WidgetbookComponent(
+                name: 'CoworkOptionCardPreview',
+                useCases: [
+                  _widgetbook.WidgetbookUseCase(
+                    name: 'Option Card',
+                    builder:
+                        _widgetbook_workspace_components_option_card_cowork_option_card_use_case
+                            .coworkOptionCardPreview,
                   ),
                 ],
               ),
