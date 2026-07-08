@@ -175,6 +175,14 @@ class AppFont {
     letterSpacing: letterSpacing0,
   );
 
+  static const TextStyle itemCount = TextStyle(
+    fontFamily: fontFamily,
+    fontFamilyFallback: fontFamilyFallback,
+    fontSize: 12,
+    fontWeight: semiBold,
+    letterSpacing: letterSpacing0,
+  );
+
   // Legacy aliases
   static const TextStyle headlineL = displayL;
   static const TextStyle headlineM = displayM;
