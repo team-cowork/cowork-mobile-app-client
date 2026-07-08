@@ -33,6 +33,7 @@ class CoworkChannelListItem extends StatelessWidget {
             Expanded(
               child: Text(
                 '# $channelName',
+                style: AppFont.labelM,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
