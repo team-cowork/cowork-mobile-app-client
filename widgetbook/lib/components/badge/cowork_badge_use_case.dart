@@ -18,9 +18,8 @@ class CoworkBadgePreview extends StatelessWidget {
   Widget build(BuildContext context) {
     // 배지 배경(surfaceContainer)이 scaffold 배경과 같은 회색이라
     // surface(흰색) 위에 올려 칩이 보이도록 한다.
-    return Scaffold(
-      backgroundColor: context.colors.surface,
-      body: const SingleChildScrollView(
+    return const Scaffold(
+      body: SingleChildScrollView(
         padding: EdgeInsets.all(AppSpacing.s20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

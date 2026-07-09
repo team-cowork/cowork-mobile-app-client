@@ -20,7 +20,13 @@ class WidgetbookApp extends StatelessWidget {
       addons: [
         MaterialThemeAddon(
           themes: [
-            WidgetbookTheme(name: 'Light', data: AppTheme.light()),
+            // 위젯북 프리뷰 배경을 흰색으로 고정 (실제 앱 테마는 그대로 두고 여기서만 override)
+            WidgetbookTheme(
+              name: 'Light',
+              data: AppTheme.light().copyWith(
+                scaffoldBackgroundColor: Colors.white,
+              ),
+            ),
             WidgetbookTheme(name: 'Dark', data: AppTheme.dark()),
           ],
         ),

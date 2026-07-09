@@ -16,19 +16,15 @@ class CoworkLoadingPanePreview extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      body: const SingleChildScrollView(
+    return const Scaffold(
+      body: SingleChildScrollView(
         padding: EdgeInsets.all(AppSpacing.s20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text('Cowork/Loading Pane', style: AppFont.titleL),
             SizedBox(height: AppSpacing.s12),
-            Text(
-              '초기 데이터 로딩과 재시도 전 대기 상태에 사용합니다.',
-              style: AppFont.subtextL,
-            ),
+            Text('초기 데이터 로딩과 재시도 전 대기 상태에 사용합니다.', style: AppFont.subtextL),
             SizedBox(height: AppSpacing.s24),
 
             // 기본 로딩

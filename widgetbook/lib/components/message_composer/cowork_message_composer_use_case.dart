@@ -32,7 +32,6 @@ class _CoworkMessageComposerPreviewState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(AppSpacing.s20),
         child: Column(

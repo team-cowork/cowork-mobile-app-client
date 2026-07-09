@@ -16,19 +16,15 @@ class CoworkEmptyStatePreview extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      body: const SingleChildScrollView(
+    return const Scaffold(
+      body: SingleChildScrollView(
         padding: EdgeInsets.all(AppSpacing.s20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text('Cowork/Empty State', style: AppFont.titleL),
             SizedBox(height: AppSpacing.s12),
-            Text(
-              '빈 채널, 검색 결과 없음, 아카이브 없음 상태에 사용합니다.',
-              style: AppFont.subtextL,
-            ),
+            Text('빈 채널, 검색 결과 없음, 아카이브 없음 상태에 사용합니다.', style: AppFont.subtextL),
             SizedBox(height: AppSpacing.s24),
 
             // 빈 채널

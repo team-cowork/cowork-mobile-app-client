@@ -23,6 +23,8 @@ import 'package:widgetbook_workspace/components/button/cowork_button_use_case.da
     as _widgetbook_workspace_components_button_cowork_button_use_case;
 import 'package:widgetbook_workspace/components/button/cowork_icon_button_use_case.dart'
     as _widgetbook_workspace_components_button_cowork_icon_button_use_case;
+import 'package:widgetbook_workspace/components/channel_list_item/cowork_channel_list_item_use_case.dart'
+    as _widgetbook_workspace_components_channel_list_item_cowork_channel_list_item_use_case;
 import 'package:widgetbook_workspace/components/dialog/cowork_dialog_use_case.dart'
     as _widgetbook_workspace_components_dialog_cowork_dialog_use_case;
 import 'package:widgetbook_workspace/components/empty_state/cowork_empty_state_use_case.dart'
@@ -136,6 +138,22 @@ final directories = <_widgetbook.WidgetbookNode>[
                     builder:
                         _widgetbook_workspace_components_button_cowork_icon_button_use_case
                             .coworkIconButtonPreview,
+                  ),
+                ],
+              ),
+            ],
+          ),
+          _widgetbook.WidgetbookFolder(
+            name: 'channel_list_item',
+            children: [
+              _widgetbook.WidgetbookComponent(
+                name: 'CoworkChannelListItemPreview',
+                useCases: [
+                  _widgetbook.WidgetbookUseCase(
+                    name: 'ChannelListItem',
+                    builder:
+                        _widgetbook_workspace_components_channel_list_item_cowork_channel_list_item_use_case
+                            .coworkChannelListItemPreview,
                   ),
                 ],
               ),
