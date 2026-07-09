@@ -16,30 +16,24 @@ class CoworkTextFieldPreview extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Theme(
-      data: AppTheme.light(),
-      child: const Scaffold(
-        body: SingleChildScrollView(
-          padding: EdgeInsets.all(28),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Cowork/TextField', style: AppFont.titleL),
-              SizedBox(height: 12),
-              Text('로그인, 검색, 설정 폼에 사용하는 단일 라인 입력입니다.', style: AppFont.subtextL),
-              SizedBox(height: 16),
-              Wrap(
-                spacing: 16,
-                runSpacing: 12,
-                children: [
-                  CoworkTextField(
-                    hintText: 'name@cowork.dev',
-                    labelText: '이메일',
-                  ),
-                ],
-              ),
-            ],
-          ),
+    return const Scaffold(
+      body: SingleChildScrollView(
+        padding: EdgeInsets.all(28),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Cowork/TextField', style: AppFont.titleL),
+            SizedBox(height: 12),
+            Text('로그인, 검색, 설정 폼에 사용하는 단일 라인 입력입니다.', style: AppFont.subtextL),
+            SizedBox(height: 16),
+            Wrap(
+              spacing: 16,
+              runSpacing: 12,
+              children: [
+                CoworkTextField(hintText: 'name@cowork.dev', labelText: '이메일'),
+              ],
+            ),
+          ],
         ),
       ),
     );
