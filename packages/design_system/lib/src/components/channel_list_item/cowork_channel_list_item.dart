@@ -17,17 +17,16 @@ class CoworkChannelListItem extends StatelessWidget {
     final countLabel = unreadCount > 99 ? '99+' : '$unreadCount';
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s12, vertical: AppSpacing.s10),
       child: Container(
         height: 52,
         width: double.infinity,
         decoration: BoxDecoration(
           color: Theme.of(context).colorScheme.surfaceContainer,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(AppRadius.r8),
         ),
         child: Row(
           children: [
-            const SizedBox(width: AppSpacing.s12),
             AppIcon.hashChannel(),
             const SizedBox(width: AppSpacing.s12),
             Expanded(
@@ -39,9 +38,8 @@ class CoworkChannelListItem extends StatelessWidget {
               ),
             ),
             if (hasUnread) ...[
-              const SizedBox(width: AppSpacing.s8),
+              const Spacer(),
               _UnreadCountBadge(label: countLabel),
-              const SizedBox(width: AppSpacing.s12),
             ],
           ],
         ),
@@ -61,7 +59,7 @@ class _UnreadCountBadge extends StatelessWidget {
       height: 22,
       width: 28,
       constraints: const BoxConstraints(minWidth: 20, minHeight: 20),
-      padding: const EdgeInsets.symmetric(horizontal: 6),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s6),
       alignment: Alignment.center,
       decoration: BoxDecoration(
         color: AppColors.primary,
