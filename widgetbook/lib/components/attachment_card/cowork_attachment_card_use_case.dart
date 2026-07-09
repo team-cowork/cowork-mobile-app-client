@@ -16,19 +16,15 @@ class CoworkAttachmentCardPreview extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      body: const SingleChildScrollView(
+    return const Scaffold(
+      body: SingleChildScrollView(
         padding: EdgeInsets.all(AppSpacing.s20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text('Cowork/Attachment Card', style: AppFont.titleL),
             SizedBox(height: AppSpacing.s12),
-            Text(
-              '업로드된 파일, 이미지, 오디오/비디오 첨부를 표시합니다.',
-              style: AppFont.subtextL,
-            ),
+            Text('업로드된 파일, 이미지, 오디오/비디오 첨부를 표시합니다.', style: AppFont.subtextL),
             SizedBox(height: AppSpacing.s16),
             CoworkAttachmentCard(
               filename: 'sprint-demo.mov',

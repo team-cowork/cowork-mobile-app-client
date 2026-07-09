@@ -58,7 +58,6 @@ class _CoworkFileUploadProgressPreviewState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(AppSpacing.s20),
         child: Column(
@@ -88,7 +87,10 @@ class _CoworkFileUploadProgressPreviewState
             // 증가 폭(틱당 % 상승) 조절 슬라이더. 1% ~ 10%.
             Row(
               children: [
-                Text('증가 폭  ${(_step * 100).round()}%', style: AppFont.subtextL),
+                Text(
+                  '증가 폭  ${(_step * 100).round()}%',
+                  style: AppFont.subtextL,
+                ),
                 Expanded(
                   child: Slider(
                     value: _step,

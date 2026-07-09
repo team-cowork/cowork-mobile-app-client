@@ -24,39 +24,36 @@ class _CoworkSwitchPreviewState extends State<CoworkSwitchPreview> {
 
   @override
   Widget build(BuildContext context) {
-    return Theme(
-      data: AppTheme.light(),
-      child: Scaffold(
-        body: SingleChildScrollView(
-          padding: const EdgeInsets.all(28),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('Cowork/Switch', style: AppFont.titleL),
-              const SizedBox(height: 12),
-              const Text(
-                '보안 모드, 공개/비공개, 알림 등 Boolean 설정에 사용합니다.',
-                style: AppFont.subtextL,
-              ),
-              const SizedBox(height: 16),
-              Wrap(
-                spacing: 16,
-                runSpacing: 12,
-                children: [
-                  CoworkSwitch(
-                    value: _onEnabled,
-                    onChanged: (next) => setState(() => _onEnabled = next),
-                  ),
-                  CoworkSwitch(
-                    value: _offEnabled,
-                    onChanged: (next) => setState(() => _offEnabled = next),
-                  ),
-                  CoworkSwitch(value: true, enabled: false, onChanged: (_) {}),
-                  CoworkSwitch(value: false, enabled: false, onChanged: (_) {}),
-                ],
-              ),
-            ],
-          ),
+    return Scaffold(
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(28),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Cowork/Switch', style: AppFont.titleL),
+            const SizedBox(height: 12),
+            const Text(
+              '보안 모드, 공개/비공개, 알림 등 Boolean 설정에 사용합니다.',
+              style: AppFont.subtextL,
+            ),
+            const SizedBox(height: 16),
+            Wrap(
+              spacing: 16,
+              runSpacing: 12,
+              children: [
+                CoworkSwitch(
+                  value: _onEnabled,
+                  onChanged: (next) => setState(() => _onEnabled = next),
+                ),
+                CoworkSwitch(
+                  value: _offEnabled,
+                  onChanged: (next) => setState(() => _offEnabled = next),
+                ),
+                CoworkSwitch(value: true, enabled: false, onChanged: (_) {}),
+                CoworkSwitch(value: false, enabled: false, onChanged: (_) {}),
+              ],
+            ),
+          ],
         ),
       ),
     );
