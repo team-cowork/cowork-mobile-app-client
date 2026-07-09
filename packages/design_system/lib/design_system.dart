@@ -13,6 +13,7 @@ export 'src/components/file_upload_progress/cowork_file_upload_progress.dart';
 export 'src/components/loading_pane/cowork_loading_pane.dart';
 export 'src/components/message_composer/cowork_message_composer.dart';
 export 'src/components/message_item/cowork_message_item.dart';
+export 'src/components/option_card/cowork_option_card.dart';
 export 'src/components/segmented_control/cowork_segmented_control.dart';
 export 'src/components/switch/cowork_switch.dart';
 export 'src/components/text_fields/cowork_text_fields.dart';
