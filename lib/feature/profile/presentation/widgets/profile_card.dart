@@ -109,13 +109,8 @@ class ProfileCard extends StatelessWidget {
                       ),
                     );
                   },
-                  errorBuilder: (context, error, stackTrace) => const Center(
-                    child: Icon(
-                      Icons.person,
-                      size: 40,
-                      color: AppColors.white,
-                    ),
-                  ),
+                  errorBuilder: (context, error, stackTrace) =>
+                      CoworkAvatar(initials: profile.name.characters.first),
                 ),
               ),
             ),

@@ -129,26 +129,21 @@ class _TabItem extends StatelessWidget {
     final color = selected ? AppColors.red400 : AppColors.neutral300;
 
     return Expanded(
-      child: InkWell(
-        onTap: () {
-          // TODO: 탭 전환 라우팅 로직 추가
-        },
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: AppSpacing.s6),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, size: 24, color: color),
-              const SizedBox(height: AppSpacing.s4),
-              Text(
-                label,
-                style: AppFont.subtextS.copyWith(
-                  fontWeight: selected ? AppFont.semiBold : AppFont.regular,
-                  color: color,
-                ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: AppSpacing.s6),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 24, color: color),
+            const SizedBox(height: AppSpacing.s4),
+            Text(
+              label,
+              style: AppFont.subtextS.copyWith(
+                fontWeight: selected ? AppFont.semiBold : AppFont.regular,
+                color: color,
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
