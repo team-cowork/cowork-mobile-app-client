@@ -2,6 +2,7 @@ import 'package:cowork_design_system/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../settings/presentation/views/settings_view.dart';
 import '../viewModels/profile_bloc.dart';
 import '../widgets/github_streak_card.dart';
 import '../widgets/profile_card.dart';
@@ -34,7 +35,11 @@ class MyProfileView extends StatelessWidget {
                 color: AppColors.darkOnSurface,
               ),
               onPressed: () {
-                // TODO: 설정 화면으로 이동하는 로직 추가
+                Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => const SettingsView(),
+                  ),
+                );
               },
             ),
             const SizedBox(width: AppSpacing.s8),
