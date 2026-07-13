@@ -109,8 +109,10 @@ class ProfileCard extends StatelessWidget {
                       ),
                     );
                   },
-                  errorBuilder: (context, error, stackTrace) =>
-                      CoworkAvatar(initials: profile.name.characters.first),
+                  errorBuilder: (context, error, stackTrace) => CoworkAvatar(
+                    initials:
+                        profile.name.isEmpty ? '?' : profile.name.characters.first,
+                  ),
                 ),
               ),
             ),
