@@ -3,6 +3,7 @@ import 'package:cowork_design_system/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../profile/presentation/views/edit_profile_view.dart';
 import '../../domain/settings.dart';
 import '../viewModels/settings_bloc.dart';
 import '../widgets/settings_section.dart';
@@ -92,7 +93,11 @@ class _SettingsBody extends StatelessWidget {
                   color: AppColors.neutral300,
                 ),
                 onTap: () {
-                  // TODO: 프로필 편집 화면으로 이동하는 로직 추가
+                  Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => const EditProfileView(),
+                    ),
+                  );
                 },
               ),
               SettingsTile(
