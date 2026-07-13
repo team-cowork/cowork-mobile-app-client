@@ -143,22 +143,21 @@ class _EditProfileViewState extends State<EditProfileView> {
             pickedImage: _pickedImage,
             onChangePhoto: _pickImage,
           ),
-          _LabeledField(
-            label: '이름',
+          CoworkTextField(
+            labelText: '이름',
             controller: _name,
             hintText: '표시할 이름을 입력하세요',
           ),
-          _LabeledField(label: '사용자명', controller: _username),
-          _LabeledField(
-            label: '상태 메시지',
+          CoworkTextField(labelText: '사용자명', controller: _username),
+          CoworkTextField(
+            labelText: '상태 메시지',
             controller: _statusMessage,
             hintText: '예: PR 리뷰 환영 🙌',
           ),
-          _LabeledField(
-            label: '자기소개',
+          CoworkTextArea(
+            labelText: '자기소개',
             controller: _bio,
             minLines: 3,
-            maxLines: 5,
           ),
         ],
       ),
@@ -327,65 +326,5 @@ class _AvatarEditor extends StatelessWidget {
   Widget _initialFallback() => Text(
     initial,
     style: AppFont.displayM.copyWith(fontSize: 40, color: AppColors.white),
-  );
-}
-
-/// 라벨 + 다크 입력 필드. Figma 필드 스펙(neutral800 배경, neutral700 테두리).
-class _LabeledField extends StatelessWidget {
-  const _LabeledField({
-    required this.label,
-    required this.controller,
-    this.hintText,
-    this.minLines,
-    this.maxLines = 1,
-  });
-
-  final String label;
-  final TextEditingController controller;
-  final String? hintText;
-  final int? minLines;
-  final int maxLines;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: AppFont.subtextS.copyWith(
-            fontWeight: AppFont.semiBold,
-            color: AppColors.neutral300,
-          ),
-        ),
-        const SizedBox(height: AppSpacing.s8),
-        TextField(
-          controller: controller,
-          minLines: minLines,
-          maxLines: maxLines,
-          cursorColor: AppColors.red400,
-          style: AppFont.subtextL.copyWith(color: AppColors.darkOnSurface),
-          decoration: InputDecoration(
-            isDense: true,
-            filled: true,
-            fillColor: AppColors.neutral800,
-            hintText: hintText,
-            hintStyle: AppFont.subtextL.copyWith(color: AppColors.neutral300),
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.s14,
-              vertical: 13,
-            ),
-            border: _border(AppColors.neutral700),
-            enabledBorder: _border(AppColors.neutral700),
-            focusedBorder: _border(AppColors.neutral600),
-          ),
-        ),
-      ],
-    );
-  }
-
-  OutlineInputBorder _border(Color color) => OutlineInputBorder(
-    borderRadius: BorderRadius.circular(AppRadius.r12),
-    borderSide: BorderSide(color: color),
   );
 }
