@@ -128,35 +128,29 @@ class _EditProfileButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: AppColors.neutral700,
-      borderRadius: BorderRadius.circular(AppRadius.r10),
-      child: InkWell(
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.neutral700,
         borderRadius: BorderRadius.circular(AppRadius.r10),
-        onTap: () {
-          // TODO: 프로필 편집 화면으로 이동하는 로직 추가
-        },
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s14, vertical: 9),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(
-                Icons.edit_outlined,
-                size: 15,
-                color: AppColors.darkOnSurface,
-              ),
-              const SizedBox(width: AppSpacing.s6),
-              Text(
-                '프로필 편집',
-                style: AppFont.subtextM.copyWith(
-                  fontWeight: AppFont.semiBold,
-                  color: AppColors.darkOnSurface,
-                ),
-              ),
-            ],
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s14, vertical: 9),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(
+            Icons.edit_outlined,
+            size: 15,
+            color: AppColors.darkOnSurface,
           ),
-        ),
+          const SizedBox(width: AppSpacing.s6),
+          Text(
+            '프로필 편집',
+            style: AppFont.subtextM.copyWith(
+              fontWeight: AppFont.semiBold,
+              color: AppColors.darkOnSurface,
+            ),
+          ),
+        ],
       ),
     );
   }
