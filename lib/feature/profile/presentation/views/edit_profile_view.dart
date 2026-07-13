@@ -48,27 +48,44 @@ class _EditProfileViewState extends State<EditProfileView> {
     _username.text = p.username;
     _statusMessage.text = p.statusMessage;
     _bio.text = p.bio;
-    _avatarUrl = p.avatarUrl;
-    _avatarInitial = p.avatarInitial;
-    if (p.localAvatarPath != null) {
-      _pickedImage = File(p.localAvatarPath!);
-    }
+    setState(() {
+      _avatarUrl = p.avatarUrl;
+      _avatarInitial = p.avatarInitial;
+      if (p.localAvatarPath != null) {
+        _pickedImage = File(p.localAvatarPath!);
+      }
+    });
   }
 
   Future<void> _pickImage() async {
-    final picked = await ImagePicker().pickImage(
-      source: ImageSource.gallery,
-      imageQuality: 85,
-    );
-    if (picked == null || !mounted) return;
-    setState(() => _pickedImage = File(picked.path));
+    try {
+      final picked = await ImagePicker().pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 85,
+      );
+      if (picked == null || !mounted) return;
+      setState(() => _pickedImage = File(picked.path));
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('사진을 불러오지 못했어요. 다시 시도해 주세요.')),
+      );
+    }
   }
 
   void _save(BuildContext context) {
+    final name = _name.text.trim();
+    final username = _username.text.trim();
+    if (name.isEmpty || username.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('이름과 사용자명은 필수 입력 항목이에요.')),
+      );
+      return;
+    }
     context.read<EditProfileBloc>().add(
       EditProfileSubmitted(
-        name: _name.text.trim(),
-        username: _username.text.trim(),
+        name: name,
+        username: username,
         statusMessage: _statusMessage.text.trim(),
         bio: _bio.text.trim(),
         localAvatarPath: _pickedImage?.path,
@@ -82,41 +99,44 @@ class _EditProfileViewState extends State<EditProfileView> {
     return BlocProvider(
       create: (_) => EditProfileBloc()..add(const EditProfileRequested()),
       child: Builder(
-        builder: (context) => Scaffold(
-          backgroundColor: AppColors.neutral850,
-          body: SafeArea(
-            child: Column(
-              children: [
-                _EditProfileHeader(
-                  onCancel: () => Navigator.of(context).maybePop(),
-                  onSave: () => _save(context),
-                ),
-                Expanded(
-                  child: BlocBuilder<EditProfileBloc, EditProfileState>(
-                    builder: (context, state) {
-                      return switch (state) {
-                        EditProfileFailure() => Center(
-                          child: Padding(
-                            padding: const EdgeInsets.all(AppSpacing.s16),
-                            child: CoworkErrorState(
-                              title: '프로필을 불러오지 못했어요',
-                              description: '잠시 후 다시 시도해 주세요.',
-                              retryLabel: '다시 시도',
-                              onRetry: () => context
-                                  .read<EditProfileBloc>()
-                                  .add(const EditProfileRequested()),
+        builder: (context) => BlocListener<EditProfileBloc, EditProfileState>(
+          listener: (context, state) {
+            if (state is EditProfileSuccess) _seed(state.profile);
+          },
+          child: Scaffold(
+            backgroundColor: AppColors.neutral850,
+            body: SafeArea(
+              child: Column(
+                children: [
+                  _EditProfileHeader(
+                    onCancel: () => Navigator.of(context).maybePop(),
+                    onSave: () => _save(context),
+                  ),
+                  Expanded(
+                    child: BlocBuilder<EditProfileBloc, EditProfileState>(
+                      builder: (context, state) {
+                        return switch (state) {
+                          EditProfileFailure() => Center(
+                            child: Padding(
+                              padding: const EdgeInsets.all(AppSpacing.s16),
+                              child: CoworkErrorState(
+                                title: '프로필을 불러오지 못했어요',
+                                description: '잠시 후 다시 시도해 주세요.',
+                                retryLabel: '다시 시도',
+                                onRetry: () => context
+                                    .read<EditProfileBloc>()
+                                    .add(const EditProfileRequested()),
+                              ),
                             ),
                           ),
-                        ),
-                        EditProfileSuccess(:final profile) => _buildForm(
-                          profile,
-                        ),
-                        _ => const Center(child: CoworkLoadingPane()),
-                      };
-                    },
+                          EditProfileSuccess() => _buildForm(),
+                          _ => const Center(child: CoworkLoadingPane()),
+                        };
+                      },
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
@@ -124,8 +144,7 @@ class _EditProfileViewState extends State<EditProfileView> {
     );
   }
 
-  Widget _buildForm(EditProfile profile) {
-    _seed(profile);
+  Widget _buildForm() {
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(
         AppSpacing.s20,

@@ -117,6 +117,7 @@ class ProfileCard extends StatelessWidget {
         errorBuilder: (_, __, ___) => fallback,
       );
     }
+    if (profile.avatarUrl.isEmpty) return fallback;
     return Image.network(
       profile.avatarUrl,
       width: 80,
