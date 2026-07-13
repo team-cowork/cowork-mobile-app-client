@@ -1,4 +1,4 @@
-import 'package:cowork_app/feature/settings/domain/enus/setting_toggle_enum.dart';
+import 'package:cowork_app/feature/settings/domain/enums/setting_toggle_enum.dart';
 import 'package:cowork_design_system/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
