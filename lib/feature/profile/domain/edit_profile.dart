@@ -9,7 +9,9 @@ class EditProfile extends Equatable {
     required this.username,
     required this.statusMessage,
     required this.bio,
+    required this.avatarUrl,
     required this.avatarInitial,
+    this.localAvatarPath,
   });
 
   /// 표시할 이름.
@@ -24,9 +26,23 @@ class EditProfile extends Equatable {
   /// 자기소개.
   final String bio;
 
-  /// 아바타 폴백에 표시할 이니셜 (예: 준).
+  /// 현재 아바타 이미지 URL. 프로필 화면과 동일한 사진을 표시한다.
+  final String avatarUrl;
+
+  /// 아바타 이미지 로드 실패 시 폴백으로 표시할 이니셜 (예: 준).
   final String avatarInitial;
 
+  /// 로컬에서 선택한 아바타 사진 경로. 있으면 [avatarUrl]보다 우선한다.
+  final String? localAvatarPath;
+
   @override
-  List<Object?> get props => [name, username, statusMessage, bio, avatarInitial];
+  List<Object?> get props => [
+    name,
+    username,
+    statusMessage,
+    bio,
+    avatarUrl,
+    avatarInitial,
+    localAvatarPath,
+  ];
 }

@@ -1,7 +1,12 @@
+import 'dart:io';
+
 import 'package:cowork_design_system/design_system.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../domain/profile.dart';
+import '../viewModels/profile_bloc.dart';
+import '../views/edit_profile_view.dart';
 
 /// 프로필 화면 상단의 프로필 카드.
 ///
@@ -59,10 +64,7 @@ class ProfileCard extends StatelessWidget {
                         ),
                         for (final badge in profile.badges) ...[
                           const SizedBox(width: AppSpacing.s8),
-                          CoworkBadge(
-                            label: badge.label,
-                            color: badge.color,
-                          ),
+                          CoworkBadge(label: badge.label, color: badge.color),
                         ],
                       ],
                     ),
@@ -92,33 +94,48 @@ class ProfileCard extends StatelessWidget {
                 shape: BoxShape.circle,
                 border: Border.all(color: AppColors.neutral800, width: 4),
               ),
-              child: ClipOval(
-                child: Image.network(
-                  profile.avatarUrl,
-                  fit: BoxFit.cover,
-                  loadingBuilder: (context, child, progress) {
-                    if (progress == null) return child;
-                    return const Center(
-                      child: SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: AppColors.white,
-                        ),
-                      ),
-                    );
-                  },
-                  errorBuilder: (context, error, stackTrace) => CoworkAvatar(
-                    initials:
-                        profile.name.isEmpty ? '?' : profile.name.characters.first,
-                  ),
-                ),
-              ),
+              child: ClipOval(child: _avatarImage()),
             ),
           ),
         ],
       ),
+    );
+  }
+
+  /// 아바타 이미지. 로컬 사진 > 네트워크 URL > 이니셜 폴백 순으로 표시한다.
+  Widget _avatarImage() {
+    final fallback = CoworkAvatar(
+      initials: profile.name.isEmpty ? '?' : profile.name.characters.first,
+    );
+    final path = profile.localAvatarPath;
+    if (path != null) {
+      return Image.file(
+        File(path),
+        width: 80,
+        height: 80,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => fallback,
+      );
+    }
+    return Image.network(
+      profile.avatarUrl,
+      width: 80,
+      height: 80,
+      fit: BoxFit.cover,
+      loadingBuilder: (context, child, progress) {
+        if (progress == null) return child;
+        return const Center(
+          child: SizedBox(
+            width: 20,
+            height: 20,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: AppColors.white,
+            ),
+          ),
+        );
+      },
+      errorBuilder: (_, __, ___) => fallback,
     );
   }
 }
@@ -128,29 +145,44 @@ class _EditProfileButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.neutral700,
-        borderRadius: BorderRadius.circular(AppRadius.r10),
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s14, vertical: 9),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(
-            Icons.edit_outlined,
-            size: 15,
-            color: AppColors.darkOnSurface,
-          ),
-          const SizedBox(width: AppSpacing.s6),
-          Text(
-            '프로필 편집',
-            style: AppFont.subtextM.copyWith(
-              fontWeight: AppFont.semiBold,
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () async {
+        await Navigator.of(context).push(
+          MaterialPageRoute<void>(builder: (_) => const EditProfileView()),
+        );
+        // 편집 화면에서 저장한 내용을 프로필에 다시 반영한다.
+        if (context.mounted) {
+          context.read<ProfileBloc>().add(const ProfileRequested());
+        }
+      },
+      child: Container(
+        decoration: BoxDecoration(
+          color: AppColors.neutral700,
+          borderRadius: BorderRadius.circular(AppRadius.r10),
+        ),
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.s14,
+          vertical: 9,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              Icons.edit_outlined,
+              size: 15,
               color: AppColors.darkOnSurface,
             ),
-          ),
-        ],
+            const SizedBox(width: AppSpacing.s6),
+            Text(
+              '프로필 편집',
+              style: AppFont.subtextM.copyWith(
+                fontWeight: AppFont.semiBold,
+                color: AppColors.darkOnSurface,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

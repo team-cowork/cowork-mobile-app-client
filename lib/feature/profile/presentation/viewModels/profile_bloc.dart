@@ -2,6 +2,7 @@ import 'package:cowork_design_system/design_system.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../data/profile_store.dart';
 import '../../domain/profile.dart';
 
 part 'profile_event.dart';
@@ -21,19 +22,26 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
   ) async {
     emit(const ProfileState.loading());
     try {
-      // ponytail: 목 데이터. 실제 프로필 API 연동 시 이 부분만 교체.
-      const profile = Profile(
-        name: '김준혁',
-        avatarUrl: 'https://avatars.githubusercontent.com/u/0',
-        subtitle: '@joon_hyeok0204 · 프론트엔드 개발자',
-        badges: [
+      // ponytail: 이름/사용자명/사진은 로컬 저장소에서, 나머지는 목 데이터.
+      // 실제 프로필 API 연동 시 이 부분만 교체.
+      final store = ProfileStore.instance;
+      final profile = Profile(
+        name: store.name,
+        avatarUrl: store.avatarUrl,
+        localAvatarPath: store.localAvatarPath,
+        subtitle: '${store.username} · 프론트엔드 개발자',
+        badges: const [
           ProfileBadge(label: 'OWNER', color: CoworkBadgeColor.brand),
           ProfileBadge(label: '프론트엔드'),
         ],
-        metaChips: ['GSM 3학년 1반', 'GitHub @joon_hyeok0204', 'DataGSM 연동됨'],
-        streak: GithubStreak(rangeLabel: '최근 20주 · 노출 ON'),
+        metaChips: const [
+          'GSM 3학년 1반',
+          'GitHub @joon_hyeok0204',
+          'DataGSM 연동됨',
+        ],
+        streak: const GithubStreak(rangeLabel: '최근 20주 · 노출 ON'),
       );
-      emit(const ProfileState.success(profile));
+      emit(ProfileState.success(profile));
     } catch (_) {
       emit(const ProfileState.failure());
     }

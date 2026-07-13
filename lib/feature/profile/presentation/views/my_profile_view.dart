@@ -29,18 +29,24 @@ class MyProfileView extends StatelessWidget {
             style: AppFont.titleM.copyWith(color: AppColors.darkOnSurface),
           ),
           actions: [
-            IconButton(
-              icon: const Icon(
-                AppIcon.settings,
-                color: AppColors.darkOnSurface,
+            Builder(
+              builder: (context) => IconButton(
+                icon: const Icon(
+                  AppIcon.settings,
+                  color: AppColors.darkOnSurface,
+                ),
+                onPressed: () async {
+                  await Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => const SettingsView(),
+                    ),
+                  );
+                  // 설정 → 프로필 편집에서 저장한 내용을 반영한다.
+                  if (context.mounted) {
+                    context.read<ProfileBloc>().add(const ProfileRequested());
+                  }
+                },
               ),
-              onPressed: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (_) => const SettingsView(),
-                  ),
-                );
-              },
             ),
             const SizedBox(width: AppSpacing.s8),
           ],
@@ -55,9 +61,9 @@ class MyProfileView extends StatelessWidget {
                     title: '프로필을 불러오지 못했어요',
                     description: '잠시 후 다시 시도해 주세요.',
                     retryLabel: '다시 시도',
-                    onRetry: () => context
-                        .read<ProfileBloc>()
-                        .add(const ProfileRequested()),
+                    onRetry: () => context.read<ProfileBloc>().add(
+                      const ProfileRequested(),
+                    ),
                   ),
                 ),
               ),
@@ -78,7 +84,7 @@ class MyProfileView extends StatelessWidget {
                   ],
                 ),
               ),
-              _ => const Center(child: CircularProgressIndicator()),
+              _ => const Center(child: CoworkLoadingPane()),
             };
           },
         ),
