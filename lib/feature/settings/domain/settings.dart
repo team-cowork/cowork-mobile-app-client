@@ -59,11 +59,3 @@ class Settings extends Equatable {
     version,
   ];
 }
-
-/// 설정 화면의 토글 항목 식별자.
-enum SettingsToggle {
-  pushNotification,
-  mentionOnly,
-  darkMode,
-  commitStreakPublic,
-}

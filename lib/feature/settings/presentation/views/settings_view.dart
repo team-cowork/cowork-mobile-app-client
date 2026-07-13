@@ -1,3 +1,4 @@
+import 'package:cowork_app/feature/settings/domain/enus/setting_toggle_enum.dart';
 import 'package:cowork_design_system/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -41,13 +42,15 @@ class SettingsView extends StatelessWidget {
                     title: '설정을 불러오지 못했어요',
                     description: '잠시 후 다시 시도해 주세요.',
                     retryLabel: '다시 시도',
-                    onRetry: () => context
-                        .read<SettingsBloc>()
-                        .add(const SettingsRequested()),
+                    onRetry: () => context.read<SettingsBloc>().add(
+                      const SettingsRequested(),
+                    ),
                   ),
                 ),
               ),
-              SettingsSuccess(:final settings) => _SettingsBody(settings: settings),
+              SettingsSuccess(:final settings) => _SettingsBody(
+                settings: settings,
+              ),
               _ => const Center(child: CircularProgressIndicator()),
             };
           },

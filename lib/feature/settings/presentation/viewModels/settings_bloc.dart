@@ -1,3 +1,4 @@
+import 'package:cowork_app/feature/settings/domain/enus/setting_toggle_enum.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -42,12 +43,14 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
 
     final settings = state.settings;
     final updated = switch (event.toggle) {
-      SettingsToggle.pushNotification =>
-        settings.copyWith(pushNotification: event.value),
+      SettingsToggle.pushNotification => settings.copyWith(
+        pushNotification: event.value,
+      ),
       SettingsToggle.mentionOnly => settings.copyWith(mentionOnly: event.value),
       SettingsToggle.darkMode => settings.copyWith(darkMode: event.value),
-      SettingsToggle.commitStreakPublic =>
-        settings.copyWith(commitStreakPublic: event.value),
+      SettingsToggle.commitStreakPublic => settings.copyWith(
+        commitStreakPublic: event.value,
+      ),
     };
     emit(SettingsState.success(updated));
   }
