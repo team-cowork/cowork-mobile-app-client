@@ -12,6 +12,7 @@ class Profile extends Equatable {
     required this.badges,
     required this.metaChips,
     required this.streak,
+    this.localAvatarPath,
   });
 
   /// 이름 (예: 김준혁).
@@ -19,6 +20,9 @@ class Profile extends Equatable {
 
   /// 아바타 이미지 URL.
   final String avatarUrl;
+
+  /// 로컬에서 선택한 아바타 사진 경로. 있으면 [avatarUrl]보다 우선한다.
+  final String? localAvatarPath;
 
   /// 이름 아래 한 줄 소개 (예: @joon_hyeok0204 · 프론트엔드 개발자).
   final String subtitle;
@@ -40,12 +44,16 @@ class Profile extends Equatable {
     badges,
     metaChips,
     streak,
+    localAvatarPath,
   ];
 }
 
 /// 이름 옆에 붙는 역할/직군 뱃지.
 class ProfileBadge extends Equatable {
-  const ProfileBadge({required this.label, this.color = CoworkBadgeColor.neutral});
+  const ProfileBadge({
+    required this.label,
+    this.color = CoworkBadgeColor.neutral,
+  });
 
   final String label;
 
