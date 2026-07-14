@@ -1,0 +1,113 @@
+import 'package:cowork_design_system/design_system.dart';
+import 'package:flutter/material.dart';
+
+import '../../domain/note.dart';
+
+/// 회의록 목록의 카드 한 장.
+///
+/// 제목 + 태그 배지 / 요약 / 작성자·날짜로 구성된다.
+/// Figma `App / Notes (회의록)` 스펙에 맞춘 다크 전용 레이아웃.
+class NoteCard extends StatelessWidget {
+  const NoteCard({super.key, required this.note});
+
+  final Note note;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: AppColors.neutral800,
+        border: Border.all(color: AppColors.neutral700),
+        borderRadius: BorderRadius.circular(AppRadius.r12),
+      ),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.s16,
+        vertical: AppSpacing.s14,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        spacing: AppSpacing.s8,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Text(
+                  note.title,
+                  style: AppFont.labelS.copyWith(
+                    fontSize: 16,
+                    color: AppColors.darkOnSurface,
+                  ),
+                ),
+              ),
+              const SizedBox(width: AppSpacing.s8),
+              Wrap(
+                spacing: AppSpacing.s4,
+                children: [
+                  for (final tag in note.tags) CoworkBadge(label: tag),
+                ],
+              ),
+            ],
+          ),
+          Text(
+            note.summary,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: AppFont.subtextM.copyWith(
+              height: 1.45,
+              color: AppColors.neutral300,
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.only(top: AppSpacing.s4),
+            child: _AuthorLine(author: note.author),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 작성자 아바타(이니셜) + `이름 · 날짜` 라인.
+class _AuthorLine extends StatelessWidget {
+  const _AuthorLine({required this.author});
+
+  final NoteAuthor author;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Container(
+          width: 22,
+          height: 22,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: _avatarColor,
+            shape: BoxShape.circle,
+          ),
+          child: Text(
+            author.initial,
+            style: AppFont.labelXs.copyWith(
+              fontSize: 9,
+              color: AppColors.white,
+            ),
+          ),
+        ),
+        const SizedBox(width: AppSpacing.s8),
+        Text(
+          '${author.name}  ·  ${author.date}',
+          style: AppFont.subtextS.copyWith(color: AppColors.neutral300),
+        ),
+      ],
+    );
+  }
+
+  Color get _avatarColor => switch (author.color) {
+    NoteAuthorColor.blue => AppColors.blue500,
+    NoteAuthorColor.green => AppColors.green500,
+    NoteAuthorColor.amber => AppColors.amber500,
+    NoteAuthorColor.red => AppColors.red400,
+  };
+}
