@@ -38,6 +38,16 @@ class NotesView extends StatelessWidget {
                           ),
                         ),
                       ),
+                      NotesSuccess(:final notes) when notes.isEmpty => const Center(
+                        child: Padding(
+                          padding: EdgeInsets.all(AppSpacing.s16),
+                          child: CoworkEmptyState(
+                            icon: Icons.description_outlined,
+                            title: '아직 회의록이 없어요',
+                            description: '첫 회의록을 작성해 팀 기록을 남겨보세요.',
+                          ),
+                        ),
+                      ),
                       NotesSuccess(:final notes) => ListView.separated(
                         padding: const EdgeInsets.fromLTRB(
                           AppSpacing.s16,
