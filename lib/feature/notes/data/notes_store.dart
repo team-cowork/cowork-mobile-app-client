@@ -17,7 +17,6 @@ class NotesStore {
       author: NoteAuthor(
         name: 'junjuny',
         initial: '준',
-        color: NoteAuthorColor.blue,
         date: '03.12',
       ),
     ),
@@ -28,7 +27,6 @@ class NotesStore {
       author: NoteAuthor(
         name: '도윤',
         initial: '도',
-        color: NoteAuthorColor.green,
         date: '03.08',
       ),
     ),
@@ -39,7 +37,6 @@ class NotesStore {
       author: NoteAuthor(
         name: '서연',
         initial: '서',
-        color: NoteAuthorColor.amber,
         date: '03.05',
       ),
     ),
@@ -50,7 +47,6 @@ class NotesStore {
       author: NoteAuthor(
         name: '민재',
         initial: '민',
-        color: NoteAuthorColor.red,
         date: '02.28',
       ),
     ),

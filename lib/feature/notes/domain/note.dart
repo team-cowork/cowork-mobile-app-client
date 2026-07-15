@@ -32,25 +32,22 @@ class NoteAuthor extends Equatable {
   const NoteAuthor({
     required this.name,
     required this.initial,
-    required this.color,
     required this.date,
+    this.avatarUrl = '',
   });
 
   /// 표시 이름 (예: junjuny).
   final String name;
 
-  /// 아바타에 표시할 한 글자 (예: 준).
-  final String initial;
+  /// 아바타 프로필 이미지 URL. 있으면 이미지를 표시하고, 비어 있으면 [initial] 폴백.
+  final String avatarUrl;
 
-  /// 아바타 배경 색상.
-  final NoteAuthorColor color;
+  /// 아바타 이미지가 없을 때 표시할 한 글자 (예: 준).
+  final String initial;
 
   /// 작성 날짜 라벨 (예: 03.12).
   final String date;
 
   @override
-  List<Object?> get props => [name, initial, color, date];
+  List<Object?> get props => [name, avatarUrl, initial, date];
 }
-
-/// 작성자 아바타 배경 색상. 실제 색상은 위젯에서 디자인 시스템 토큰으로 매핑한다.
-enum NoteAuthorColor { blue, green, amber, red }

@@ -83,17 +83,20 @@ class _AuthorLine extends StatelessWidget {
           width: 22,
           height: 22,
           alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: _avatarColor,
+          clipBehavior: Clip.antiAlias,
+          decoration: const BoxDecoration(
+            color: AppColors.neutral600,
             shape: BoxShape.circle,
           ),
-          child: Text(
-            author.initial,
-            style: AppFont.labelXs.copyWith(
-              fontSize: 9,
-              color: AppColors.white,
-            ),
-          ),
+          child: author.avatarUrl.isEmpty
+              ? _initialFallback()
+              : Image.network(
+                  author.avatarUrl,
+                  width: 22,
+                  height: 22,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => _initialFallback(),
+                ),
         ),
         const SizedBox(width: AppSpacing.s8),
         Text(
@@ -104,10 +107,8 @@ class _AuthorLine extends StatelessWidget {
     );
   }
 
-  Color get _avatarColor => switch (author.color) {
-    NoteAuthorColor.blue => AppColors.blue500,
-    NoteAuthorColor.green => AppColors.green500,
-    NoteAuthorColor.amber => AppColors.amber500,
-    NoteAuthorColor.red => AppColors.red400,
-  };
+  Widget _initialFallback() => Text(
+    author.initial,
+    style: AppFont.labelXs.copyWith(fontSize: 9, color: AppColors.white),
+  );
 }
