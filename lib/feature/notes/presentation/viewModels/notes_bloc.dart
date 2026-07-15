@@ -15,10 +15,10 @@ class NotesBloc extends Bloc<NotesEvent, NotesState> {
     on<NotesRequested>(_onLoad);
   }
 
-  Future<void> _onLoad(
+  void _onLoad(
     NotesRequested event,
     Emitter<NotesState> emit,
-  ) async {
+  ) {
     emit(const NotesState.loading());
     try {
       emit(NotesState.success(NotesStore.instance.notes));

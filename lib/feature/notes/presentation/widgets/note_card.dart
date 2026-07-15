@@ -41,13 +41,15 @@ class NoteCard extends StatelessWidget {
                   ),
                 ),
               ),
-              const SizedBox(width: AppSpacing.s8),
-              Wrap(
-                spacing: AppSpacing.s4,
-                children: [
-                  for (final tag in note.tags) CoworkBadge(label: tag),
-                ],
-              ),
+              if (note.tags.isNotEmpty) ...[
+                const SizedBox(width: AppSpacing.s8),
+                Wrap(
+                  spacing: AppSpacing.s4,
+                  children: [
+                    for (final tag in note.tags) CoworkBadge(label: tag),
+                  ],
+                ),
+              ],
             ],
           ),
           Text(
