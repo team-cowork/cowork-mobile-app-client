@@ -2,6 +2,7 @@ import 'package:cowork_design_system/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../notes/presentation/views/notes_view.dart';
 import '../../../settings/presentation/views/settings_view.dart';
 import '../viewModels/profile_bloc.dart';
 import '../widgets/github_streak_card.dart';
@@ -109,14 +110,24 @@ class _ProfileTabBar extends StatelessWidget {
         top: AppSpacing.s8,
         bottom: AppSpacing.s20,
       ),
-      child: const SafeArea(
+      child: SafeArea(
         top: false,
         child: Row(
           children: [
-            _TabItem(icon: Icons.forum_outlined, label: '채널'),
-            _TabItem(icon: Icons.view_kanban_outlined, label: '이슈'),
-            _TabItem(icon: Icons.description_outlined, label: '회의록'),
-            _TabItem(icon: Icons.person_outline, label: '프로필', selected: true),
+            const _TabItem(icon: Icons.forum_outlined, label: '채널'),
+            const _TabItem(icon: Icons.view_kanban_outlined, label: '이슈'),
+            _TabItem(
+              icon: Icons.description_outlined,
+              label: '회의록',
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(builder: (_) => const NotesView()),
+              ),
+            ),
+            const _TabItem(
+              icon: Icons.person_outline,
+              label: '프로필',
+              selected: true,
+            ),
           ],
         ),
       ),
@@ -129,32 +140,38 @@ class _TabItem extends StatelessWidget {
     required this.icon,
     required this.label,
     this.selected = false,
+    this.onTap,
   });
 
   final IconData icon;
   final String label;
   final bool selected;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     final color = selected ? AppColors.red400 : AppColors.neutral300;
 
     return Expanded(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: AppSpacing.s6),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 24, color: color),
-            const SizedBox(height: AppSpacing.s4),
-            Text(
-              label,
-              style: AppFont.subtextS.copyWith(
-                fontWeight: selected ? AppFont.semiBold : AppFont.regular,
-                color: color,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: AppSpacing.s6),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 24, color: color),
+              const SizedBox(height: AppSpacing.s4),
+              Text(
+                label,
+                style: AppFont.subtextS.copyWith(
+                  fontWeight: selected ? AppFont.semiBold : AppFont.regular,
+                  color: color,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
