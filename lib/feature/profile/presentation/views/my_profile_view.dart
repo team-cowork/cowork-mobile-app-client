@@ -18,17 +18,8 @@ class MyProfileView extends StatelessWidget {
       create: (_) => ProfileBloc()..add(const ProfileRequested()),
       child: Scaffold(
         backgroundColor: AppColors.neutral850,
-        appBar: AppBar(
-          // TODO: 추후에 변경 예정
-          centerTitle: false,
-          backgroundColor: AppColors.neutral850,
-          elevation: 0,
-          automaticallyImplyLeading: false,
-          titleSpacing: AppSpacing.s16,
-          title: Text(
-            '프로필',
-            style: AppFont.titleM.copyWith(color: AppColors.darkOnSurface),
-          ),
+        appBar: CoworkAppBar.root(
+          title: '프로필',
           actions: [
             Builder(
               builder: (context) => IconButton(
@@ -49,7 +40,6 @@ class MyProfileView extends StatelessWidget {
                 },
               ),
             ),
-            const SizedBox(width: AppSpacing.s8),
           ],
         ),
         body: BlocBuilder<ProfileBloc, ProfileState>(
