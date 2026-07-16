@@ -19,19 +19,9 @@ class SettingsView extends StatelessWidget {
       create: (_) => SettingsBloc()..add(const SettingsRequested()),
       child: Scaffold(
         backgroundColor: AppColors.neutral850,
-        appBar: AppBar(
-          centerTitle: false,
-          backgroundColor: AppColors.neutral850,
-          elevation: 0,
-          titleSpacing: 0,
-          leading: IconButton(
-            icon: const Icon(AppIcon.back, color: AppColors.darkOnSurface),
-            onPressed: () => Navigator.of(context).maybePop(),
-          ),
-          title: Text(
-            '설정',
-            style: AppFont.titleS.copyWith(color: AppColors.darkOnSurface),
-          ),
+        appBar: CoworkAppBar.detail(
+          title: '설정',
+          onBack: () => Navigator.of(context).maybePop(),
         ),
         body: BlocBuilder<SettingsBloc, SettingsState>(
           builder: (context, state) {

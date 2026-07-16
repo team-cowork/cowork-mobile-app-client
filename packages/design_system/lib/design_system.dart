@@ -1,5 +1,6 @@
 library;
 
+export 'src/components/app_bar/cowork_app_bar.dart';
 export 'src/components/attachment_card/cowork_attachment_card.dart';
 export 'src/components/avatar/cowork_avatar.dart';
 export 'src/components/badge/cowork_badge.dart';
