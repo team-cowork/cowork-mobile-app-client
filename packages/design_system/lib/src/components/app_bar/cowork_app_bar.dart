@@ -73,11 +73,7 @@ class CoworkAppBar extends StatelessWidget implements PreferredSizeWidget {
       onTap: onLeading,
     ),
     actions: [
-      _TextAction(
-        label: actionLabel,
-        color: AppColors.red400,
-        onTap: onAction,
-      ),
+      _TextAction(label: actionLabel, color: AppColors.red400, onTap: onAction),
     ],
     titleStyle: AppFont.titleS,
     centerTitle: true,
@@ -95,6 +91,14 @@ class CoworkAppBar extends StatelessWidget implements PreferredSizeWidget {
 
   @override
   Widget build(BuildContext context) {
+    final ModalRoute<dynamic>? parentRoute = ModalRoute.of(context);
+    final bool canPop = parentRoute?.canPop ?? false;
+    final Widget? leadingWidget =
+        leading ??
+        (canPop
+            ? _BackButton(onBack: () => Navigator.of(context).maybePop())
+            : null);
+
     final titleBlock = Column(
       mainAxisSize: MainAxisSize.min,
       mainAxisAlignment: MainAxisAlignment.center,
@@ -128,22 +132,12 @@ class CoworkAppBar extends StatelessWidget implements PreferredSizeWidget {
           height: preferredSize.height,
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s16),
-            child: Row(
-              children: [
-                if (leading != null) ...[
-                  leading!,
-                  const SizedBox(width: AppSpacing.s4),
-                ],
-                Expanded(
-                  child: Align(
-                    alignment: centerTitle
-                        ? Alignment.center
-                        : Alignment.centerLeft,
-                    child: titleBlock,
-                  ),
-                ),
-                ...actions,
-              ],
+            child: NavigationToolbar(
+              leading: leadingWidget,
+              middle: titleBlock,
+              trailing: Row(mainAxisSize: MainAxisSize.min, children: actions),
+              centerMiddle: centerTitle,
+              middleSpacing: AppSpacing.s4,
             ),
           ),
         ),
@@ -166,11 +160,7 @@ class _BackButton extends StatelessWidget {
       child: const SizedBox(
         width: 32,
         height: 44,
-        child: Icon(
-          AppIcon.back,
-          size: 20,
-          color: AppColors.darkOnSurface,
-        ),
+        child: Icon(AppIcon.back, size: 20, color: AppColors.darkOnSurface),
       ),
     );
   }
@@ -189,10 +179,7 @@ class _TextAction extends StatelessWidget {
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: onTap,
-      child: Text(
-        label,
-        style: AppFont.labelS.copyWith(color: color),
-      ),
+      child: Text(label, style: AppFont.labelS.copyWith(color: color)),
     );
   }
 }
