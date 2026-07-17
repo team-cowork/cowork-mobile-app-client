@@ -55,9 +55,12 @@ class _CoworkBottomNavigationBarPreviewState
             const SizedBox(height: 32),
             const Text('탭 전환 비활성 (onTap 없음)', style: AppFont.labelM),
             const SizedBox(height: 12),
-            const SizedBox(
+            SizedBox(
               width: 390,
-              child: CoworkBottomNavigationBar(items: _items, currentIndex: 3),
+              child: CoworkBottomNavigationBar(
+                items: _items,
+                currentIndex: 3,
+              ),
             ),
           ],
         ),
