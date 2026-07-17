@@ -26,7 +26,11 @@ class CoworkBottomNavigationBar extends StatelessWidget {
     required this.currentIndex,
     this.onTap,
     super.key,
-  }) : assert(items.length >= 2, 'items must contain at least 2 items');
+  }) : assert(items.length >= 2, 'items must contain at least 2 items'),
+       assert(
+         currentIndex >= 0 && currentIndex < items.length,
+         'currentIndex must be within the range of items',
+       );
 
   final List<CoworkBottomNavigationItem> items;
 
@@ -38,29 +42,27 @@ class CoworkBottomNavigationBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // 홈 인디케이터가 있는 기기는 안전 영역 인셋을, 없으면 기본 여백을 하단에 준다.
+    // (SafeArea로 감싸면 인셋과 기본 여백이 중첩되어 과도하게 높아진다.)
+    final safeBottom = MediaQuery.paddingOf(context).bottom;
     return Container(
       decoration: const BoxDecoration(
         color: AppColors.neutral800,
         border: Border(top: BorderSide(color: AppColors.neutral700)),
       ),
-      padding: const EdgeInsets.only(
+      padding: EdgeInsets.only(
         top: AppSpacing.s8,
-        bottom: AppSpacing.s20,
+        bottom: safeBottom > 0 ? safeBottom : AppSpacing.s20,
       ),
-      child: SafeArea(
-        top: false,
-        child: Row(
-          children: [
-            for (var i = 0; i < items.length; i++)
-              _TabItem(
-                item: items[i],
-                selected: i == currentIndex,
-                onTap: onTap == null || i == currentIndex
-                    ? null
-                    : () => onTap!(i),
-              ),
-          ],
-        ),
+      child: Row(
+        children: [
+          for (var i = 0; i < items.length; i++)
+            _TabItem(
+              item: items[i],
+              selected: i == currentIndex,
+              onTap: onTap == null || i == currentIndex ? null : () => onTap!(i),
+            ),
+        ],
       ),
     );
   }
