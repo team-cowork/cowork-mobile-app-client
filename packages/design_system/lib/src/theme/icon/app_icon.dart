@@ -17,6 +17,9 @@ class AppIcon {
   static const IconData navHome = Icons.home_outlined;
   static const IconData navProfile = Icons.person_outline;
   static const IconData navNotification = Icons.notifications_outlined;
+  static const IconData navChannel = Icons.forum_outlined;
+  static const IconData navIssue = Icons.view_kanban_outlined;
+  static const IconData navNote = Icons.description_outlined;
 
   static Widget hashChannel({double size = AppSize.iconSmall}) => Image.asset(
     'assets/images/hash_channel.png',

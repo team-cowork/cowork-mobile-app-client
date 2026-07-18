@@ -19,6 +19,8 @@ import 'package:widgetbook_workspace/components/badge/cowork_badge_use_case.dart
     as _widgetbook_workspace_components_badge_cowork_badge_use_case;
 import 'package:widgetbook_workspace/components/badge/cowork_status_badge_use_case.dart'
     as _widgetbook_workspace_components_badge_cowork_status_badge_use_case;
+import 'package:widgetbook_workspace/components/bottom_navigation_bar/cowork_bottom_navigation_bar_use_case.dart'
+    as _widgetbook_workspace_components_bottom_navigation_bar_cowork_bottom_navigation_bar_use_case;
 import 'package:widgetbook_workspace/components/button/cowork_button_use_case.dart'
     as _widgetbook_workspace_components_button_cowork_button_use_case;
 import 'package:widgetbook_workspace/components/button/cowork_icon_button_use_case.dart'
@@ -113,6 +115,22 @@ final directories = <_widgetbook.WidgetbookNode>[
                     builder:
                         _widgetbook_workspace_components_badge_cowork_status_badge_use_case
                             .coworkStatusBadgePreview,
+                  ),
+                ],
+              ),
+            ],
+          ),
+          _widgetbook.WidgetbookFolder(
+            name: 'bottom_navigation_bar',
+            children: [
+              _widgetbook.WidgetbookComponent(
+                name: 'CoworkBottomNavigationBarPreview',
+                useCases: [
+                  _widgetbook.WidgetbookUseCase(
+                    name: 'BottomNavigationBar',
+                    builder:
+                        _widgetbook_workspace_components_bottom_navigation_bar_cowork_bottom_navigation_bar_use_case
+                            .coworkBottomNavigationBarPreview,
                   ),
                 ],
               ),
