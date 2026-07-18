@@ -2,11 +2,14 @@ import 'package:cowork_design_system/design_system.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../../core/utils/async_state.dart';
 import '../../data/profile_store.dart';
 import '../../domain/profile.dart';
 
 part 'profile_event.dart';
-part 'profile_state.dart';
+
+/// 프로필 화면 상태. 성공 시 [Profile]을 담는다.
+typedef ProfileState = AsyncState<Profile>;
 
 /// 프로필 화면 상태를 관리하는 Bloc.
 ///

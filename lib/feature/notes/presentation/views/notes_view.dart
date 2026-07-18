@@ -2,7 +2,8 @@ import 'package:cowork_design_system/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../../../core/utils/base_scaffold.dart';
+import '../../../../core/utils/bloc_scaffold.dart';
+import '../../domain/note.dart';
 import '../viewModels/notes_bloc.dart';
 import '../widgets/note_card.dart';
 
@@ -14,56 +15,41 @@ class NotesView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
+    return BlocScaffold<NotesBloc, List<Note>>(
       create: (_) => NotesBloc()..add(const NotesRequested()),
-      child: BaseScaffold(
-        appBar: CoworkAppBar.section(
-          title: '회의록',
-          subtitle: '회의 기록 · 템플릿 기반 작성',
-          actions: const [_NewNoteButton()],
-        ),
-        body: BlocBuilder<NotesBloc, NotesState>(
-          builder: (context, state) {
-            return switch (state) {
-              NotesFailure() => Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(AppSpacing.s16),
-                  child: CoworkErrorState(
-                    title: '회의록을 불러오지 못했어요',
-                    description: '잠시 후 다시 시도해 주세요.',
-                    retryLabel: '다시 시도',
-                    onRetry: () =>
-                        context.read<NotesBloc>().add(const NotesRequested()),
-                  ),
-                ),
-              ),
-              NotesSuccess(:final notes) when notes.isEmpty => const Center(
-                child: Padding(
-                  padding: EdgeInsets.all(AppSpacing.s16),
-                  child: CoworkEmptyState(
-                    icon: Icons.description_outlined,
-                    title: '아직 회의록이 없어요',
-                    description: '첫 회의록을 작성해 팀 기록을 남겨보세요.',
-                  ),
-                ),
-              ),
-              NotesSuccess(:final notes) => ListView.separated(
-                padding: const EdgeInsets.fromLTRB(
-                  AppSpacing.s16,
-                  AppSpacing.s12,
-                  AppSpacing.s16,
-                  AppSpacing.s16,
-                ),
-                itemCount: notes.length,
-                separatorBuilder: (_, __) =>
-                    const SizedBox(height: AppSpacing.s10),
-                itemBuilder: (_, i) => NoteCard(note: notes[i]),
-              ),
-              _ => const Center(child: CoworkLoadingPane()),
-            };
-          },
-        ),
+      errorTitle: '회의록을 불러오지 못했어요',
+      onRetry: (context) =>
+          context.read<NotesBloc>().add(const NotesRequested()),
+      appBar: CoworkAppBar.section(
+        title: '회의록',
+        subtitle: '회의 기록 · 템플릿 기반 작성',
+        actions: const [_NewNoteButton()],
       ),
+      builder: (context, notes) {
+        if (notes.isEmpty) {
+          return const Center(
+            child: Padding(
+              padding: EdgeInsets.all(AppSpacing.s16),
+              child: CoworkEmptyState(
+                icon: Icons.description_outlined,
+                title: '아직 회의록이 없어요',
+                description: '첫 회의록을 작성해 팀 기록을 남겨보세요.',
+              ),
+            ),
+          );
+        }
+        return ListView.separated(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.s16,
+            AppSpacing.s12,
+            AppSpacing.s16,
+            AppSpacing.s16,
+          ),
+          itemCount: notes.length,
+          separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.s10),
+          itemBuilder: (_, i) => NoteCard(note: notes[i]),
+        );
+      },
     );
   }
 }
