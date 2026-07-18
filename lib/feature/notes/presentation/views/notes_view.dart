@@ -2,6 +2,7 @@ import 'package:cowork_design_system/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../../core/utils/base_scaffold.dart';
 import '../viewModels/notes_bloc.dart';
 import '../widgets/note_card.dart';
 
@@ -15,8 +16,7 @@ class NotesView extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (_) => NotesBloc()..add(const NotesRequested()),
-      child: Scaffold(
-        backgroundColor: AppColors.neutral850,
+      child: BaseScaffold(
         appBar: CoworkAppBar.section(
           title: '회의록',
           subtitle: '회의 기록 · 템플릿 기반 작성',

@@ -3,6 +3,7 @@ import 'package:cowork_design_system/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../../core/utils/base_scaffold.dart';
 import '../../../profile/presentation/views/edit_profile_view.dart';
 import '../../domain/settings.dart';
 import '../viewModels/settings_bloc.dart';
@@ -17,8 +18,7 @@ class SettingsView extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (_) => SettingsBloc()..add(const SettingsRequested()),
-      child: Scaffold(
-        backgroundColor: AppColors.neutral850,
+      child: BaseScaffold(
         appBar: CoworkAppBar.detail(
           title: '설정',
           onBack: () => Navigator.of(context).maybePop(),

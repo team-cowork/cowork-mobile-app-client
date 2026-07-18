@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../../feature/notes/presentation/views/notes_view.dart';
 import '../../feature/profile/presentation/views/my_profile_view.dart';
+import '../utils/base_scaffold.dart';
 
 /// 루트 탭 화면(채널·이슈·회의록·프로필)을 담는 공통 셸.
 ///
@@ -45,8 +46,7 @@ class _MainShellState extends State<MainShell> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.neutral850,
+    return BaseScaffold(
       body: IndexedStack(
         index: _index,
         children: [for (var i = 0; i < _items.length; i++) _tabView(i)],
@@ -72,8 +72,7 @@ class _ComingSoonView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.neutral850,
+    return BaseScaffold(
       appBar: CoworkAppBar.root(title: title),
       body: Center(
         child: Padding(

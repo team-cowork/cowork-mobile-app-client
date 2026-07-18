@@ -2,6 +2,7 @@ import 'package:cowork_design_system/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../../core/utils/base_scaffold.dart';
 import '../../../settings/presentation/views/settings_view.dart';
 import '../viewModels/profile_bloc.dart';
 import '../widgets/github_streak_card.dart';
@@ -15,8 +16,7 @@ class MyProfileView extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (_) => ProfileBloc()..add(const ProfileRequested()),
-      child: Scaffold(
-        backgroundColor: AppColors.neutral850,
+      child: BaseScaffold(
         appBar: CoworkAppBar.root(
           title: '프로필',
           actions: [

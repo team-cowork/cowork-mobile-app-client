@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../../../core/utils/base_scaffold.dart';
 import '../../domain/edit_profile.dart';
 import '../viewModels/edit_profile_bloc.dart';
 
@@ -103,8 +104,7 @@ class _EditProfileViewState extends State<EditProfileView> {
           listener: (context, state) {
             if (state is EditProfileSuccess) _seed(state.profile);
           },
-          child: Scaffold(
-            backgroundColor: AppColors.neutral850,
+          child: BaseScaffold(
             body: SafeArea(
               child: Column(
                 children: [
