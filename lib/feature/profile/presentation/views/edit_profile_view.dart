@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../../../core/utils/async_state.dart';
+import '../../../../core/utils/base_scaffold.dart';
 import '../../domain/edit_profile.dart';
 import '../viewModels/edit_profile_bloc.dart';
 
@@ -101,10 +103,9 @@ class _EditProfileViewState extends State<EditProfileView> {
       child: Builder(
         builder: (context) => BlocListener<EditProfileBloc, EditProfileState>(
           listener: (context, state) {
-            if (state is EditProfileSuccess) _seed(state.profile);
+            if (state is AsyncSuccess<EditProfile>) _seed(state.data);
           },
-          child: Scaffold(
-            backgroundColor: AppColors.neutral850,
+          child: BaseScaffold(
             body: SafeArea(
               child: Column(
                 children: [
@@ -116,7 +117,7 @@ class _EditProfileViewState extends State<EditProfileView> {
                     child: BlocBuilder<EditProfileBloc, EditProfileState>(
                       builder: (context, state) {
                         return switch (state) {
-                          EditProfileFailure() => Center(
+                          AsyncFailure<EditProfile>() => Center(
                             child: Padding(
                               padding: const EdgeInsets.all(AppSpacing.s16),
                               child: CoworkErrorState(
@@ -129,7 +130,7 @@ class _EditProfileViewState extends State<EditProfileView> {
                               ),
                             ),
                           ),
-                          EditProfileSuccess() => _buildForm(),
+                          AsyncSuccess<EditProfile>() => _buildForm(),
                           _ => const Center(child: CoworkLoadingPane()),
                         };
                       },

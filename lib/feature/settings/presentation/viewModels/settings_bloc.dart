@@ -2,10 +2,13 @@ import 'package:cowork_app/feature/settings/domain/enums/setting_toggle_enum.dar
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../../core/utils/async_state.dart';
 import '../../domain/settings.dart';
 
 part 'settings_event.dart';
-part 'settings_state.dart';
+
+/// 설정 화면 상태. 성공 시 [Settings]를 담는다.
+typedef SettingsState = AsyncState<Settings>;
 
 /// 설정 화면 상태를 관리하는 Bloc.
 ///
@@ -39,9 +42,9 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
 
   void _onToggle(SettingsToggled event, Emitter<SettingsState> emit) {
     final state = this.state;
-    if (state is! SettingsSuccess) return;
+    if (state is! AsyncSuccess<Settings>) return;
 
-    final settings = state.settings;
+    final settings = state.data;
     final updated = switch (event.toggle) {
       SettingsToggle.pushNotification => settings.copyWith(
         pushNotification: event.value,

@@ -1,11 +1,14 @@
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../../core/utils/async_state.dart';
 import '../../data/profile_store.dart';
 import '../../domain/edit_profile.dart';
 
 part 'edit_profile_event.dart';
-part 'edit_profile_state.dart';
+
+/// 프로필 편집 화면 상태. 성공 시 [EditProfile]을 담는다.
+typedef EditProfileState = AsyncState<EditProfile>;
 
 /// 프로필 편집 화면 상태를 관리하는 Bloc.
 ///

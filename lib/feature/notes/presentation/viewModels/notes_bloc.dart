@@ -1,11 +1,14 @@
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../../core/utils/async_state.dart';
 import '../../data/notes_store.dart';
 import '../../domain/note.dart';
 
 part 'notes_event.dart';
-part 'notes_state.dart';
+
+/// 회의록 목록 상태. 성공 시 [Note] 목록을 담는다.
+typedef NotesState = AsyncState<List<Note>>;
 
 /// 회의록 화면 상태를 관리하는 Bloc.
 ///

@@ -3,6 +3,7 @@ import 'package:cowork_design_system/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../../core/utils/bloc_scaffold.dart';
 import '../../../profile/presentation/views/edit_profile_view.dart';
 import '../../domain/settings.dart';
 import '../viewModels/settings_bloc.dart';
@@ -15,38 +16,16 @@ class SettingsView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
+    return BlocScaffold<SettingsBloc, Settings>(
       create: (_) => SettingsBloc()..add(const SettingsRequested()),
-      child: Scaffold(
-        backgroundColor: AppColors.neutral850,
-        appBar: CoworkAppBar.detail(
-          title: '설정',
-          onBack: () => Navigator.of(context).maybePop(),
-        ),
-        body: BlocBuilder<SettingsBloc, SettingsState>(
-          builder: (context, state) {
-            return switch (state) {
-              SettingsFailure() => Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(AppSpacing.s16),
-                  child: CoworkErrorState(
-                    title: '설정을 불러오지 못했어요',
-                    description: '잠시 후 다시 시도해 주세요.',
-                    retryLabel: '다시 시도',
-                    onRetry: () => context.read<SettingsBloc>().add(
-                      const SettingsRequested(),
-                    ),
-                  ),
-                ),
-              ),
-              SettingsSuccess(:final settings) => _SettingsBody(
-                settings: settings,
-              ),
-              _ => const Center(child: CircularProgressIndicator()),
-            };
-          },
-        ),
+      errorTitle: '설정을 불러오지 못했어요',
+      onRetry: (context) =>
+          context.read<SettingsBloc>().add(const SettingsRequested()),
+      appBar: CoworkAppBar.detail(
+        title: '설정',
+        onBack: () => Navigator.of(context).maybePop(),
       ),
+      builder: (context, settings) => _SettingsBody(settings: settings),
     );
   }
 }
