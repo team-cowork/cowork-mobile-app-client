@@ -63,6 +63,8 @@ class AppColorsTheme extends ThemeExtension<AppColorsTheme> {
 
 extension AppColorsThemeX on BuildContext {
   /// 디자인 시스템 스키마 색상 접근자. `context.colors.primary`.
+  ///
+  /// 앱이 다크 전용이라 확장이 없을 때도 다크로 폴백한다.
   AppColorsTheme get colors =>
-      Theme.of(this).extension<AppColorsTheme>() ?? AppColorsTheme.light;
+      Theme.of(this).extension<AppColorsTheme>() ?? AppColorsTheme.dark;
 }

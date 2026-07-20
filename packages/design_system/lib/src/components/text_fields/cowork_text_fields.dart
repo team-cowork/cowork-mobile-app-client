@@ -37,6 +37,8 @@ class CoworkTextField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -45,7 +47,7 @@ class CoworkTextField extends StatelessWidget {
             labelText!,
             style: AppFont.subtextM.copyWith(
               fontWeight: AppFont.semiBold,
-              color: AppColors.neutral500,
+              color: colors.onSurfaceVariant,
             ),
           ),
           const SizedBox(height: AppSpacing.s8),
@@ -68,17 +70,17 @@ class CoworkTextField extends StatelessWidget {
 
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(AppRadius.r12),
-              borderSide: const BorderSide(
+              borderSide: BorderSide(
                 width: 1,
-                color: AppColors.neutral200,
+                color: colors.outlineVariant,
               ),
             ),
 
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(AppRadius.r12),
-              borderSide: const BorderSide(
+              borderSide: BorderSide(
                 width: 1,
-                color: AppColors.neutral200,
+                color: colors.outlineVariant,
               )
             ),
 
