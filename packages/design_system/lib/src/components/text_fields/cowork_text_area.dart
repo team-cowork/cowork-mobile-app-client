@@ -67,40 +67,11 @@ class CoworkTextArea extends StatelessWidget {
 
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(AppRadius.r14),
-              borderSide: BorderSide(
-                width: 1,
-                color: colors.outlineVariant,
-              ),
+              borderSide: BorderSide(width: 1, color: colors.outlineVariant),
             ),
-
-            enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(AppRadius.r14),
-                borderSide: BorderSide(
-                  width: 1,
-                  color: colors.outlineVariant,
-                )
-            ),
-
-            focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(AppRadius.r14),
-                borderSide: const BorderSide(
-                  width: 1, // 색상 추후에 추가
-                )
-            ),
-
-            errorBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(AppRadius.r14),
-                borderSide: const BorderSide(
-                  width: 1, // 색상 추후에 추가
-                )
-            ),
-
-            disabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(AppRadius.r14),
-                borderSide: const BorderSide(
-                  width: 1, // 색상 추후에 추가
-                )
-            ),),
+            // enabled/focused/error/disabled 테두리는 border 모양에 테마 색을 입혀
+            // 자동으로 처리된다.
+          ),
         ),
       ],
     );

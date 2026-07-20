@@ -49,7 +49,8 @@ class NewNoteSheet extends StatelessWidget {
       NoteAdded(
         title: form.title,
         content: form.content,
-        template: templates[form.template].label,
+        template:
+            (templates.elementAtOrNull(form.template) ?? templates.first).label,
       ),
     );
     Navigator.of(context).pop();
