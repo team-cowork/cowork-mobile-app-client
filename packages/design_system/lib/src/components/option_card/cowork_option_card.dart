@@ -17,6 +17,7 @@ class CoworkOptionCard extends StatelessWidget {
     this.icon = Icons.crop_square,
     this.selected = false,
     this.onTap,
+    this.trailing,
     super.key,
   });
 
@@ -35,6 +36,9 @@ class CoworkOptionCard extends StatelessWidget {
   /// 탭 콜백.
   final VoidCallback? onTap;
 
+  /// 오른쪽 끝 슬롯. 라디오 표시 등에 사용한다.
+  final Widget? trailing;
+
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
@@ -42,7 +46,13 @@ class CoworkOptionCard extends StatelessWidget {
     final borderRadius = BorderRadius.circular(AppRadius.r10);
 
     return Material(
-      color: selected ? colors.surfaceContainer : colors.surfaceContainerLow,
+      // 선택 시 배경·아이콘까지 브랜드 톤으로 바뀐다. (텍스트 색은 그대로)
+      color: selected
+          ? Color.alphaBlend(
+              colors.primary.withValues(alpha: _selectedTint),
+              colors.surfaceContainer,
+            )
+          : colors.surfaceContainer,
       shape: RoundedRectangleBorder(
         side: BorderSide(
           color: selected ? colors.primary : colors.outlineVariant,
@@ -65,10 +75,16 @@ class CoworkOptionCard extends StatelessWidget {
                 width: _iconSlotSize,
                 height: _iconSlotSize,
                 decoration: BoxDecoration(
-                  color: colors.surfaceContainerLow,
+                  color: selected
+                      ? colors.primary.withValues(alpha: _selectedIconTint)
+                      : colors.surfaceContainerHigh,
                   borderRadius: BorderRadius.circular(AppRadius.r8),
                 ),
-                child: Icon(icon, size: 18, color: colors.onSurfaceVariant),
+                child: Icon(
+                  icon,
+                  size: 18,
+                  color: selected ? colors.primary : colors.onSurfaceVariant,
+                ),
               ),
               const SizedBox(width: AppSpacing.s12),
               Expanded(
@@ -104,6 +120,10 @@ class CoworkOptionCard extends StatelessWidget {
                   ],
                 ),
               ),
+              if (trailing != null) ...[
+                const SizedBox(width: AppSpacing.s12),
+                trailing!,
+              ],
             ],
           ),
         ),
@@ -112,4 +132,10 @@ class CoworkOptionCard extends StatelessWidget {
   }
 
   static const double _iconSlotSize = 34;
+
+  /// 선택 카드 배경에 얹는 브랜드 틴트 농도.
+  static const double _selectedTint = 0.10;
+
+  /// 선택 카드 아이콘 슬롯의 브랜드 틴트 농도.
+  static const double _selectedIconTint = 0.18;
 }

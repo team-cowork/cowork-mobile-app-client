@@ -37,6 +37,8 @@ class CoworkTextField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -45,7 +47,7 @@ class CoworkTextField extends StatelessWidget {
             labelText!,
             style: AppFont.subtextM.copyWith(
               fontWeight: AppFont.semiBold,
-              color: AppColors.neutral500,
+              color: colors.onSurfaceVariant,
             ),
           ),
           const SizedBox(height: AppSpacing.s8),
@@ -68,40 +70,11 @@ class CoworkTextField extends StatelessWidget {
 
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(AppRadius.r12),
-              borderSide: const BorderSide(
-                width: 1,
-                color: AppColors.neutral200,
-              ),
+              borderSide: BorderSide(width: 1, color: colors.outlineVariant),
             ),
-
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(AppRadius.r12),
-              borderSide: const BorderSide(
-                width: 1,
-                color: AppColors.neutral200,
-              )
-            ),
-
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(AppRadius.r12),
-              borderSide: const BorderSide(
-                width: 1, // 색상 추후에 추가
-              )
-            ),
-
-            errorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(AppRadius.r12),
-              borderSide: const BorderSide(
-                width: 1, // 색상 추후에 추가
-              )
-            ),
-
-              disabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(AppRadius.r12),
-              borderSide: const BorderSide(
-                width: 1, // 색상 추후에 추가
-              )
-          ),),
+            // enabled/focused/error/disabled 테두리는 border 모양에 테마 색을 입혀
+            // 자동으로 처리된다.
+          ),
         ),
       ],
     );

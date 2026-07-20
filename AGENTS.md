@@ -5,9 +5,9 @@
 Cowork 모바일 앱 클라이언트 저장소입니다.
 
 - Framework: Flutter
-- State Management / DI: Riverpod
-- Network: Dio, Retrofit
-- Model Generation: freezed, json_serializable
+- State Management: flutter_bloc (Bloc + `AsyncState`), 값 비교는 equatable
+- Network: 미도입 (현재 데이터는 인메모리 `*Store` 싱글턴)
+- Model Generation: 미도입 (freezed/json_serializable/build_runner 미설치)
 - Architecture: feature layer structure
 
 ## 작업 원칙
@@ -63,19 +63,19 @@ type(scope): 설명
 
 ## 모델 / 데이터 레이어 규칙
 
-- `data` 레이어 안의 모델은 `freezed`와 `json_serializable`을 함께 사용한다.
-- `data` 레이어 외의 immutable/model 성격 객체는 기본적으로 `freezed`를 사용한다.
+- 현재 코드 생성 도구는 쓰지 않는다. domain 모델, Bloc 이벤트/상태 모두 `equatable`로 직접 작성한다.
+- Bloc 이벤트/상태는 `sealed` 베이스 + `final class` 서브타입 + `Equatable` 패턴을 따른다. (`notes_event.dart`, `core/utils/async_state.dart` 참고)
+- API 연동으로 JSON 직렬화가 필요해지면 그때 `freezed`/`json_serializable` 도입을 별도 PR로 논의한다. 지금 있는 클래스를 미리 변환하지 않는다.
 - generated file은 수동 수정하지 않는다.
-- 모델 변경 후 필요한 경우 code generation 명령을 실행한다.
 - Flutter/codegen 산출물(`*.g.dart`, `*.freezed.dart` 등)은 원인 source 변경과 같은 커밋에 포함한다.
 - 원인 source 변경 없이 재생성/정리만 수행한 generated 변경은 별도 `chore` 또는 `refactor` 커밋으로 분리한다.
 
 ## 상태관리 / DI / 네트워크 규칙
 
-- 상태관리는 Riverpod을 사용한다.
-- DI도 Riverpod provider 기반으로 구성한다.
-- API client는 Retrofit + Dio 패턴을 따른다.
-- 신규 API 연결 시 기존 Dio/Retrofit 설정, interceptor, error handling 패턴을 먼저 확인한다.
+- 상태관리는 flutter_bloc을 사용한다. 화면 단위 Bloc은 `feature/<name>/presentation/viewModels/`에 둔다.
+- 단일 데이터를 불러오는 화면은 `AsyncState<T>` + `BlocScaffold`를 쓴다. 로딩/실패 화면을 개별 구현하지 않는다.
+- Bloc 주입은 `BlocProvider`로 한다. 별도 DI 컨테이너는 쓰지 않는다.
+- 백엔드 연동 전까지 데이터는 `data/*_store.dart` 인메모리 싱글턴에 둔다. 실제 API 연동 시 이 싱글턴을 리포지토리로 교체한다.
 
 ## 검증 명령
 
@@ -86,10 +86,10 @@ flutter analyze
 flutter test
 ```
 
-모델/codegen 변경 시 필요한 경우:
+위젯북 유즈케이스를 추가/변경했을 때 (앱 본체에는 codegen이 없다):
 
 ```bash
-flutter pub run build_runner build --delete-conflicting-outputs
+cd widgetbook && flutter pub run build_runner build --delete-conflicting-outputs
 ```
 
 ## 스킬 구조 규칙
