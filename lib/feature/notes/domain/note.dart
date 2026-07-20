@@ -9,6 +9,10 @@ class Note extends Equatable {
     required this.tags,
     required this.summary,
     required this.author,
+    this.participants = const [],
+    this.agenda = const [],
+    this.decisions = const [],
+    this.actionItems = const [],
   });
 
   /// 회의록 제목 (예: 2026 1분기 킥오프 회의).
@@ -23,8 +27,43 @@ class Note extends Equatable {
   /// 작성자 정보.
   final NoteAuthor author;
 
+  /// 참여자 이니셜. 상세 화면 우측 아바타 스택에 표시된다.
+  final List<String> participants;
+
+  /// 상세 화면 `안건` 항목.
+  final List<String> agenda;
+
+  /// 상세 화면 `결정 사항` 항목.
+  final List<String> decisions;
+
+  /// 상세 화면 `액션 아이템` 체크리스트.
+  final List<NoteActionItem> actionItems;
+
   @override
-  List<Object?> get props => [title, tags, summary, author];
+  List<Object?> get props => [
+    title,
+    tags,
+    summary,
+    author,
+    participants,
+    agenda,
+    decisions,
+    actionItems,
+  ];
+}
+
+/// 회의록의 액션 아이템 한 줄.
+class NoteActionItem extends Equatable {
+  const NoteActionItem({required this.label, this.done = false});
+
+  /// 할 일 문구 (예: Riverpod 상태 구조 초안 공유 (junjuny)).
+  final String label;
+
+  /// 완료 여부.
+  final bool done;
+
+  @override
+  List<Object?> get props => [label, done];
 }
 
 /// 회의록 작성자. 하단의 아바타 + `이름 · 날짜` 라인에 쓰인다.

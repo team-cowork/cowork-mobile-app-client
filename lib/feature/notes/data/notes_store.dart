@@ -28,6 +28,22 @@ class NotesStore {
         initial: '준',
         date: '03.12',
       ),
+      participants: ['도', '서', '민'],
+      agenda: [
+        '1. 1분기 팀 목표 및 OKR 정렬',
+        '2. 채팅·이슈 트래커 MVP 범위',
+        '3. 음성 채널 포함 여부',
+      ],
+      decisions: [
+        '· 채팅과 이슈 트래커를 1차 MVP로 확정.',
+        '· 음성 채널은 입장/대화 기능만 포함, 화면공유는 2차로 이관.',
+        '· 디자인 토큰·컴포넌트는 다크 테마 기준으로 먼저 정리.',
+      ],
+      actionItems: [
+        NoteActionItem(label: 'Riverpod 상태 구조 초안 공유 (junjuny)', done: true),
+        NoteActionItem(label: '이슈 트래커 칸반 스펙 문서화 (민재)'),
+        NoteActionItem(label: '음성 채널 인원 제한 정책 확정 (서연)'),
+      ],
     ),
     Note(
       title: '디자인 시스템 리뷰',
