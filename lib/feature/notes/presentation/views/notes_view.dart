@@ -5,6 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/utils/bloc_scaffold.dart';
 import '../../domain/note.dart';
 import '../viewModels/notes_bloc.dart';
+import '../widgets/new_note_sheet.dart';
 import '../widgets/note_card.dart';
 
 /// 회의록 목록 화면.
@@ -62,7 +63,7 @@ class _NewNoteButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTap: () {}, // TODO: 새 노트 작성 화면 연결
+      onTap: () => NewNoteSheet.show(context),
       child: Container(
         decoration: BoxDecoration(
           color: AppColors.red400,

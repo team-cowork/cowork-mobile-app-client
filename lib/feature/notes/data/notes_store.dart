@@ -2,14 +2,23 @@ import '../domain/note.dart';
 
 /// 회의록 목(mock) 데이터 저장소.
 ///
-/// 백엔드 연동 전까지 정적 시드 데이터를 반환한다.
+/// 백엔드 연동 전까지 시드 데이터와 앱 세션 동안 추가된 노트를 함께 보관한다.
 /// 실제 API 연동 시 이 싱글턴을 리포지토리로 교체한다.
+///
+// ponytail: 앱 재시작 시 초기화됨. 영구 저장이 필요하면 shared_preferences로 승격.
 class NotesStore {
   NotesStore._();
 
   static final NotesStore instance = NotesStore._();
 
-  List<Note> get notes => const [
+  final List<Note> _notes = [..._seed];
+
+  List<Note> get notes => List.unmodifiable(_notes);
+
+  /// 새 노트를 목록 맨 앞에 추가한다.
+  void add(Note note) => _notes.insert(0, note);
+
+  static const _seed = [
     Note(
       title: '2026 1분기 킥오프 회의',
       tags: ['확정', 'OKR'],
