@@ -8,8 +8,8 @@ import '../widgets/chat_button.dart';
 import '../widgets/home_header.dart';
 
 /// 홈(채팅 목록) 화면.
-class HomeView extends StatelessWidget {
-  const HomeView({super.key});
+class ChatView extends StatelessWidget {
+  const ChatView({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -43,7 +43,13 @@ class _ChatShortcutBar extends StatelessWidget {
           AppSpacing.s16,
           AppSpacing.s14,
         ),
-        child: Row(spacing: 14, children: [ChatButton(onTap: () {})]),
+        child: Row(
+          spacing: 14,
+          children: [
+            CoworkIconButton.custom(icon: AppIcon.plus()),
+            ChatButton(onTap: () {}),
+          ],
+        ),
       ),
     );
   }
