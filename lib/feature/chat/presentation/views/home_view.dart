@@ -18,14 +18,13 @@ class HomeView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const BaseScaffold(
-      body: Padding(
-        padding: EdgeInsets.only(top: 39),
+      body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             HomeHeader(label: '코워크'),
             _ChatShortcutBar(),
-            _ChannelList(),
+            Expanded(child: _ChannelList()),
           ],
         ),
       ),
