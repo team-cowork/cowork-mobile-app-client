@@ -60,10 +60,10 @@ class _ChannelList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s8),
       child: SingleChildScrollView(
         child: Column(
-          spacing: 4,
+          spacing: AppSpacing.s4,
           children: [
             const ChannelGroupHeader(label: '디자인'),
             ChannelGroupItem(icon: AppIcon.hashChannel(), label: '일반'),

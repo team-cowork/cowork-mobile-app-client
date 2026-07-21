@@ -10,7 +10,12 @@ class HomeHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 6, 16, 12),
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.s16,
+        AppSpacing.s6,
+        AppSpacing.s16,
+        AppSpacing.s12,
+      ),
       child: Row(
         children: [
           Row(
