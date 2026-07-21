@@ -7,10 +7,6 @@ import '../widgets/channel_group_item.dart';
 import '../widgets/chat_button.dart';
 import '../widgets/home_header.dart';
 
-void main() async {
-  runApp(const MaterialApp(home: HomeView()));
-}
-
 /// 홈(채팅 목록) 화면.
 class HomeView extends StatelessWidget {
   const HomeView({super.key});
