@@ -12,8 +12,8 @@ class ChatButton extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 52,
-        height: 52,
+        width: AppSize.componentLarge,
+        height: AppSize.componentLarge,
         alignment: Alignment.center,
         decoration: BoxDecoration(
           color: AppColors.neutral750,
