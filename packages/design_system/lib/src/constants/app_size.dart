@@ -14,6 +14,9 @@ class AppSize {
   /// 컴포넌트 높이/지름 (large)
   static const double componentLarge = 52.0;
 
+  /// 아이콘 크기 (Xsmall)
+  static const double iconXSmall = 16.0;
+
   /// 아이콘 크기 (small)
   static const double iconSmall = 18.0;
 

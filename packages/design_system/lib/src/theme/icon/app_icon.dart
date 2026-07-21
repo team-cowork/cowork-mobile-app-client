@@ -1,5 +1,6 @@
+import 'package:cowork_design_system/design_system.dart';
 import 'package:flutter/material.dart';
-import '../../constants/app_size.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 /// 앱 아이콘 모음
 class AppIcon {
@@ -27,5 +28,63 @@ class AppIcon {
     width: size,
     height: size,
     fit: BoxFit.contain,
+    color: AppColors.neutral300,
   );
+
+  static Widget dropDown({double size = AppSize.iconSmall}) => SvgPicture.asset(
+    'assets/images/chevron-down.svg',
+    package: 'cowork_design_system',
+    width: size,
+    height: size,
+    fit: BoxFit.contain,
+  );
+
+  static Widget bell({double size = AppSize.iconSmall}) => SvgPicture.asset(
+    'assets/images/bell.svg',
+    package: 'cowork_design_system',
+    width: size,
+    height: size,
+    fit: BoxFit.contain,
+  );
+
+  static Widget chat({double size = AppSize.iconSmall}) => Image.asset(
+    'assets/images/chat.png',
+    package: 'cowork_design_system',
+    width: size,
+    height: size,
+    fit: BoxFit.contain,
+  );
+
+  static Widget speaker({double size = AppSize.iconSmall}) => Image.asset(
+    'assets/images/speaker.png',
+    package: 'cowork_design_system',
+    width: size,
+    height: size,
+    fit: BoxFit.contain,
+  );
+
+  static Widget channelChat({double size = AppSize.iconXSmall}) => Image.asset(
+    'assets/images/channel_chat.png',
+    package: 'cowork_design_system',
+    width: size,
+    height: size,
+    fit: BoxFit.contain,
+  );
+
+  static Widget webhook({double size = AppSize.iconSmall}) => Image.asset(
+    'assets/images/webhook.png',
+    package: 'cowork_design_system',
+    width: size,
+    height: size,
+    fit: BoxFit.contain,
+  );
+
+  static Widget plus({double size = AppSize.iconSmall}) => Image.asset(
+    'assets/images/plus.png',
+    package: 'cowork_design_system',
+    width: size,
+    height: size,
+    fit: BoxFit.contain,
+  );
+
 }
