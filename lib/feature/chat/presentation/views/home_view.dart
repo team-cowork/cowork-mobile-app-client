@@ -41,7 +41,12 @@ class _ChatShortcutBar extends StatelessWidget {
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 4, 16, 14),
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.s16,
+          AppSpacing.s4,
+          AppSpacing.s16,
+          AppSpacing.s14,
+        ),
         child: Row(spacing: 14, children: [ChatButton(onTap: () {})]),
       ),
     );
