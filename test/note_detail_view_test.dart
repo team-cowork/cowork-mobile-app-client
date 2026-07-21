@@ -1,3 +1,5 @@
+import 'package:cowork_app/feature/notes/domain/note.dart';
+import 'package:cowork_app/feature/notes/presentation/views/note_detail_view.dart';
 import 'package:cowork_app/feature/notes/presentation/views/notes_view.dart';
 import 'package:cowork_design_system/design_system.dart';
 import 'package:flutter/material.dart';
@@ -35,5 +37,33 @@ void main() {
     await tester.pump();
 
     expect(find.byIcon(Icons.check), findsNWidgets(2));
+  });
+
+  testWidgets('참여자가 5명을 넘으면 아바타 4개 + 카운터만 표시하고 탭하면 전체 목록이 나온다', (
+    tester,
+  ) async {
+    const note = Note(
+      title: '대규모 회의',
+      tags: [],
+      summary: '',
+      author: NoteAuthor(name: 'junjuny', initial: '준', date: '03.12'),
+      participants: ['도', '서', '민', '가', '나', '다', '라'],
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(theme: AppTheme.dark(), home: const NoteDetailView(note: note)),
+    );
+    await tester.pumpAndSettle();
+
+    // 7명 → 아바타 4개 + `+3` 카운터. 나머지 이니셜은 스택에 없다.
+    expect(find.text('+3'), findsOneWidget);
+    expect(find.text('라'), findsNothing);
+
+    await tester.tap(find.text('+3'));
+    await tester.pumpAndSettle();
+
+    // 시트에 전체 7명이 나온다. 각 행은 아바타 + 라벨이라 이니셜은 2번 나타난다.
+    expect(find.text('참여자 7명'), findsOneWidget);
+    expect(find.text('라'), findsNWidgets(2));
   });
 }

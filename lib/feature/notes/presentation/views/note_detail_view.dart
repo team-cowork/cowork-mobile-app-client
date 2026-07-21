@@ -127,6 +127,9 @@ class _AuthorLine extends StatelessWidget {
 }
 
 /// 참여자 아바타를 8px 씩 겹쳐 쌓는다.
+///
+/// 최대 [_maxVisible]개까지만 노출하고, 초과하면 마지막 칸을 `+N` 카운터로 대체한다.
+/// 탭하면 전체 참여자 목록 시트를 띄운다.
 class _ParticipantStack extends StatelessWidget {
   const _ParticipantStack(this.initials);
 
@@ -134,28 +137,112 @@ class _ParticipantStack extends StatelessWidget {
 
   static const _size = 24.0;
   static const _step = 16.0;
+  static const _maxVisible = 5;
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: initials.isEmpty ? 0 : _size + _step * (initials.length - 1),
-      height: _size,
-      child: Stack(
-        children: [
-          for (final (index, initial) in initials.indexed)
-            Positioned(
-              left: index * _step,
-              child: _Avatar(
-                initial: initial,
-                // 작성자가 0번을 쓰므로 참여자는 1번부터.
-                color: NoteDetailView._avatarColor(index + 1),
-                bordered: true,
+    if (initials.isEmpty) return const SizedBox.shrink();
+
+    final overflow = initials.length > _maxVisible;
+    // 넘치면 마지막 한 칸을 +N 카운터로 쓰므로 아바타는 4개만 보인다.
+    final avatarCount = overflow ? _maxVisible - 1 : initials.length;
+    final slots = overflow ? _maxVisible : initials.length;
+
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => _showParticipants(context, initials),
+      child: SizedBox(
+        width: _size + _step * (slots - 1),
+        height: _size,
+        child: Stack(
+          children: [
+            for (var i = 0; i < avatarCount; i++)
+              Positioned(
+                left: i * _step,
+                child: _Avatar(
+                  initial: initials[i],
+                  // 작성자가 0번을 쓰므로 참여자는 1번부터.
+                  color: NoteDetailView._avatarColor(i + 1),
+                  bordered: true,
+                ),
               ),
-            ),
-        ],
+            if (overflow)
+              Positioned(
+                left: avatarCount * _step,
+                child: _Avatar(
+                  initial: '+${initials.length - avatarCount}',
+                  color: AppColors.neutral600,
+                  bordered: true,
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
+}
+
+/// 참여자 전체 목록을 바텀시트로 띄운다.
+Future<void> _showParticipants(BuildContext context, List<String> initials) {
+  return showModalBottomSheet<void>(
+    context: context,
+    backgroundColor: AppColors.neutral800,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.r20)),
+    ),
+    builder: (_) => SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.s20,
+          AppSpacing.s12,
+          AppSpacing.s20,
+          AppSpacing.s16,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.neutral600,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.s16),
+            Text(
+              '참여자 ${initials.length}명',
+              style: AppFont.labelS.copyWith(color: AppColors.darkOnSurface),
+            ),
+            const SizedBox(height: AppSpacing.s12),
+            for (final (index, initial) in initials.indexed)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: AppSpacing.s6),
+                child: Row(
+                  children: [
+                    _Avatar(
+                      initial: initial,
+                      color: NoteDetailView._avatarColor(index + 1),
+                    ),
+                    const SizedBox(width: AppSpacing.s10),
+                    Text(
+                      initial,
+                      style: AppFont.subtextM.copyWith(
+                        fontSize: 14,
+                        color: AppColors.darkOnSurface,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        ),
+      ),
+    ),
+  );
 }
 
 /// 이니셜 한 글자를 담는 원형 아바타.
