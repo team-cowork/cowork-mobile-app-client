@@ -138,7 +138,7 @@ class _ParticipantStack extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: _size + _step * (initials.length - 1),
+      width: initials.isEmpty ? 0 : _size + _step * (initials.length - 1),
       height: _size,
       child: Stack(
         children: [
@@ -258,6 +258,15 @@ class _ActionItemRow extends StatefulWidget {
 
 class _ActionItemRowState extends State<_ActionItemRow> {
   late bool _done = widget.item.done;
+
+  @override
+  void didUpdateWidget(covariant _ActionItemRow oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // 목록이 갱신되어 같은 자리에 다른 item 이 오면 체크 상태를 새 값으로 맞춘다.
+    if (oldWidget.item != widget.item) {
+      _done = widget.item.done;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
