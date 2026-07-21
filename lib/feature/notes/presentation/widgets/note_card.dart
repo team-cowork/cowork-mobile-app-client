@@ -2,6 +2,7 @@ import 'package:cowork_design_system/design_system.dart';
 import 'package:flutter/material.dart';
 
 import '../../domain/note.dart';
+import '../views/note_detail_view.dart';
 
 /// 회의록 목록의 카드 한 장.
 ///
@@ -14,6 +15,16 @@ class NoteCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => Navigator.of(context).push(
+        MaterialPageRoute<void>(builder: (_) => NoteDetailView(note: note)),
+      ),
+      child: _card(),
+    );
+  }
+
+  Widget _card() {
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
