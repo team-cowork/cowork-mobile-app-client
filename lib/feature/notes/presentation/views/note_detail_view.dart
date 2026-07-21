@@ -1,6 +1,7 @@
 import 'package:cowork_design_system/design_system.dart';
 import 'package:flutter/material.dart';
 
+import '../../../../core/utils/base_scaffold.dart';
 import '../../domain/note.dart';
 
 /// 회의록 상세 화면.
@@ -25,8 +26,7 @@ class NoteDetailView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.neutral850,
+    return BaseScaffold(
       appBar: CoworkAppBar.detail(
         // 상세 화면 제목은 본문 상단에 크게 노출되므로 앱바는 액션만 둔다.
         title: '',
