@@ -12,12 +12,9 @@ enum CoworkIconButtonVariant { fill, weak, ghost }
 enum CoworkIconButtonColor { brand, neutral, danger }
 
 /// 아이콘 단독 액션 버튼.
-///
-/// 채널 추가, 파일 첨부, 설정 진입 등 텍스트 라벨 없이 아이콘만으로 동작을
-/// 표현하는 원형 버튼이다.
 class CoworkIconButton extends StatelessWidget {
   const CoworkIconButton({
-    required this.icon,
+    required IconData icon,
     this.onPressed,
     this.size = CoworkIconButtonSize.medium,
     this.variant = CoworkIconButtonVariant.fill,
@@ -25,9 +22,27 @@ class CoworkIconButton extends StatelessWidget {
     this.enabled = true,
     this.semanticLabel,
     super.key,
-  });
+  }) : iconData = icon,
+       iconWidget = null;
 
-  final IconData icon;
+  const CoworkIconButton.custom({
+    required Widget icon,
+    this.onPressed,
+    this.size = CoworkIconButtonSize.medium,
+    this.variant = CoworkIconButtonVariant.fill,
+    this.color = CoworkIconButtonColor.brand,
+    this.enabled = true,
+    this.semanticLabel,
+    super.key,
+  }) : iconWidget = icon,
+       iconData = null;
+
+  /// Material Icon
+  final IconData? iconData;
+
+  /// SVG, PNG 등 커스텀 아이콘
+  final Widget? iconWidget;
+
   final VoidCallback? onPressed;
   final CoworkIconButtonSize size;
   final CoworkIconButtonVariant variant;
@@ -60,11 +75,13 @@ class CoworkIconButton extends StatelessWidget {
           child: SizedBox.square(
             dimension: tokens.diameter,
             child: Center(
-              child: Icon(
-                icon,
-                size: tokens.iconSize,
-                color: tokens.foregroundColor,
-              ),
+              child:
+                  iconWidget ??
+                  Icon(
+                    iconData,
+                    size: tokens.iconSize,
+                    color: tokens.foregroundColor,
+                  ),
             ),
           ),
         ),
@@ -112,6 +129,7 @@ class _CoworkIconButtonTokens {
       final disabledBackground = variant == CoworkIconButtonVariant.ghost
           ? Colors.transparent
           : colorScheme.surfaceContainerHighest;
+
       return _CoworkIconButtonTokens(
         diameter: dimension.diameter,
         iconSize: dimension.iconSize,

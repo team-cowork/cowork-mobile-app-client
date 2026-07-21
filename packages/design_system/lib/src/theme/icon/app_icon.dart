@@ -79,4 +79,12 @@ class AppIcon {
     fit: BoxFit.contain,
   );
 
+  static Widget plus({double size = AppSize.iconSmall}) => Image.asset(
+    'assets/images/plus.png',
+    package: 'cowork_design_system',
+    width: size,
+    height: size,
+    fit: BoxFit.contain,
+  );
+
 }
