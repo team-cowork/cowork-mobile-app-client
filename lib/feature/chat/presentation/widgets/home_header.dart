@@ -26,7 +26,7 @@ class HomeHeader extends StatelessWidget {
           const Spacer(),
           Row(
             children: [
-              const Icon(AppIcon.search, color: AppColors.neutral300),
+              const Icon(AppIcon.search, color: AppColors.neutral300, size: 22),
               const SizedBox(width: AppSpacing.s18),
               AppIcon.bell(),
             ],
