@@ -9,6 +9,9 @@ class ProfileStore {
 
   static final ProfileStore instance = ProfileStore._();
 
+  /// 현재 로그인 사용자 id. 회의록 소유 판별(내 노트인지)에 쓰인다.
+  int currentUserId = 1;
+
   String name = '김준혁';
   String username = '@joon_hyeok0204';
   String statusMessage = '';

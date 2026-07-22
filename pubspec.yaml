@@ -49,6 +49,7 @@ dependencies:
 
   # 프로필 사진 로컬 선택
   image_picker: ^1.1.2
+  flutter_markdown_plus: ^1.0.12
 
 dev_dependencies:
   flutter_test:

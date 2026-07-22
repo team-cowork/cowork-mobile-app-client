@@ -43,10 +43,16 @@ void main() {
     tester,
   ) async {
     const note = Note(
+      id: 999,
       title: '대규모 회의',
       tags: [],
       summary: '',
-      author: NoteAuthor(name: 'junjuny', initial: '준', date: '03.12'),
+      author: NoteAuthor(
+        authorId: 99,
+        name: 'junjuny',
+        initial: '준',
+        date: '03.12',
+      ),
       participants: ['도', '서', '민', '가', '나', '다', '라'],
     );
 
