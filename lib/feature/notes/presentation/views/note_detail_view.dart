@@ -99,6 +99,8 @@ class _NoteDetailViewState extends State<NoteDetailView> {
             const SizedBox(height: AppSpacing.s14),
           ],
           const Divider(height: 1, thickness: 1, color: AppColors.neutral700),
+          if (note.summary.isNotEmpty)
+            _Section(title: '내용', lines: [note.summary]),
           if (note.agenda.isNotEmpty)
             _Section(title: '안건', lines: note.agenda),
           if (note.decisions.isNotEmpty)

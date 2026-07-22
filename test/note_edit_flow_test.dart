@@ -42,5 +42,11 @@ void main() {
     // 상세로 복귀하며 새 제목이 렌더된다.
     expect(find.text('3월 스프린트 플래닝 (수정)'), findsOneWidget);
     expect(find.text('저장'), findsNothing);
+
+    // 목록으로 돌아가도 카드가 갱신된 제목을 보여준다.
+    await tester.tap(find.byIcon(AppIcon.back));
+    await tester.pumpAndSettle();
+    expect(find.text('3월 스프린트 플래닝 (수정)'), findsOneWidget);
+    expect(find.text('2026 1분기 킥오프 회의'), findsNothing);
   });
 }
