@@ -1,14 +1,17 @@
 import 'package:cowork_design_system/design_system.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 
 import '../../../../core/utils/base_scaffold.dart';
+import '../../../profile/data/profile_store.dart';
 import '../../domain/note.dart';
+import 'note_edit_view.dart';
 
 /// 회의록 상세 화면.
 ///
 /// Figma `App / Note Detail (회의록)` 스펙에 맞춘 다크 전용 레이아웃.
 /// 제목·작성자·참여자·배지 헤더와 안건 / 결정 사항 / 액션 아이템 섹션으로 구성된다.
-class NoteDetailView extends StatelessWidget {
+class NoteDetailView extends StatefulWidget {
   const NoteDetailView({super.key, required this.note});
 
   final Note note;
@@ -25,7 +28,26 @@ class NoteDetailView extends StatelessWidget {
       _avatarColors[index % _avatarColors.length];
 
   @override
+  State<NoteDetailView> createState() => _NoteDetailViewState();
+}
+
+class _NoteDetailViewState extends State<NoteDetailView> {
+  late Note _note = widget.note;
+
+  /// 내가 작성한 회의록일 때만 편집을 허용한다.
+  bool get _isMine =>
+      _note.author.authorId == ProfileStore.instance.currentUserId;
+
+  Future<void> _openEditor() async {
+    final updated = await Navigator.of(context).push<Note>(
+      MaterialPageRoute(builder: (_) => NoteEditView(note: _note)),
+    );
+    if (updated != null) setState(() => _note = updated);
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final note = _note;
     return BaseScaffold(
       appBar: CoworkAppBar.detail(
         // 상세 화면 제목은 본문 상단에 크게 노출되므로 앱바는 액션만 둔다.
@@ -39,14 +61,15 @@ class NoteDetailView extends StatelessWidget {
             semanticLabel: '공유',
             onPressed: () {},
           ),
-          CoworkIconButton(
-            icon: Icons.edit_outlined,
-            size: CoworkIconButtonSize.small,
-            variant: CoworkIconButtonVariant.ghost,
-            color: CoworkIconButtonColor.neutral,
-            semanticLabel: '편집',
-            onPressed: () {},
-          ),
+          if (_isMine)
+            CoworkIconButton(
+              icon: Icons.edit_outlined,
+              size: CoworkIconButtonSize.small,
+              variant: CoworkIconButtonVariant.ghost,
+              color: CoworkIconButtonColor.neutral,
+              semanticLabel: '편집',
+              onPressed: _openEditor,
+            ),
         ],
       ),
       body: ListView(
@@ -76,6 +99,8 @@ class NoteDetailView extends StatelessWidget {
             const SizedBox(height: AppSpacing.s14),
           ],
           const Divider(height: 1, thickness: 1, color: AppColors.neutral700),
+          if (note.summary.isNotEmpty)
+            _Section(title: '내용', lines: [note.summary]),
           if (note.agenda.isNotEmpty)
             _Section(title: '안건', lines: note.agenda),
           if (note.decisions.isNotEmpty)
@@ -280,6 +305,23 @@ class _Avatar extends StatelessWidget {
   }
 }
 
+/// 섹션 본문 마크다운 렌더 스타일. 다크 테마 본문 톤에 맞춘다.
+final _markdownBodyStyle = AppFont.subtextM.copyWith(
+  fontSize: 14,
+  height: 1.5,
+  color: AppColors.darkOnSurface.withValues(alpha: 0.9),
+);
+
+final _markdownStyle = MarkdownStyleSheet(
+  p: _markdownBodyStyle,
+  listBullet: _markdownBodyStyle,
+  strong: _markdownBodyStyle.copyWith(fontWeight: AppFont.bold),
+  h1: _markdownBodyStyle.copyWith(fontSize: 18, fontWeight: AppFont.bold),
+  h2: _markdownBodyStyle.copyWith(fontSize: 16, fontWeight: AppFont.bold),
+  h3: _markdownBodyStyle.copyWith(fontSize: 15, fontWeight: AppFont.bold),
+  a: _markdownBodyStyle.copyWith(color: AppColors.red400),
+);
+
 /// `안건`, `결정 사항` 처럼 제목 + 여러 줄 본문으로 이뤄진 섹션.
 class _Section extends StatelessWidget {
   const _Section({required this.title, required this.lines});
@@ -293,13 +335,10 @@ class _Section extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _SectionTitle(title),
-        Text(
-          lines.join('\n'),
-          style: AppFont.subtextM.copyWith(
-            fontSize: 14,
-            height: 1.5,
-            color: AppColors.darkOnSurface.withValues(alpha: 0.9),
-          ),
+        MarkdownBody(
+          data: lines.join('\n'),
+          shrinkWrap: true,
+          styleSheet: _markdownStyle,
         ),
       ],
     );

@@ -5,6 +5,7 @@ import 'package:equatable/equatable.dart';
 /// UI 색상 등은 위젯 쪽에서 매핑한다. 여기서는 표시할 데이터만 담는다.
 class Note extends Equatable {
   const Note({
+    required this.id,
     required this.title,
     required this.tags,
     required this.summary,
@@ -14,6 +15,9 @@ class Note extends Equatable {
     this.decisions = const [],
     this.actionItems = const [],
   });
+
+  /// 노트 식별자(인덱스형). 편집 후 저장소에서 동일 노트를 찾아 교체할 때 쓰인다.
+  final int id;
 
   /// 회의록 제목 (예: 2026 1분기 킥오프 회의).
   final String title;
@@ -39,8 +43,30 @@ class Note extends Equatable {
   /// 상세 화면 `액션 아이템` 체크리스트.
   final List<NoteActionItem> actionItems;
 
+  Note copyWith({
+    String? title,
+    List<String>? tags,
+    String? summary,
+    NoteAuthor? author,
+    List<String>? participants,
+    List<String>? agenda,
+    List<String>? decisions,
+    List<NoteActionItem>? actionItems,
+  }) => Note(
+    id: id,
+    title: title ?? this.title,
+    tags: tags ?? this.tags,
+    summary: summary ?? this.summary,
+    author: author ?? this.author,
+    participants: participants ?? this.participants,
+    agenda: agenda ?? this.agenda,
+    decisions: decisions ?? this.decisions,
+    actionItems: actionItems ?? this.actionItems,
+  );
+
   @override
   List<Object?> get props => [
+    id,
     title,
     tags,
     summary,
@@ -69,11 +95,15 @@ class NoteActionItem extends Equatable {
 /// 회의록 작성자. 하단의 아바타 + `이름 · 날짜` 라인에 쓰인다.
 class NoteAuthor extends Equatable {
   const NoteAuthor({
+    required this.authorId,
     required this.name,
     required this.initial,
     required this.date,
     this.avatarUrl = '',
   });
+
+  /// 작성자 사용자 id. [ProfileStore.currentUserId] 와 같으면 내 노트다.
+  final int authorId;
 
   /// 표시 이름 (예: junjuny).
   final String name;
@@ -88,5 +118,5 @@ class NoteAuthor extends Equatable {
   final String date;
 
   @override
-  List<Object?> get props => [name, avatarUrl, initial, date];
+  List<Object?> get props => [authorId, name, avatarUrl, initial, date];
 }
