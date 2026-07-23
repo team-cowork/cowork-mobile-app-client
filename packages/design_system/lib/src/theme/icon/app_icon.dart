@@ -22,6 +22,22 @@ class AppIcon {
   static const IconData navIssue = Icons.view_kanban_outlined;
   static const IconData navNote = Icons.description_outlined;
 
+  // 브랜드
+  static Widget logo() => Image.asset(
+    'assets/images/cowork_logo.png',
+    package: 'cowork_design_system',
+    fit: BoxFit.contain,
+  );
+
+  /// DataGSM 브랜드 `D` 마크. 로그인 버튼 라벨은 텍스트로 직접 그린다.
+  static Widget dataGsm({double size = 20}) => Image.asset(
+    'assets/images/datagsm_logo.png',
+    package: 'cowork_design_system',
+    height: size,
+    fit: BoxFit.contain,
+    excludeFromSemantics: true,
+  );
+
   static Widget hashChannel({double size = AppSize.iconSmall}) => Image.asset(
     'assets/images/hash_channel.png',
     package: 'cowork_design_system',
