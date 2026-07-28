@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/utils/bloc_scaffold.dart';
+import '../../../auth/presentation/viewModels/auth_bloc.dart';
 import '../../../profile/presentation/views/edit_profile_view.dart';
 import '../../domain/settings.dart';
 import '../viewModels/settings_bloc.dart';
@@ -138,9 +139,9 @@ class _SettingsBody extends StatelessWidget {
                 icon: Icons.logout,
                 label: '로그아웃',
                 destructive: true,
-                onTap: () {
-                  // TODO: 로그아웃 로직 추가
-                },
+                onTap: () => context.read<AuthBloc>().add(
+                  const AuthEvent.signOutRequested(),
+                ),
               ),
             ],
           ),

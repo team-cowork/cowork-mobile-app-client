@@ -89,7 +89,8 @@ class _DataGsmLoginButton extends StatelessWidget {
             height: 51,
             child: ExcludeSemantics(
               child: Row(
-                mainAxisSize: MainAxisSize.min,
+                // SizedBox 가 폭 256 을 강제해서 MainAxisSize.min 은 먹지 않는다.
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   AppIcon.dataGsm(),
                   const SizedBox(width: AppSpacing.s8),

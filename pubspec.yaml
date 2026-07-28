@@ -51,6 +51,14 @@ dependencies:
   image_picker: ^1.1.2
   flutter_markdown_plus: ^1.0.12
 
+  # DataGSM OAuth(PKCE) 로그인
+  # flutter_web_auth_2: 인증 브라우저(ASWebAuthenticationSession / Custom Tabs)를 열고
+  #   cowork:// 콜백까지 한 번에 받아온다. url_launcher + 딥링크 조합을 대체한다.
+  flutter_web_auth_2: ^5.0.3
+  flutter_secure_storage: ^10.3.1
+  crypto: ^3.0.6
+  dio: ^5.11.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
