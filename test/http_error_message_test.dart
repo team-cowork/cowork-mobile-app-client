@@ -1,4 +1,4 @@
-import 'package:cowork_app/core/utils/http_error_message.dart';
+import 'package:cowork_app/network/http_error_message.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

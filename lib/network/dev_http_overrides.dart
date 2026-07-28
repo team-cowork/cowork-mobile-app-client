@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 
-import '../../feature/auth/data/dgsm_oauth_config.dart';
+import '../feature/auth/data/dgsm_oauth_config.dart';
 
 /// 개발 API 서버가 자체 서명 인증서를 쓰는 동안만 TLS 검증을 통과시킨다.
 ///

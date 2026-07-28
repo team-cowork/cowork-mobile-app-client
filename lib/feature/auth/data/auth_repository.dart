@@ -8,8 +8,9 @@ import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_web_auth_2/flutter_web_auth_2.dart';
 
-import '../../../core/utils/http_error_message.dart';
 import '../../../core/utils/logger.dart';
+import '../../../network/dio_client.dart';
+import '../../../network/http_error_message.dart';
 import 'dgsm_oauth_config.dart';
 
 /// 사용자에게 그대로 보여줄 수 있는 로그인 실패 사유.
@@ -29,37 +30,11 @@ class AuthException implements Exception {
 /// 3. refresh token 만 secure storage 에 남긴다. access token 은 30분짜리라 메모리로 충분하다.
 class AuthRepository {
   AuthRepository({Dio? dio, FlutterSecureStorage? storage})
-    : _dio = dio ?? _defaultDio(),
+    : _dio = dio ?? createDio(),
       _storage = storage ?? const FlutterSecureStorage();
 
   final Dio _dio;
   final FlutterSecureStorage _storage;
-
-  static Dio _defaultDio() {
-    final dio = Dio(
-      BaseOptions(
-        baseUrl: DgsmOAuthConfig.apiBaseUrl,
-        contentType: Headers.jsonContentType,
-        // 본문을 문자열 그대로 받는다. unwrapPayload / errorMessageOf 가 raw JSON 을
-        // 파싱하는 쪽이라 dio 의 자동 디코딩을 끄는 편이 분기가 하나 줄어든다.
-        responseType: ResponseType.plain,
-      ),
-    );
-    // ponytail: 본문과 헤더는 일부러 뺐다. 요청 본문엔 code_verifier / refresh_token 이,
-    // 헤더엔 Bearer 토큰이 들어 있어 logcat 에 그대로 남는다. 본문까지 봐야 하는
-    // 순간이 오면 그때만 requestBody 를 잠깐 켜고 되돌린다.
-    if (kDebugMode) {
-      dio.interceptors.add(
-        LogInterceptor(
-          requestHeader: false,
-          requestBody: false,
-          responseHeader: false,
-          responseBody: false,
-        ),
-      );
-    }
-    return dio;
-  }
 
   static const _refreshTokenKey = 'cowork.refresh_token';
 

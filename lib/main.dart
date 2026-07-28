@@ -1,5 +1,5 @@
 import 'package:cowork_app/core/presentation/auth_gate.dart';
-import 'package:cowork_app/core/utils/dev_http_overrides.dart';
+import 'package:cowork_app/network/dev_http_overrides.dart';
 import 'package:cowork_app/feature/auth/data/dgsm_oauth_config.dart';
 import 'package:cowork_app/feature/auth/presentation/viewModels/auth_bloc.dart';
 import 'package:cowork_design_system/design_system.dart';

@@ -30,7 +30,8 @@ class _StubAdapter implements HttpClientAdapter {
   void close({bool force = false}) {}
 }
 
-/// AuthRepository 가 쓰는 것과 같은 BaseOptions 로 POST 한 뒤 예외를 돌려준다.
+/// `createDio()` 와 같은 BaseOptions 로 POST 한 뒤 예외를 돌려준다. baseUrl 은
+/// dart-define 없이 비어 있어 여기서만 더미 값을 쓴다.
 Future<DioException> _postFailure(int status, String body) async {
   final dio =
       Dio(
