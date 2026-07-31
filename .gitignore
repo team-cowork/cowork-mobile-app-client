@@ -31,7 +31,8 @@ migrate_working_dir/
 .flutter-plugins-dependencies
 .pub-cache/
 .pub/
-/build/
+# 루트뿐 아니라 packages/*, widgetbook/ 의 빌드 산출물도 함께 무시한다.
+build/
 /coverage/
 
 # Symbolication related
@@ -61,6 +62,7 @@ app.*.map.json
 # Environment files
 .env
 .env.*
+!.env.example
 
 # Firebase
 google-services.json
