@@ -7,6 +7,7 @@ import 'package:image_picker/image_picker.dart';
 
 import '../../../../core/utils/async_state.dart';
 import '../../../../core/utils/base_scaffold.dart';
+import '../../data/profile_repository.dart';
 import '../../domain/edit_profile.dart';
 import '../viewModels/edit_profile_bloc.dart';
 
@@ -30,6 +31,9 @@ class _EditProfileViewState extends State<EditProfileView> {
   File? _pickedImage;
   String _avatarUrl = '';
   String _avatarInitial = '';
+
+  /// 사진을 지웠는지. 저장할 때 서버에서도 지운다.
+  bool _removeAvatar = false;
 
   /// 로드된 값으로 컨트롤러를 한 번만 채우기 위한 플래그.
   bool _seeded = false;
@@ -66,7 +70,10 @@ class _EditProfileViewState extends State<EditProfileView> {
         imageQuality: 85,
       );
       if (picked == null || !mounted) return;
-      setState(() => _pickedImage = File(picked.path));
+      setState(() {
+        _pickedImage = File(picked.path);
+        _removeAvatar = false;
+      });
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -74,6 +81,13 @@ class _EditProfileViewState extends State<EditProfileView> {
       );
     }
   }
+
+  /// 사진을 이니셜 폴백으로 되돌린다. 서버에서 지우는 건 저장할 때다.
+  void _removePhoto() => setState(() {
+    _pickedImage = null;
+    _avatarUrl = '';
+    _removeAvatar = true;
+  });
 
   void _save(BuildContext context) {
     final name = _name.text.trim();
@@ -91,6 +105,7 @@ class _EditProfileViewState extends State<EditProfileView> {
         statusMessage: _statusMessage.text.trim(),
         bio: _bio.text.trim(),
         localAvatarPath: _pickedImage?.path,
+        removeAvatar: _removeAvatar,
       ),
     );
     Navigator.of(context).maybePop();
@@ -99,7 +114,9 @@ class _EditProfileViewState extends State<EditProfileView> {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) => EditProfileBloc()..add(const EditProfileRequested()),
+      create: (context) =>
+          EditProfileBloc(context.read<ProfileRepository>())
+            ..add(const EditProfileRequested()),
       child: Builder(
         builder: (context) => BlocListener<EditProfileBloc, EditProfileState>(
           listener: (context, state) {
@@ -162,6 +179,7 @@ class _EditProfileViewState extends State<EditProfileView> {
             initial: _avatarInitial,
             pickedImage: _pickedImage,
             onChangePhoto: _pickImage,
+            onRemovePhoto: _removePhoto,
           ),
           CoworkTextField(
             labelText: '이름',
@@ -244,7 +262,7 @@ class _HeaderAction extends StatelessWidget {
   }
 }
 
-/// 아바타(사진/이니셜) + 카메라 뱃지 + `사진 변경` 링크.
+/// 아바타(사진/이니셜) + 카메라 뱃지 + `사진 변경` / `사진 삭제` 링크.
 ///
 /// 표시 우선순위: 로컬에서 새로 고른 사진 > 프로필 아바타 URL > 이니셜 폴백.
 class _AvatarEditor extends StatelessWidget {
@@ -253,12 +271,17 @@ class _AvatarEditor extends StatelessWidget {
     required this.initial,
     required this.pickedImage,
     required this.onChangePhoto,
+    required this.onRemovePhoto,
   });
 
   final String avatarUrl;
   final String initial;
   final File? pickedImage;
   final VoidCallback onChangePhoto;
+  final VoidCallback onRemovePhoto;
+
+  /// 지울 사진이 있는지. 이미 이니셜 폴백이면 `사진 삭제` 를 띄우지 않는다.
+  bool get _hasPhoto => pickedImage != null || avatarUrl.isNotEmpty;
 
   @override
   Widget build(BuildContext context) {
@@ -311,16 +334,22 @@ class _AvatarEditor extends StatelessWidget {
             ),
           ),
           const SizedBox(height: AppSpacing.s10),
-          GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTap: onChangePhoto,
-            child: Text(
-              '사진 변경',
-              style: AppFont.subtextM.copyWith(
-                fontWeight: AppFont.semiBold,
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            spacing: AppSpacing.s16,
+            children: [
+              _PhotoAction(
+                label: '사진 변경',
                 color: AppColors.red400,
+                onTap: onChangePhoto,
               ),
-            ),
+              if (_hasPhoto)
+                _PhotoAction(
+                  label: '사진 삭제',
+                  color: AppColors.neutral300,
+                  onTap: onRemovePhoto,
+                ),
+            ],
           ),
         ],
       ),
@@ -347,4 +376,32 @@ class _AvatarEditor extends StatelessWidget {
     initial,
     style: AppFont.displayM.copyWith(fontSize: 40, color: AppColors.white),
   );
+}
+
+/// 아바타 아래 텍스트 링크 (`사진 변경` / `사진 삭제`).
+class _PhotoAction extends StatelessWidget {
+  const _PhotoAction({
+    required this.label,
+    required this.color,
+    required this.onTap,
+  });
+
+  final String label;
+  final Color color;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: Text(
+        label,
+        style: AppFont.subtextM.copyWith(
+          fontWeight: AppFont.semiBold,
+          color: color,
+        ),
+      ),
+    );
+  }
 }
