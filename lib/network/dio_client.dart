@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 
@@ -52,4 +54,16 @@ Dio createAuthedDio(AuthRepository repository) {
     ),
   );
   return dio;
+}
+
+/// 게이트웨이는 응답을 `{status, code, message, data}` 로 감싸고 서비스를 직접
+/// 부르면 감싸지 않는다. 둘 다 받아준다. 본문 없는 204 는 빈 맵.
+///
+/// 저장소마다 이 분기를 다시 쓰지 않도록 네트워크 공통 모듈에 둔다.
+Map<String, dynamic> unwrapPayload(String body) {
+  if (body.isEmpty) return const {};
+  final decoded = jsonDecode(body);
+  if (decoded is! Map<String, dynamic>) return const {};
+  final data = decoded['data'];
+  return data is Map<String, dynamic> ? data : decoded;
 }

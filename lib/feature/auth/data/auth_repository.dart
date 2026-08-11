@@ -199,17 +199,6 @@ String codeChallengeOf(String verifier) =>
 String _base64UrlNoPad(List<int> bytes) =>
     base64Url.encode(bytes).replaceAll('=', '');
 
-/// 게이트웨이는 응답을 `{status, code, message, data}` 로 감싸고 서비스를 직접
-/// 부르면 감싸지 않는다. 둘 다 받아준다. 본문 없는 204 는 빈 맵.
-@visibleForTesting
-Map<String, dynamic> unwrapPayload(String body) {
-  if (body.isEmpty) return const {};
-  final decoded = jsonDecode(body);
-  if (decoded is! Map<String, dynamic>) return const {};
-  final data = decoded['data'];
-  return data is Map<String, dynamic> ? data : decoded;
-}
-
 /// DataGSM(`error_description`)과 게이트웨이(`message`) 양쪽 오류 형식을 읽는다.
 @visibleForTesting
 String? errorMessageOf(String body) {
