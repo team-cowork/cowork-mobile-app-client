@@ -1,6 +1,7 @@
 import 'package:cowork_app/feature/profile/data/profile_store.dart';
 import 'package:cowork_app/feature/profile/data/user_response.dart';
 import 'package:cowork_app/feature/profile/domain/edit_profile.dart';
+import 'package:cowork_app/feature/profile/domain/enums/user_status.dart';
 import 'package:cowork_app/feature/profile/domain/profile.dart';
 import 'package:cowork_design_system/design_system.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -68,6 +69,18 @@ void main() {
     expect(profile.badges.first.color, CoworkBadgeColor.brand);
     expect(profile.badges.last.color, CoworkBadgeColor.neutral);
     expect(profile.metaChips, ['GSM 3학년 1반', '소프트웨어개발과', 'GitHub @joon']);
+  });
+
+  test('접속 상태는 대소문자를 가리지 않고, 모르는 값은 offline 이다', () {
+    // 서버가 `ONLINE` 도 `offline` 도 준다. 모를 때 초록으로 켜 두면 안 된다.
+    UserStatus statusOf(String? raw) =>
+        Profile.fromMe(UserResponse.fromJson({'status': raw})).status;
+
+    expect(statusOf('ONLINE'), UserStatus.online);
+    expect(statusOf('offline'), UserStatus.offline);
+    expect(statusOf('dnd'), UserStatus.busy);
+    expect(statusOf('처음 보는 값'), UserStatus.offline);
+    expect(statusOf(null), UserStatus.offline);
   });
 
   test('nullable 필드가 비어도 화면이 깨지지 않는다', () {

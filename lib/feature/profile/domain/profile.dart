@@ -2,6 +2,7 @@ import 'package:cowork_design_system/design_system.dart';
 import 'package:equatable/equatable.dart';
 
 import '../data/user_response.dart';
+import 'enums/user_status.dart';
 
 /// 값이 있는 문자열만 통과시킨다. 서버는 nullable 필드를 null 로도, 빈 문자열로도
 /// 내려주기 때문에 둘 다 "없음"으로 본다.
@@ -19,6 +20,7 @@ class Profile extends Equatable {
     required this.badges,
     required this.metaChips,
     required this.streak,
+    this.status = UserStatus.offline,
     this.localAvatarPath,
   });
 
@@ -41,6 +43,7 @@ class Profile extends Equatable {
       name: _text(me.name) ?? '',
       avatarUrl: _text(me.profileImageUrl) ?? '',
       localAvatarPath: localAvatarPath,
+      status: UserStatus.from(me.status),
       subtitle: [
         if (nickname != null) '@$nickname',
         if (specialty != null) specialty,
@@ -83,6 +86,9 @@ class Profile extends Equatable {
   /// 로컬에서 선택한 아바타 사진 경로. 있으면 [avatarUrl]보다 우선한다.
   final String? localAvatarPath;
 
+  /// 접속 상태. 아바타 오른쪽 아래 점 색으로 나타난다.
+  final UserStatus status;
+
   /// 이름 아래 한 줄 소개 (예: @joon_hyeok0204 · 프론트엔드 개발자).
   final String subtitle;
 
@@ -99,6 +105,7 @@ class Profile extends Equatable {
   List<Object?> get props => [
     name,
     avatarUrl,
+    status,
     subtitle,
     badges,
     metaChips,
