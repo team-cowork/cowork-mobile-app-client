@@ -1,7 +1,10 @@
+import 'package:dio/dio.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/utils/async_state.dart';
+import '../../../../core/utils/logger.dart';
+import '../../../../network/http_error_message.dart';
 import '../../data/profile_repository.dart';
 import '../../data/profile_store.dart';
 import '../../domain/profile.dart';
@@ -34,8 +37,9 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
           ),
         ),
       );
-    } catch (_) {
-      emit(const ProfileState.failure());
+    } catch (e, s) {
+      Logger.e('프로필 조회 실패', tag: 'Profile', error: e, stackTrace: s);
+      emit(ProfileState.failure(e is DioException ? dioErrorMessage(e) : null));
     }
   }
 }

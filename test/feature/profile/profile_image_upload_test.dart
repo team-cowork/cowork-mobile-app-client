@@ -108,6 +108,22 @@ void main() {
     expect(storage.payloads.single, [1, 2, 3], reason: '파일 바이트가 그대로 올라간다');
   });
 
+  test('presigned 응답에 URL 이 없으면 올리지 않고 던진다', () async {
+    final file = File('${Directory.systemTemp.createTempSync().path}/a.png')
+      ..writeAsBytesSync([1]);
+    addTearDown(() => file.parent.deleteSync(recursive: true));
+
+    final storage = _RecordingAdapter();
+    await expectLater(
+      ProfileRepository.withDio(
+        _dio(_RecordingAdapter(jsonEncode({'object_key': 'k'}))),
+        _dio(storage),
+      ).uploadProfileImage(file.path),
+      throwsA(isA<FormatException>()),
+    );
+    expect(storage.requests, isEmpty, reason: '빈 URL 은 API 게이트웨이로 날아간다');
+  });
+
   test('모르는 확장자는 jpeg 로 올린다', () async {
     final file = File('${Directory.systemTemp.createTempSync().path}/IMG_0001')
       ..writeAsBytesSync([1]);

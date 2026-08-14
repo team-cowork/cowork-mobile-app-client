@@ -1,7 +1,10 @@
+import 'package:dio/dio.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/utils/async_state.dart';
+import '../../../../core/utils/logger.dart';
+import '../../../../network/http_error_message.dart';
 import '../../data/profile_repository.dart';
 import '../../data/profile_store.dart';
 import '../../data/user_request.dart';
@@ -45,14 +48,14 @@ class EditProfileBloc extends Bloc<EditProfileEvent, EditProfileState> {
   /// 엔드포인트라 값이 바뀐 경우에만 한 번 더 부른다. 새로 고른 사진이 있으면
   /// 먼저 올린다. 그래야 뒤따르는 수정 응답에 새 사진 URL 이 실려 온다.
   ///
-  /// ponytail: 화면은 저장을 누른 즉시 닫히므로 실패해도 화면에 뜨지 않는다.
-  /// 다만 프로필 화면이 돌아오면서 서버 값을 다시 읽어 오므로 저장이 안 된 건
-  /// 그 자리에서 드러난다. 실패 문구까지 띄우려면 저장 결과를 기다렸다 닫아야 한다.
+  /// 저장이 끝날 때까지 로딩을 내보낸다. 화면은 성공을 받고서야 닫히므로,
+  /// 프로필 화면이 다시 읽는 시점엔 저장이 이미 서버에 반영돼 있다.
   Future<void> _onSubmit(
     EditProfileSubmitted event,
     Emitter<EditProfileState> emit,
   ) async {
     final store = ProfileStore.instance..localAvatarPath = event.localAvatarPath;
+    emit(const EditProfileState.loading());
     try {
       final uploaded = event.localAvatarPath;
       if (uploaded != null) {
@@ -87,8 +90,14 @@ class EditProfileBloc extends Bloc<EditProfileEvent, EditProfileState> {
         );
       }
       emit(EditProfileState.success(profile));
-    } catch (_) {
-      emit(const EditProfileState.failure());
+    } catch (e, s) {
+      // 어느 단계에서 엎어졌는지는 로그로만 남기고, 화면엔 사용자 문구만 준다.
+      Logger.e('프로필 저장 실패', tag: 'Profile', error: e, stackTrace: s);
+      emit(
+        EditProfileState.failure(
+          e is DioException ? dioErrorMessage(e) : '프로필을 저장하지 못했어요.',
+        ),
+      );
     }
   }
 }

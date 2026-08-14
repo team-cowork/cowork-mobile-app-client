@@ -94,11 +94,21 @@ class PresignedUploadResponse {
     required this.uploadUrl,
   });
 
-  factory PresignedUploadResponse.fromJson(Map<String, dynamic> json) =>
-      PresignedUploadResponse(
-        objectKey: json['object_key'] as String? ?? '',
-        uploadUrl: json['upload_url'] as String? ?? '',
+  /// 둘 중 하나라도 비면 던진다. 빈 URL 로 올리면 업로드가 스토리지가 아니라
+  /// API 게이트웨이로 날아가고, 실패가 한참 뒤에야 엉뚱한 모습으로 드러난다.
+  factory PresignedUploadResponse.fromJson(Map<String, dynamic> json) {
+    final objectKey = json['object_key'] as String?;
+    final uploadUrl = json['upload_url'] as String?;
+    if (objectKey == null ||
+        objectKey.isEmpty ||
+        uploadUrl == null ||
+        uploadUrl.isEmpty) {
+      throw const FormatException(
+        'presigned 응답에 object_key/upload_url 이 없습니다.',
       );
+    }
+    return PresignedUploadResponse(objectKey: objectKey, uploadUrl: uploadUrl);
+  }
 
   final String objectKey;
   final String uploadUrl;

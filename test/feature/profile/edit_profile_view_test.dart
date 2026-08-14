@@ -12,7 +12,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 /// 어떤 요청에든 같은 `/users/me` 응답을 돌려주고, 나간 요청을 받아 적는다.
 class _StubAdapter implements HttpClientAdapter {
-  _StubAdapter({required String? profileImageUrl})
+  _StubAdapter({required String? profileImageUrl, this.saveStatus = 200})
     : body = jsonEncode({
         'id': 7,
         'name': '김준혁',
@@ -24,6 +24,10 @@ class _StubAdapter implements HttpClientAdapter {
       });
 
   final String body;
+
+  /// 저장(조회가 아닌 요청)에 돌려줄 상태 코드. 실패 경로를 태울 때 바꾼다.
+  final int saveStatus;
+
   final requests = <RequestOptions>[];
 
   @override
@@ -33,9 +37,10 @@ class _StubAdapter implements HttpClientAdapter {
     Future<void>? cancelFuture,
   ) async {
     requests.add(options);
+    final failed = options.method != 'GET' && saveStatus != 200;
     return ResponseBody.fromString(
-      body,
-      200,
+      failed ? jsonEncode({'message': '이미 사용 중인 사용자명이에요.'}) : body,
+      failed ? saveStatus : 200,
       headers: {
         Headers.contentTypeHeader: [Headers.jsonContentType],
       },
@@ -46,11 +51,17 @@ class _StubAdapter implements HttpClientAdapter {
   void close({bool force = false}) {}
 }
 
+/// 편집 화면을 한 단계 밀어 넣고 연다. 저장 뒤 화면이 닫히는지 보려면 돌아갈
+/// 화면(`열기` 버튼)이 있어야 한다.
 Future<_StubAdapter> _openEditProfile(
   WidgetTester tester, {
   required String? profileImageUrl,
+  int saveStatus = 200,
 }) async {
-  final adapter = _StubAdapter(profileImageUrl: profileImageUrl);
+  final adapter = _StubAdapter(
+    profileImageUrl: profileImageUrl,
+    saveStatus: saveStatus,
+  );
   final dio =
       Dio(
           BaseOptions(
@@ -62,14 +73,22 @@ Future<_StubAdapter> _openEditProfile(
         ..httpClientAdapter = adapter;
 
   await tester.pumpWidget(
-    MaterialApp(
-      theme: AppTheme.dark(),
-      home: RepositoryProvider(
-        create: (_) => ProfileRepository.withDio(dio),
-        child: const EditProfileView(),
+    RepositoryProvider(
+      create: (_) => ProfileRepository.withDio(dio),
+      child: MaterialApp(
+        theme: AppTheme.dark(),
+        home: Builder(
+          builder: (context) => TextButton(
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(builder: (_) => const EditProfileView()),
+            ),
+            child: const Text('열기'),
+          ),
+        ),
       ),
     ),
   );
+  await tester.tap(find.text('열기'));
   await tester.pumpAndSettle();
   return adapter;
 }
@@ -109,5 +128,22 @@ void main() {
       ]),
       reason: '사진을 먼저 지우고 나머지 값을 저장한다',
     );
+    expect(find.text('열기'), findsOneWidget, reason: '저장이 끝나야 화면이 닫힌다');
+  });
+
+  testWidgets('저장이 실패하면 화면을 닫지 않고 서버 사유를 띄운다', (tester) async {
+    await _openEditProfile(tester, profileImageUrl: null, saveStatus: 400);
+
+    await tester.tap(find.text('저장'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('프로필을 저장하지 못했어요'), findsOneWidget);
+    expect(find.text('(400) 이미 사용 중인 사용자명이에요.'), findsOneWidget);
+    expect(find.text('열기'), findsNothing, reason: '실패했는데 닫히면 저장된 줄 안다');
+
+    // 다시 시도하면 폼으로 돌아오고, 고쳐 둔 입력이 살아 있어야 한다.
+    await tester.tap(find.text('다시 시도'));
+    await tester.pumpAndSettle();
+    expect(find.text('김준혁'), findsOneWidget);
   });
 }

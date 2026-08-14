@@ -38,6 +38,10 @@ class _EditProfileViewState extends State<EditProfileView> {
   /// 로드된 값으로 컨트롤러를 한 번만 채우기 위한 플래그.
   bool _seeded = false;
 
+  /// 저장 요청을 보내 놓고 결과를 기다리는 중인지. 성공하면 닫고, 실패하면 폼으로
+  /// 되돌아온다. 결과를 안 기다리고 닫으면 프로필 화면이 저장 전 값을 다시 읽는다.
+  bool _saving = false;
+
   @override
   void dispose() {
     _name.dispose();
@@ -90,6 +94,7 @@ class _EditProfileViewState extends State<EditProfileView> {
   });
 
   void _save(BuildContext context) {
+    if (_saving) return;
     final name = _name.text.trim();
     final username = _username.text.trim();
     if (name.isEmpty || username.isEmpty) {
@@ -98,6 +103,7 @@ class _EditProfileViewState extends State<EditProfileView> {
       );
       return;
     }
+    setState(() => _saving = true);
     context.read<EditProfileBloc>().add(
       EditProfileSubmitted(
         name: name,
@@ -108,7 +114,13 @@ class _EditProfileViewState extends State<EditProfileView> {
         removeAvatar: _removeAvatar,
       ),
     );
-    Navigator.of(context).maybePop();
+  }
+
+  /// 실패 화면의 `다시 시도`. 저장 실패였다면 폼으로 돌아온다. 입력값은 컨트롤러에
+  /// 남아 있어 다시 채우지 않는다.
+  void _retry(BuildContext context) {
+    setState(() => _saving = false);
+    context.read<EditProfileBloc>().add(const EditProfileRequested());
   }
 
   @override
@@ -120,7 +132,13 @@ class _EditProfileViewState extends State<EditProfileView> {
       child: Builder(
         builder: (context) => BlocListener<EditProfileBloc, EditProfileState>(
           listener: (context, state) {
-            if (state is AsyncSuccess<EditProfile>) _seed(state.data);
+            if (state is! AsyncSuccess<EditProfile>) return;
+            // 저장 성공이면 닫는다. 실패는 아래 실패 화면이 사유까지 보여준다.
+            if (_saving) {
+              Navigator.of(context).maybePop();
+              return;
+            }
+            _seed(state.data);
           },
           child: BaseScaffold(
             body: SafeArea(
@@ -134,16 +152,16 @@ class _EditProfileViewState extends State<EditProfileView> {
                     child: BlocBuilder<EditProfileBloc, EditProfileState>(
                       builder: (context, state) {
                         return switch (state) {
-                          AsyncFailure<EditProfile>() => Center(
+                          AsyncFailure<EditProfile>(:final message) => Center(
                             child: Padding(
                               padding: const EdgeInsets.all(AppSpacing.s16),
                               child: CoworkErrorState(
-                                title: '프로필을 불러오지 못했어요',
-                                description: '잠시 후 다시 시도해 주세요.',
+                                title: _saving
+                                    ? '프로필을 저장하지 못했어요'
+                                    : '프로필을 불러오지 못했어요',
+                                description: message ?? '잠시 후 다시 시도해 주세요.',
                                 retryLabel: '다시 시도',
-                                onRetry: () => context
-                                    .read<EditProfileBloc>()
-                                    .add(const EditProfileRequested()),
+                                onRetry: () => _retry(context),
                               ),
                             ),
                           ),
