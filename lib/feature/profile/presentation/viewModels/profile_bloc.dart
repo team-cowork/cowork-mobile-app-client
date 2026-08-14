@@ -5,6 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/utils/async_state.dart';
 import '../../../../core/utils/logger.dart';
 import '../../../../network/http_error_message.dart';
+import '../../data/github_repository.dart';
 import '../../data/profile_repository.dart';
 import '../../data/profile_store.dart';
 import '../../domain/profile.dart';
@@ -16,11 +17,13 @@ typedef ProfileState = AsyncState<Profile>;
 
 /// 프로필 화면 상태를 관리하는 Bloc.
 class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
-  ProfileBloc(this._repository) : super(const ProfileState.initial()) {
+  ProfileBloc(this._repository, this._github)
+    : super(const ProfileState.initial()) {
     on<ProfileRequested>(_onLoad);
   }
 
   final ProfileRepository _repository;
+  final GithubRepository _github;
 
   Future<void> _onLoad(
     ProfileRequested event,
@@ -28,12 +31,19 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
   ) async {
     emit(const ProfileState.loading());
     try {
+      final me = await _repository.fetchMe();
+      final githubId = me.githubId;
       emit(
         ProfileState.success(
           Profile.fromMe(
-            await _repository.fetchMe(),
+            me,
             // 업로드에 실패해 서버에 못 올라간 사진이 있으면 그걸 먼저 보여준다.
             localAvatarPath: ProfileStore.instance.localAvatarPath,
+            // ponytail: 프로필 뒤에 순서대로 부른다. 스트릭이 늦으면 화면 전체가
+            // 그만큼 늦는다. 눈에 띄면 프로필만 먼저 띄우고 스트릭을 나중에 얹는다.
+            commitsByDay: githubId == null || githubId.isEmpty
+                ? const {}
+                : await _github.commitsByDay(githubId),
           ),
         ),
       );

@@ -28,6 +28,7 @@ class Profile extends Equatable {
   factory Profile.fromMe(
     UserResponse me, {
     String? localAvatarPath,
+    Map<DateTime, int> commitsByDay = const {},
   }) {
     final nickname = _text(me.nickname);
     final specialty = _text(me.specialty);
@@ -59,8 +60,17 @@ class Profile extends Equatable {
         if (major != null) major,
         if (githubId != null) 'GitHub @$githubId',
       ],
-      // ponytail: 스트릭은 아직 API 가 없다. 라벨만 목으로 남긴다.
-      streak: const GithubStreak(rangeLabel: '최근 20주 · 노출 ON'),
+      // GitHub ID 는 DataGSM 계정에 딸려 오므로 앱에서 등록할 수단이 없다.
+      // 없으면 히트맵 대신 어디서 등록하는지 알려 준다.
+      streak: githubId == null
+          ? const GithubStreak(
+              rangeLabel: '',
+              notice: 'DataGSM에 접속해 GitHub ID를 등록해 주세요.',
+            )
+          : GithubStreak(
+              rangeLabel: '최근 ${GithubStreak.weeks}주',
+              commitsByDay: commitsByDay,
+            ),
     );
   }
 
@@ -115,13 +125,24 @@ class ProfileBadge extends Equatable {
 
 /// GitHub 커밋 스트릭 정보.
 class GithubStreak extends Equatable {
-  const GithubStreak({required this.rangeLabel});
+  const GithubStreak({
+    required this.rangeLabel,
+    this.commitsByDay = const {},
+    this.notice,
+  });
 
-  /// 히트맵 상단 라벨 (예: 최근 20주 · 노출 ON).
+  /// 히트맵이 보여주는 주 수. GitHub 공개 이벤트가 90일치라 그 안쪽으로 잡는다.
+  static const int weeks = 13;
+
+  /// 히트맵 상단 라벨 (예: 최근 13주).
   final String rangeLabel;
 
-  // ponytail: 히트맵 셀 데이터는 실제 GitHub 연동 시 추가.
+  /// 날짜(자정 기준)별 커밋 수. 없는 날은 키가 없다.
+  final Map<DateTime, int> commitsByDay;
+
+  /// 히트맵 대신 보여줄 안내. GitHub ID 가 없어 가져올 게 없을 때 쓴다.
+  final String? notice;
 
   @override
-  List<Object?> get props => [rangeLabel];
+  List<Object?> get props => [rangeLabel, commitsByDay, notice];
 }

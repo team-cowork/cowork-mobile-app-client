@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/utils/bloc_scaffold.dart';
 import '../../../settings/presentation/views/settings_view.dart';
+import '../../data/github_repository.dart';
 import '../../data/profile_repository.dart';
 import '../../domain/profile.dart';
 import '../viewModels/profile_bloc.dart';
@@ -18,8 +19,10 @@ class MyProfileView extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocScaffold<ProfileBloc, Profile>(
       create: (context) =>
-          ProfileBloc(context.read<ProfileRepository>())
-            ..add(const ProfileRequested()),
+          ProfileBloc(
+            context.read<ProfileRepository>(),
+            context.read<GithubRepository>(),
+          )..add(const ProfileRequested()),
       errorTitle: '프로필을 불러오지 못했어요',
       onRetry: (context) =>
           context.read<ProfileBloc>().add(const ProfileRequested()),
