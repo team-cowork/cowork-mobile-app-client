@@ -75,16 +75,6 @@ void main() {
     expect(unwrapPayload(''), isEmpty);
   });
 
-  test('오류 본문에서 사용자 메시지를 뽑는다', () {
-    expect(
-      errorMessageOf('{"error":"invalid_grant","error_description":"만료됨"}'),
-      '만료됨',
-    );
-    expect(errorMessageOf('{"status":"UNAUTHORIZED","message":"Unauthorized"}'),
-        'Unauthorized');
-    expect(errorMessageOf('<html>502</html>'), isNull);
-  });
-
   test('서버가 거절하면 상태 코드와 서버 사유를 살린다', () async {
     final e = await _postFailure(401, jsonEncode({'message': 'Unauthorized'}));
     expect(e.response, isNotNull, reason: 'dio 가 4xx 를 response 없이 던지면 매핑이 무너진다');

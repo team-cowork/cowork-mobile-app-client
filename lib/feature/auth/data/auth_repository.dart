@@ -168,21 +168,10 @@ class AuthRepository {
   }
 }
 
-/// dio 실패를 사용자에게 보여줄 문구로 바꾼다.
-///
-/// 응답이 있으면 서버가 거절한 것(4xx/5xx)이라 상태 코드와 서버 사유를 살리고,
-/// 없으면 연결 자체가 안 된 것이라 코드를 붙일 게 없다.
+/// dio 실패를 로그인 화면이 보여줄 예외로 바꾼다. 문구는 공통 규칙을 따른다.
 @visibleForTesting
-AuthException authExceptionOf(DioException e) {
-  final failed = e.response;
-  if (failed == null) return const AuthException('네트워크에 연결할 수 없습니다.');
-  return AuthException(
-    httpErrorMessage(
-      failed.statusCode ?? 0,
-      errorMessageOf(failed.data?.toString() ?? ''),
-    ),
-  );
-}
+AuthException authExceptionOf(DioException e) =>
+    AuthException(dioErrorMessage(e));
 
 /// RFC 7636 code_verifier. [bytes] 32개면 43자로 규격(43~128자)에 들어맞는다.
 @visibleForTesting
@@ -199,17 +188,3 @@ String codeChallengeOf(String verifier) =>
 String _base64UrlNoPad(List<int> bytes) =>
     base64Url.encode(bytes).replaceAll('=', '');
 
-/// DataGSM(`error_description`)과 게이트웨이(`message`) 양쪽 오류 형식을 읽는다.
-@visibleForTesting
-String? errorMessageOf(String body) {
-  try {
-    final decoded = jsonDecode(body);
-    if (decoded is Map) {
-      final message = decoded['error_description'] ?? decoded['message'];
-      if (message is String && message.isNotEmpty) return message;
-    }
-  } catch (_) {
-    // 오류 본문이 JSON 이 아니면 호출부의 기본 메시지를 쓴다.
-  }
-  return null;
-}
