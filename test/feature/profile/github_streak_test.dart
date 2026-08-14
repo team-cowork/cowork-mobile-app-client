@@ -89,6 +89,30 @@ void main() {
     expect(streak.commitsByDay, isEmpty);
   });
 
+  testWidgets('오늘 커밋이 히트맵 칸에 색으로 나타난다', (tester) async {
+    // 저장소가 만든 자정 키와 히트맵이 만든 날짜가 정확히 같아야 칸이 칠해진다.
+    final now = DateTime.now();
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.dark(),
+        home: Scaffold(
+          body: GithubStreakCard(
+            streak: GithubStreak(
+              rangeLabel: '최근 13주',
+              commitsByDay: {DateTime(now.year, now.month, now.day): 12},
+            ),
+          ),
+        ),
+      ),
+    );
+
+    final colors = tester
+        .widgetList<DecoratedBox>(find.byType(DecoratedBox))
+        .map((box) => (box.decoration as BoxDecoration).color)
+        .toSet();
+    expect(colors, contains(AppColors.green300), reason: '12커밋은 가장 진한 단계다');
+  });
+
   testWidgets('히트맵이 좁은 화면에서도 넘치지 않는다', (tester) async {
     // 셀이 열 너비를 따라가는 정사각형이라 폭·높이 계산이 서로를 물고 있다.
     await tester.pumpWidget(

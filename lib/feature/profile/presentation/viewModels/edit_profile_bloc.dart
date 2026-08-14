@@ -39,8 +39,13 @@ class EditProfileBloc extends Bloc<EditProfileEvent, EditProfileState> {
           ),
         ),
       );
-    } catch (_) {
-      emit(const EditProfileState.failure());
+    } catch (e, s) {
+      Logger.e('프로필 조회 실패', tag: 'Profile', error: e, stackTrace: s);
+      emit(
+        EditProfileState.failure(
+          e is DioException ? dioErrorMessage(e) : null,
+        ),
+      );
     }
   }
 

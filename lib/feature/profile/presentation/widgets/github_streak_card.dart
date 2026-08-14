@@ -83,9 +83,9 @@ class _Heatmap extends StatelessWidget {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     // 이번 주 일요일에서 (weeks - 1) 주를 되감은 날이 왼쪽 위 첫 칸이다.
-    final start = today.subtract(
-      Duration(days: today.weekday % 7 + (GithubStreak.weeks - 1) * 7),
-    );
+    // 날짜는 일수를 더해 만든다. Duration 으로 옮기면 서머타임이 있는 지역에서
+    // 자정이 한 시간 밀려, 저장소가 만든 자정 키와 안 맞는다.
+    final from = today.day - (today.weekday % 7) - (GithubStreak.weeks - 1) * 7;
 
     return Row(
       spacing: 3,
@@ -96,7 +96,14 @@ class _Heatmap extends StatelessWidget {
               spacing: 3,
               children: [
                 for (var day = 0; day < 7; day++)
-                  _cell(start.add(Duration(days: week * 7 + day)), today),
+                  _cell(
+                    DateTime(
+                      today.year,
+                      today.month,
+                      from + week * 7 + day,
+                    ),
+                    today,
+                  ),
               ],
             ),
           ),
