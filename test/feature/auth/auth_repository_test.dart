@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:cowork_app/feature/auth/data/auth_repository.dart';
+import 'package:cowork_app/network/dio_client.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -72,16 +73,6 @@ void main() {
     );
     expect(unwrapPayload('{"access_token":"t"}'), {'access_token': 't'});
     expect(unwrapPayload(''), isEmpty);
-  });
-
-  test('오류 본문에서 사용자 메시지를 뽑는다', () {
-    expect(
-      errorMessageOf('{"error":"invalid_grant","error_description":"만료됨"}'),
-      '만료됨',
-    );
-    expect(errorMessageOf('{"status":"UNAUTHORIZED","message":"Unauthorized"}'),
-        'Unauthorized');
-    expect(errorMessageOf('<html>502</html>'), isNull);
   });
 
   test('서버가 거절하면 상태 코드와 서버 사유를 살린다', () async {

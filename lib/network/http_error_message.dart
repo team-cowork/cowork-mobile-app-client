@@ -1,3 +1,38 @@
+import 'dart:convert';
+
+import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
+
+/// dio 실패를 사용자에게 보여줄 문구로 바꾼다.
+///
+/// 응답이 있으면 서버가 거절한 것(4xx/5xx)이라 상태 코드와 서버 사유를 살리고,
+/// 없으면 연결 자체가 안 된 것이라 코드를 붙일 게 없다.
+///
+/// 저장소마다 이 분기를 다시 쓰지 않도록 네트워크 공통 모듈에 둔다.
+String dioErrorMessage(DioException e) {
+  final failed = e.response;
+  if (failed == null) return '네트워크에 연결할 수 없습니다.';
+  return httpErrorMessage(
+    failed.statusCode ?? 0,
+    errorMessageOf(failed.data?.toString() ?? ''),
+  );
+}
+
+/// DataGSM(`error_description`)과 게이트웨이(`message`) 양쪽 오류 형식을 읽는다.
+@visibleForTesting
+String? errorMessageOf(String body) {
+  try {
+    final decoded = jsonDecode(body);
+    if (decoded is Map) {
+      final message = decoded['error_description'] ?? decoded['message'];
+      if (message is String && message.isNotEmpty) return message;
+    }
+  } catch (_) {
+    // 오류 본문이 JSON 이 아니면 호출부의 기본 메시지를 쓴다.
+  }
+  return null;
+}
+
 /// HTTP 상태 코드를 사용자에게 그대로 보여줄 수 있는 문구로 바꾼다.
 ///
 /// `(404) 페이지를 찾을 수 없습니다.` 처럼 코드를 앞에 붙여 문의 시 원인을 특정할 수

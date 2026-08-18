@@ -10,7 +10,7 @@ sealed class AsyncState<T> extends Equatable {
   const factory AsyncState.initial() = AsyncInitial<T>;
   const factory AsyncState.loading() = AsyncLoading<T>;
   const factory AsyncState.success(T data) = AsyncSuccess<T>;
-  const factory AsyncState.failure() = AsyncFailure<T>;
+  const factory AsyncState.failure([String? message]) = AsyncFailure<T>;
 
   @override
   List<Object?> get props => [];
@@ -34,5 +34,11 @@ final class AsyncSuccess<T> extends AsyncState<T> {
 }
 
 final class AsyncFailure<T> extends AsyncState<T> {
-  const AsyncFailure();
+  const AsyncFailure([this.message]);
+
+  /// 사용자에게 보여줄 실패 사유. 화면 기본 문구로 충분하면 null.
+  final String? message;
+
+  @override
+  List<Object?> get props => [message];
 }

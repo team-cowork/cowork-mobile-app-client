@@ -13,6 +13,7 @@ sealed class EditProfileEvent extends Equatable {
     required String statusMessage,
     required String bio,
     String? localAvatarPath,
+    bool removeAvatar,
   }) = EditProfileSubmitted;
 
   @override
@@ -30,6 +31,7 @@ final class EditProfileSubmitted extends EditProfileEvent {
     required this.statusMessage,
     required this.bio,
     this.localAvatarPath,
+    this.removeAvatar = false,
   });
 
   final String name;
@@ -38,6 +40,9 @@ final class EditProfileSubmitted extends EditProfileEvent {
   final String bio;
   final String? localAvatarPath;
 
+  /// 사진을 지웠는지. 새로 고른 사진([localAvatarPath])이 있으면 그쪽이 이긴다.
+  final bool removeAvatar;
+
   @override
   List<Object?> get props => [
     name,
@@ -45,5 +50,6 @@ final class EditProfileSubmitted extends EditProfileEvent {
     statusMessage,
     bio,
     localAvatarPath,
+    removeAvatar,
   ];
 }
