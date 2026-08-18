@@ -1,9 +1,11 @@
+import 'package:dio/dio.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/utils/async_state.dart';
-import '../../../profile/data/profile_store.dart';
-import '../../data/notes_store.dart';
+import '../../../../core/utils/logger.dart';
+import '../../../../network/http_error_message.dart';
+import '../../data/notes_repository.dart';
 import '../../domain/note.dart';
 
 part 'notes_event.dart';
@@ -12,53 +14,46 @@ part 'notes_event.dart';
 typedef NotesState = AsyncState<List<Note>>;
 
 /// 회의록 화면 상태를 관리하는 Bloc.
-///
-/// 현재는 목(mock) 데이터를 반환한다. 실제 API 연동 시 [_onLoad] 내부만 교체하면 된다.
 class NotesBloc extends Bloc<NotesEvent, NotesState> {
-  NotesBloc() : super(const NotesState.initial()) {
+  NotesBloc(this._repository) : super(const NotesState.initial()) {
     on<NotesRequested>(_onLoad);
     on<NoteAdded>(_onAdd);
   }
 
-  void _onLoad(
+  final NotesRepository _repository;
+
+  Future<void> _onLoad(
     NotesRequested event,
     Emitter<NotesState> emit,
-  ) {
+  ) async {
     emit(const NotesState.loading());
     try {
-      emit(NotesState.success(NotesStore.instance.notes));
-    } catch (_) {
-      emit(const NotesState.failure());
+      emit(NotesState.success(await _repository.fetchNotes()));
+    } catch (e, s) {
+      Logger.e('회의록 조회 실패', tag: 'Notes', error: e, stackTrace: s);
+      emit(NotesState.failure(e is DioException ? dioErrorMessage(e) : null));
     }
   }
 
-  /// 새 노트를 로컬 저장소에 추가하고 목록을 갱신한다.
+  /// 새 회의록을 서버에 쓰고 목록을 다시 읽는다.
   ///
-  /// 작성자는 현재 로그인 사용자([ProfileStore])로 채운다.
-  /// 실제 API 연동 시 저장 호출만 교체하면 된다.
-  void _onAdd(NoteAdded event, Emitter<NotesState> emit) {
-    final now = DateTime.now();
-    final profile = ProfileStore.instance;
-
-    NotesStore.instance.add(
-      Note(
-        id: NotesStore.instance.nextId,
+  /// 작성자·작성일은 서버가 채우므로 응답을 기다렸다가 목록째 갱신한다.
+  Future<void> _onAdd(NoteAdded event, Emitter<NotesState> emit) async {
+    emit(const NotesState.loading());
+    try {
+      await _repository.createNote(
         title: event.title.trim(),
-        tags: [event.template],
         summary: event.content.trim(),
-        author: NoteAuthor(
-          authorId: profile.currentUserId,
-          name: profile.name,
-          initial: profile.avatarInitial,
-          avatarUrl: profile.avatarUrl,
-          date:
-              '${now.month.toString().padLeft(2, '0')}.'
-              '${now.day.toString().padLeft(2, '0')}',
+      );
+      emit(NotesState.success(await _repository.fetchNotes()));
+    } catch (e, s) {
+      Logger.e('회의록 작성 실패', tag: 'Notes', error: e, stackTrace: s);
+      emit(
+        NotesState.failure(
+          e is DioException ? dioErrorMessage(e) : '회의록을 저장하지 못했어요.',
         ),
-      ),
-    );
-
-    emit(NotesState.success(NotesStore.instance.notes));
+      );
+    }
   }
 }
 

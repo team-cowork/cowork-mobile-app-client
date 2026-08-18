@@ -10,7 +10,6 @@ sealed class NotesEvent extends Equatable {
   const factory NotesEvent.added({
     required String title,
     required String content,
-    required String template,
   }) = NoteAdded;
 
   @override
@@ -22,20 +21,13 @@ final class NotesRequested extends NotesEvent {
 }
 
 final class NoteAdded extends NotesEvent {
-  const NoteAdded({
-    required this.title,
-    required this.content,
-    required this.template,
-  });
+  const NoteAdded({required this.title, required this.content});
 
   final String title;
   final String content;
 
-  /// 선택한 템플릿 라벨. 카드 태그로 노출된다.
-  final String template;
-
   @override
-  List<Object?> get props => [title, content, template];
+  List<Object?> get props => [title, content];
 }
 
 sealed class NewNoteEvent extends Equatable {

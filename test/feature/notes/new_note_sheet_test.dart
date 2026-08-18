@@ -3,6 +3,8 @@ import 'package:cowork_design_system/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'notes_test_server.dart';
+
 void main() {
   // 기본 800x600 뷰에서는 시트 하단 CTA가 화면 밖이라 폰 크기로 맞춘다.
   setUp(() {
@@ -14,9 +16,7 @@ void main() {
   });
 
   testWidgets('새 노트 버튼으로 시트를 열고 템플릿을 선택한다', (tester) async {
-    await tester.pumpWidget(
-      MaterialApp(theme: AppTheme.dark(), home: const NotesView()),
-    );
+    await tester.pumpWidget(notesTestApp(const NotesView(), FakeNotesServer()));
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('새 노트').last);
@@ -38,9 +38,7 @@ void main() {
   });
 
   testWidgets('노트를 만들면 목록 맨 앞에 추가된다', (tester) async {
-    await tester.pumpWidget(
-      MaterialApp(theme: AppTheme.dark(), home: const NotesView()),
-    );
+    await tester.pumpWidget(notesTestApp(const NotesView(), FakeNotesServer()));
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('새 노트').last);

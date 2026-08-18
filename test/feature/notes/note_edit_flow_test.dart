@@ -3,10 +3,10 @@ import 'package:cowork_design_system/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'notes_test_server.dart';
+
 Future<void> _openNote(WidgetTester tester, String title) async {
-  await tester.pumpWidget(
-    MaterialApp(theme: AppTheme.dark(), home: const NotesView()),
-  );
+  await tester.pumpWidget(notesTestApp(const NotesView(), FakeNotesServer()));
   await tester.pumpAndSettle();
   await tester.tap(find.text(title));
   await tester.pumpAndSettle();

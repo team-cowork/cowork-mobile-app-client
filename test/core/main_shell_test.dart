@@ -1,13 +1,11 @@
 import 'package:cowork_app/core/presentation/main_shell.dart';
-import 'package:cowork_design_system/design_system.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+import '../feature/notes/notes_test_server.dart';
 
 void main() {
   testWidgets('탭을 누르면 해당 화면으로 전환된다', (tester) async {
-    await tester.pumpWidget(
-      MaterialApp(theme: AppTheme.dark(), home: const MainShell()),
-    );
+    await tester.pumpWidget(notesTestApp(const MainShell(), FakeNotesServer()));
     await tester.pumpAndSettle();
 
     // 채널 탭에서 시작한다.
