@@ -78,7 +78,7 @@ void main() {
 
     expect(statusOf('ONLINE'), UserStatus.online);
     expect(statusOf('offline'), UserStatus.offline);
-    expect(statusOf('dnd'), UserStatus.busy);
+    expect(statusOf('DO_NOT_DISTURB'), UserStatus.doNotDisturb);
     expect(statusOf('처음 보는 값'), UserStatus.offline);
     expect(statusOf(null), UserStatus.offline);
   });
