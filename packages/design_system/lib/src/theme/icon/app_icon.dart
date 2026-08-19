@@ -87,4 +87,20 @@ class AppIcon {
     fit: BoxFit.contain,
   );
 
+  static Widget taskAssigned({double size = AppSize.iconSmall}) => SvgPicture.asset(
+    'assets/images/task_assigned.svg',
+    package: 'cowork_design_system',
+    width: size,
+    height: size,
+    fit: BoxFit.contain,
+  );
+
+  static Widget gitPush({double size = AppSize.iconSmall}) => SvgPicture.asset(
+    'assets/images/git_push.svg',
+    package: 'cowork_design_system',
+    width: size,
+    height: size,
+    fit: BoxFit.contain,
+  );
+
 }
