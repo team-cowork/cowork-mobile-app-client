@@ -48,12 +48,13 @@ class BlocScaffold<B extends BlocBase<AsyncState<T>>, T>
         bottomNavigationBar: bottomNavigationBar,
         body: BlocBuilder<B, AsyncState<T>>(
           builder: (context, state) => switch (state) {
-            AsyncFailure<T>() => Center(
+            AsyncFailure<T>(:final message) => Center(
               child: Padding(
                 padding: const EdgeInsets.all(AppSpacing.s16),
                 child: CoworkErrorState(
                   title: errorTitle,
-                  description: '잠시 후 다시 시도해 주세요.',
+                  // 서버가 사유를 줬으면 그걸 보여준다. 없으면 기본 문구.
+                  description: message ?? '잠시 후 다시 시도해 주세요.',
                   retryLabel: '다시 시도',
                   onRetry: () => onRetry(context),
                 ),

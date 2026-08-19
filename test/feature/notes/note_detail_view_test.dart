@@ -7,6 +7,12 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   testWidgets('카드를 누르면 상세 화면이 섹션과 액션 아이템을 렌더링한다', (tester) async {
+    // 내용·안건·결정사항까지 더해지면 액션 아이템이 기본 화면(600) 밖으로 밀려
+    // ListView가 빌드하지 않으므로 세로를 넉넉히 준다.
+    tester.view.physicalSize = const Size(800, 2000);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
     await tester.pumpWidget(
       MaterialApp(theme: AppTheme.dark(), home: const NotesView()),
     );
@@ -23,6 +29,10 @@ void main() {
   });
 
   testWidgets('액션 아이템을 누르면 체크 상태가 토글된다', (tester) async {
+    tester.view.physicalSize = const Size(800, 2000);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
     await tester.pumpWidget(
       MaterialApp(theme: AppTheme.dark(), home: const NotesView()),
     );
@@ -43,10 +53,16 @@ void main() {
     tester,
   ) async {
     const note = Note(
+      id: 999,
       title: '대규모 회의',
       tags: [],
       summary: '',
-      author: NoteAuthor(name: 'junjuny', initial: '준', date: '03.12'),
+      author: NoteAuthor(
+        authorId: 99,
+        name: 'junjuny',
+        initial: '준',
+        date: '03.12',
+      ),
       participants: ['도', '서', '민', '가', '나', '다', '라'],
     );
 

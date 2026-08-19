@@ -42,10 +42,12 @@ class NotesBloc extends Bloc<NotesEvent, NotesState> {
 
     NotesStore.instance.add(
       Note(
+        id: NotesStore.instance.nextId,
         title: event.title.trim(),
         tags: [event.template],
         summary: event.content.trim(),
         author: NoteAuthor(
+          authorId: profile.currentUserId,
           name: profile.name,
           initial: profile.avatarInitial,
           avatarUrl: profile.avatarUrl,

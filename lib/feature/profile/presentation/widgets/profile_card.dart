@@ -4,6 +4,7 @@ import 'package:cowork_design_system/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../domain/enums/user_status.dart';
 import '../../domain/profile.dart';
 import '../viewModels/profile_bloc.dart';
 import '../views/edit_profile_view.dart';
@@ -86,15 +87,25 @@ class ProfileCard extends StatelessWidget {
           Positioned(
             top: 55,
             left: 19,
-            child: Container(
-              width: 80,
-              height: 80,
-              decoration: BoxDecoration(
-                color: AppColors.blue500,
-                shape: BoxShape.circle,
-                border: Border.all(color: AppColors.neutral800, width: 4),
-              ),
-              child: ClipOval(child: _avatarImage()),
+            child: Stack(
+              children: [
+                Container(
+                  width: 80,
+                  height: 80,
+                  decoration: BoxDecoration(
+                    color: AppColors.blue500,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: AppColors.neutral800, width: 4),
+                  ),
+                  child: ClipOval(child: _avatarImage()),
+                ),
+                // 45도 방향 원 둘레에 점 중심이 놓이도록 모서리에 붙인다.
+                Positioned(
+                  right: 0,
+                  bottom: 0,
+                  child: _StatusDot(status: profile.status),
+                ),
+              ],
             ),
           ),
         ],
@@ -137,6 +148,29 @@ class ProfileCard extends StatelessWidget {
         );
       },
       errorBuilder: (_, __, ___) => fallback,
+    );
+  }
+}
+
+/// 아바타 오른쪽 아래 접속 상태 점.
+///
+/// 디자인은 44px 아바타에 점 13px · 링 2.5px 다. 여기 아바타가 80px 이라 같은
+/// 비율(약 0.3)로 키웠다. 링 색은 점이 놓이는 카드 배경과 같아야 파여 보인다.
+class _StatusDot extends StatelessWidget {
+  const _StatusDot({required this.status});
+
+  final UserStatus status;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 24,
+      height: 24,
+      decoration: BoxDecoration(
+        color: status.dotColor,
+        shape: BoxShape.circle,
+        border: Border.all(color: AppColors.neutral800, width: 4),
+      ),
     );
   }
 }
