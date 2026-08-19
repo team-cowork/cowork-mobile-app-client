@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../../core/utils/bloc_scaffold.dart';
-import '../../../notifications/presentation/views/notifications_view.dart';
-import '../../../search/presentation/views/search_view.dart';
 import '../viewModels/chat_bloc.dart';
 import '../widgets/channel_list.dart';
 import '../widgets/chat_header.dart';
@@ -24,12 +23,8 @@ class ChatView extends StatelessWidget {
           children: [
             ChatHeader(
               label: data.workspaceName,
-              onSearchTap: () => Navigator.of(context).push(
-                MaterialPageRoute<void>(builder: (_) => const SearchView()),
-              ),
-              onNotificationTap: () => Navigator.of(context).push(
-                MaterialPageRoute<void>(builder: (_) => const NotificationsView()),
-              ),
+              onSearchTap: () => context.push('/search'),
+              onNotificationTap: () => context.push('/notifications'),
             ),
             ChatShortcutBar(shortcuts: data.workspaceShortcuts),
             Expanded(child: ChannelList(channelGroups: data.channelGroups)),
