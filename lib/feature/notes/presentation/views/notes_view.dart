@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/utils/bloc_scaffold.dart';
+import '../../data/notes_repository.dart';
 import '../../domain/note.dart';
 import '../viewModels/notes_bloc.dart';
 import '../widgets/new_note_sheet.dart';
@@ -17,7 +18,9 @@ class NotesView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocScaffold<NotesBloc, List<Note>>(
-      create: (_) => NotesBloc()..add(const NotesRequested()),
+      create: (context) =>
+          NotesBloc(context.read<NotesRepository>())
+            ..add(const NotesRequested()),
       errorTitle: '회의록을 불러오지 못했어요',
       onRetry: (context) =>
           context.read<NotesBloc>().add(const NotesRequested()),

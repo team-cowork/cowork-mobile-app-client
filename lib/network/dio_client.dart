@@ -67,3 +67,13 @@ Map<String, dynamic> unwrapPayload(String body) {
   final data = decoded['data'];
   return data is Map<String, dynamic> ? data : decoded;
 }
+
+/// 목록 응답용 [unwrapPayload]. `data` 가 배열이면 그것을, 아니면 본문이 배열일
+/// 때 그것을 준다. 배열이 아니면 빈 목록.
+List<Map<String, dynamic>> unwrapListPayload(String body) {
+  if (body.isEmpty) return const [];
+  final decoded = jsonDecode(body);
+  final data = decoded is Map<String, dynamic> ? decoded['data'] : decoded;
+  if (data is! List) return const [];
+  return data.whereType<Map<String, dynamic>>().toList();
+}

@@ -19,7 +19,7 @@ class NoteCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      // 상세에서 편집하면 스토어가 갱신되므로, 돌아오면 목록을 다시 불러온다.
+      // 상세에서 편집하면 서버 회의록이 바뀌므로, 돌아오면 목록을 다시 불러온다.
       onTap: () async {
         await Navigator.of(context).push(
           MaterialPageRoute<void>(builder: (_) => NoteDetailView(note: note)),

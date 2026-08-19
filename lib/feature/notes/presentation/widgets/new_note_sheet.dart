@@ -35,6 +35,9 @@ class NewNoteSheet extends StatelessWidget {
 
   static const double _sheetRadius = 22;
 
+  // ponytail: 서버 템플릿(`/channels/{id}/meeting-note-templates`)과 이어져 있지
+  // 않다. 지금은 채널에 켜져 있는 템플릿으로 저장된다. 채널을 고를 수 있게 되면
+  // 이 목록을 서버 템플릿으로 갈아끼운다.
   static const templates = [
     (label: '자유 양식', description: '빈 문서로 시작'),
     (label: '회의록', description: '안건 · 결정 · 액션 아이템'),
@@ -46,12 +49,7 @@ class NewNoteSheet extends StatelessWidget {
     final form = context.read<NewNoteBloc>().state;
 
     context.read<NotesBloc>().add(
-      NoteAdded(
-        title: form.title,
-        content: form.content,
-        template:
-            (templates.elementAtOrNull(form.template) ?? templates.first).label,
-      ),
+      NoteAdded(title: form.title, content: form.content),
     );
     Navigator.of(context).pop();
   }

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/utils/base_scaffold.dart';
+import '../../data/notes_repository.dart';
 import '../../domain/note.dart';
 import '../viewModels/note_edit_bloc.dart';
 
@@ -19,11 +20,22 @@ class NoteEditView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) => NoteEditBloc(note),
+      create: (context) => NoteEditBloc(note, context.read<NotesRepository>()),
       child: BlocListener<NoteEditBloc, NoteEditState>(
-        // 저장이 끝나면 갱신된 노트를 들고 상세 화면으로 돌아간다.
-        listenWhen: (previous, current) => current.saved,
-        listener: (context, state) => Navigator.of(context).pop(state.note),
+        // 저장이 끝나면 갱신된 노트를 들고 상세 화면으로 돌아간다. 실패하면
+        // 화면을 열어 둔 채 사유만 알린다.
+        listenWhen: (previous, current) =>
+            current.saved || current.error != null,
+        listener: (context, state) {
+          final error = state.error;
+          if (error != null) {
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(SnackBar(content: Text(error)));
+            return;
+          }
+          Navigator.of(context).pop(state.note);
+        },
         child: _NoteEditForm(note: note),
       ),
     );
