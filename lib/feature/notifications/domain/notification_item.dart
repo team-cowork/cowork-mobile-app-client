@@ -28,6 +28,17 @@ class NotificationItem extends Equatable {
   final AvatarColor? avatarColor;
   final NotificationIconType? icon;
 
+  NotificationItem copyWith({bool? isUnread}) => NotificationItem(
+    id: id,
+    title: title,
+    description: description,
+    time: time,
+    isUnread: isUnread ?? this.isUnread,
+    avatarInitial: avatarInitial,
+    avatarColor: avatarColor,
+    icon: icon,
+  );
+
   @override
   List<Object?> get props => [
     id,

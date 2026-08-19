@@ -1,7 +1,9 @@
 import 'package:cowork_design_system/design_system.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../domain/notification_item.dart';
+import '../viewModels/notifications_bloc.dart';
 import 'notification_list_item.dart';
 import 'notifications_header.dart';
 
@@ -18,7 +20,9 @@ class NotificationsBody extends StatelessWidget {
         children: [
           NotificationsHeader(
             onBack: () => Navigator.of(context).maybePop(),
-            onMarkAllRead: () {},
+            onMarkAllRead: () => context.read<NotificationsBloc>().add(
+              const NotificationsAllReadRequested(),
+            ),
           ),
           Expanded(
             child: SingleChildScrollView(

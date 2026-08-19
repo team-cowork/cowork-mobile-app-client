@@ -12,6 +12,7 @@ typedef NotificationsState = AsyncState<List<NotificationItem>>;
 class NotificationsBloc extends Bloc<NotificationsEvent, NotificationsState> {
   NotificationsBloc() : super(const NotificationsState.initial()) {
     on<NotificationsRequested>(_onLoad);
+    on<NotificationsAllReadRequested>(_onAllRead);
   }
 
   void _onLoad(NotificationsRequested event, Emitter<NotificationsState> emit) {
@@ -21,5 +22,19 @@ class NotificationsBloc extends Bloc<NotificationsEvent, NotificationsState> {
     } catch (_) {
       emit(const NotificationsState.failure());
     }
+  }
+
+  void _onAllRead(
+    NotificationsAllReadRequested event,
+    Emitter<NotificationsState> emit,
+  ) {
+    final current = state;
+    if (current is! AsyncSuccess<List<NotificationItem>>) return;
+
+    emit(
+      NotificationsState.success([
+        for (final item in current.data) item.copyWith(isUnread: false),
+      ]),
+    );
   }
 }
