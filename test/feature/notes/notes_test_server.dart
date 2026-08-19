@@ -93,7 +93,7 @@ class FakeNotesServer implements HttpClientAdapter {
       'id': 1,
       'channelId': 10,
       'title': '2026 1분기 킥오프 회의',
-      // 작성자 1 = ProfileStore.currentUserId → 내 회의록(수정 아이콘 노출).
+      // 작성자 1 = 로그인 사용자(ProfileStore.currentUserId) → 내 회의록.
       'createdBy': 1,
       'createdAt': '2026-03-12T09:00:00Z',
       'content': jsonEncode({

@@ -10,9 +10,12 @@ import 'notes_test_server.dart';
 
 /// 경로마다 상태 코드와 본문을 정해 두는 어댑터. 못 읽는 채널을 흉내낼 때 쓴다.
 class _Server implements HttpClientAdapter {
-  _Server(this.responses);
+  _Server(this.responses, {this.onPost});
 
   final Map<String, (int, Object?)> responses;
+
+  /// 작성 요청이 어느 채널로 갔는지 확인할 때 쓴다.
+  final void Function(String path)? onPost;
 
   @override
   Future<ResponseBody> fetch(
@@ -20,6 +23,7 @@ class _Server implements HttpClientAdapter {
     Stream<Uint8List>? requestStream,
     Future<void>? cancelFuture,
   ) async {
+    if (options.method == 'POST') onPost?.call(options.path);
     final (status, data) = responses[options.path] ?? (404, null);
     return ResponseBody.fromString(
       jsonEncode({'status': 'OK', 'code': status, 'data': data}),
@@ -97,6 +101,47 @@ void main() {
       (await repository.fetchNotes()).map((note) => note.title),
       ['읽을 수 있는 채널'],
     );
+  });
+
+  test('못 읽는 채널 말고 다른 실패는 그대로 던진다', () async {
+    final repository = _repository(
+      _Server({
+        '/teams': (200, [
+          {'id': 1},
+        ]),
+        '/teams/1/channels': (200, [
+          {'id': 10},
+        ]),
+        '/channels/10/meeting-notes': (500, null),
+      }),
+    );
+
+    expect(repository.fetchNotes(), throwsA(isA<DioException>()));
+  });
+
+  test('첫 채널을 못 읽으면 읽을 수 있는 채널에 작성한다', () async {
+    final posts = <String>[];
+    final repository = _repository(
+      _Server({
+        '/teams': (200, [
+          {'id': 1},
+        ]),
+        '/teams/1/channels': (200, [
+          {'id': 10},
+          {'id': 11},
+        ]),
+        '/channels/10/meeting-notes': (403, null),
+        '/channels/11/meeting-notes': (200, const []),
+        '/channels/11/meeting-note-templates': (200, [
+          {'id': 5, 'isActive': true},
+        ]),
+      }, onPost: posts.add),
+    );
+    await repository.fetchNotes();
+
+    await repository.createNote(title: '주간 스크럼', summary: '이번 주');
+
+    expect(posts, ['/channels/11/meeting-notes']);
   });
 
   test('작성한 회의록은 채널의 켜진 템플릿으로 저장된다', () async {

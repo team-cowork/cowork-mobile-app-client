@@ -1,4 +1,5 @@
 import 'package:cowork_app/feature/notes/presentation/views/notes_view.dart';
+import 'package:cowork_app/feature/profile/data/profile_store.dart';
 import 'package:cowork_design_system/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -13,6 +14,9 @@ Future<void> _openNote(WidgetTester tester, String title) async {
 }
 
 void main() {
+  // 로그인 직후 AuthBloc 이 채워 두는 값. 가짜 서버의 작성자 1 이 나다.
+  setUp(() => ProfileStore.instance.currentUserId = 1);
+
   testWidgets('남의 회의록 상세에는 수정 아이콘이 없다', (tester) async {
     await _openNote(tester, '디자인 시스템 리뷰'); // 작성자 도윤 (내 것 아님)
     expect(find.byIcon(Icons.edit_outlined), findsNothing);

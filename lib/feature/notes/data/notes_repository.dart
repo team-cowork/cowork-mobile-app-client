@@ -10,7 +10,8 @@ import 'meeting_note_response.dart';
 /// 회의록(`/channels/{channelId}/meeting-notes`) 저장소.
 ///
 /// 서버 회의록은 채널에 속하는데 앱에는 아직 채널을 고르는 화면이 없다. 그래서
-/// 조회는 내 팀의 모든 채널을 훑어 한 목록으로 합치고, 작성은 그중 첫 채널에 쓴다.
+/// 조회는 내 팀의 모든 채널을 훑어 한 목록으로 합치고, 작성은 그중 읽을 수 있는
+/// 첫 채널에 쓴다.
 ///
 /// ponytail: 채널 화면(#49)이 나오면 선택된 채널 하나만 읽고 쓰도록 좁힌다.
 /// 채널이 많아지면 조회가 채널 수만큼 늘어나는 게 먼저 아플 자리다.
@@ -21,7 +22,7 @@ class NotesRepository {
 
   final Dio _dio;
 
-  /// 마지막 조회에서 찾은 채널 id 들. 작성 대상 채널을 여기서 고른다.
+  /// 마지막 조회에서 읽는 데 성공한 채널 id 들. 작성 대상 채널을 여기서 고른다.
   List<int> _channelIds = const [];
 
   /// 내 팀의 회의록을 최신순으로 모아 온다.
@@ -30,14 +31,17 @@ class NotesRepository {
     final channels = await Future.wait([
       for (final team in teams) _list('/teams/${team['id']}/channels'),
     ]);
-    _channelIds = [
+    final ids = [
       for (final channel in channels.expand((page) => page))
         if (channel['id'] case final int id) id,
     ];
 
-    final notes =
-        (await Future.wait(_channelIds.map(_notesOf))).expand((e) => e).toList()
-          ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    // 목록에는 못 읽는 채널도 섞여 있다. 읽힌 채널만 남겨야 작성도 거기로 간다.
+    final pages = (await Future.wait(ids.map(_notesOf))).nonNulls.toList();
+    _channelIds = [for (final (id, _) in pages) id];
+
+    final notes = pages.expand((page) => page.$2).toList()
+      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
     final authors = await _usersOf({for (final note in notes) note.createdBy});
     return [
@@ -46,7 +50,7 @@ class NotesRepository {
     ];
   }
 
-  /// 새 회의록을 첫 채널에 쓴다. 템플릿은 채널에서 켜져 있는 것을 쓴다.
+  /// 새 회의록을 읽을 수 있는 첫 채널에 쓴다. 템플릿은 채널에서 켜져 있는 것을 쓴다.
   Future<void> createNote({
     required String title,
     required String summary,
@@ -78,16 +82,22 @@ class NotesRepository {
     ).toJson(),
   );
 
-  /// 채널 하나의 회의록. 못 읽는 채널(비공개 등)은 건너뛴다.
+  /// 채널 하나의 (id, 회의록). 못 읽는 채널(비공개 등)은 null 로 빠진다.
   ///
   /// 채널 하나가 403 이라고 목록 전체를 실패로 만들면 볼 수 있는 회의록까지 사라진다.
-  Future<List<MeetingNoteResponse>> _notesOf(int channelId) async {
+  /// 반대로 401·5xx·네트워크 장애까지 삼키면 장애가 `회의록 없음`으로 보이므로
+  /// 403 만 건너뛰고 나머지는 그대로 던져 화면이 오류로 보여주게 둔다.
+  Future<(int, List<MeetingNoteResponse>)?> _notesOf(int channelId) async {
     try {
-      return (await _list('/channels/$channelId/meeting-notes'))
-          .map(MeetingNoteResponse.fromJson)
-          .toList();
-    } on DioException {
-      return const [];
+      return (
+        channelId,
+        (await _list('/channels/$channelId/meeting-notes'))
+            .map(MeetingNoteResponse.fromJson)
+            .toList(),
+      );
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 403) return null;
+      rethrow;
     }
   }
 

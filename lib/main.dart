@@ -38,8 +38,10 @@ class CoworkApp extends StatelessWidget {
       ],
       child: BlocProvider(
         create: (context) =>
-            AuthBloc(repository: context.read<AuthRepository>())
-              ..add(const AuthEvent.sessionRestored()),
+            AuthBloc(
+              repository: context.read<AuthRepository>(),
+              profile: context.read<ProfileRepository>(),
+            )..add(const AuthEvent.sessionRestored()),
         child: MaterialApp(
           title: 'cowork',
           debugShowCheckedModeBanner: false,
