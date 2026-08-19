@@ -6,8 +6,8 @@ import '../../../notifications/presentation/views/notifications_view.dart';
 import '../../../search/presentation/views/search_view.dart';
 import '../viewModels/chat_bloc.dart';
 import '../widgets/channel_list.dart';
+import '../widgets/chat_header.dart';
 import '../widgets/chat_shortcut_bar.dart';
-import '../widgets/home_header.dart';
 
 class ChatView extends StatelessWidget {
   const ChatView({super.key});
@@ -22,7 +22,7 @@ class ChatView extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            HomeHeader(
+            ChatHeader(
               label: data.workspaceName,
               onSearchTap: () => Navigator.of(context).push(
                 MaterialPageRoute<void>(builder: (_) => const SearchView()),

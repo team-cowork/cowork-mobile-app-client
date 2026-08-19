@@ -1,8 +1,8 @@
 import 'package:cowork_design_system/design_system.dart';
 import 'package:flutter/material.dart';
 
-class HomeHeader extends StatelessWidget {
-  const HomeHeader({
+class ChatHeader extends StatelessWidget {
+  const ChatHeader({
     required this.label,
     this.onSearchTap,
     this.onNotificationTap,
