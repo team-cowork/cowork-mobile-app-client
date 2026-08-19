@@ -38,16 +38,32 @@ class SearchHeader extends StatelessWidget {
             ),
           ),
           Expanded(
-            child: CoworkTextField(
-              controller: controller,
-              onSubmitted: onSubmitted,
-              fillColor: AppColors.neutral800,
-              prefixIcon: const Icon(
-                AppIcon.search,
-                size: AppSize.iconSmall,
-                color: AppColors.neutral300,
+            child: Container(
+              height: 50,
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s12),
+              decoration: BoxDecoration(
+                color: AppColors.neutral800,
+                border: Border.all(color: AppColors.neutral700),
+                borderRadius: BorderRadius.circular(AppRadius.r12),
               ),
-              suffixIcon: _ClearButton(onPressed: onClear),
+              child: Row(
+                spacing: AppSpacing.s8,
+                children: [
+                  const Icon(AppIcon.search, size: 18, color: AppColors.neutral300),
+                  Expanded(
+                    child: TextField(
+                      controller: controller,
+                      onSubmitted: onSubmitted,
+                      style: AppFont.subtextL.copyWith(color: AppColors.darkOnSurface),
+                      decoration: const InputDecoration(
+                        isCollapsed: true,
+                        border: InputBorder.none,
+                      ),
+                    ),
+                  ),
+                  _ClearButton(onPressed: onClear),
+                ],
+              ),
             ),
           ),
         ],
@@ -73,11 +89,7 @@ class _ClearButton extends StatelessWidget {
           color: AppColors.neutral700,
           shape: BoxShape.circle,
         ),
-        child: const Icon(
-          AppIcon.close,
-          size: 12,
-          color: AppColors.neutral300,
-        ),
+        child: AppIcon.clear(size: 12),
       ),
     );
   }
