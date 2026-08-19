@@ -4,11 +4,16 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/utils/async_state.dart';
 import '../../data/chat_home_store.dart';
 import '../../domain/channel.dart';
+import '../../domain/workspace_shortcut.dart';
 
 part 'chat_event.dart';
 
 /// 홈(채팅 목록) 화면에서 필요한 데이터.
-typedef ChatHomeData = ({String workspaceName, List<ChannelGroup> channelGroups});
+typedef ChatHomeData = ({
+  String workspaceName,
+  List<WorkspaceShortcut> workspaceShortcuts,
+  List<ChannelGroup> channelGroups,
+});
 
 /// 홈 화면 상태. 성공 시 [ChatHomeData]를 담는다.
 typedef ChatState = AsyncState<ChatHomeData>;
@@ -28,6 +33,7 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
       emit(
         ChatState.success((
           workspaceName: store.workspaceName,
+          workspaceShortcuts: store.workspaceShortcuts,
           channelGroups: store.channelGroups,
         )),
       );

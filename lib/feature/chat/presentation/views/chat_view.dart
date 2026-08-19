@@ -31,7 +31,7 @@ class ChatView extends StatelessWidget {
                 MaterialPageRoute<void>(builder: (_) => const NotificationsView()),
               ),
             ),
-            const ChatShortcutBar(),
+            ChatShortcutBar(shortcuts: data.workspaceShortcuts),
             Expanded(child: ChannelList(channelGroups: data.channelGroups)),
           ],
         ),
