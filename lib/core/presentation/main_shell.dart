@@ -1,6 +1,7 @@
 import 'package:cowork_design_system/design_system.dart';
 import 'package:flutter/material.dart';
 
+import '../../feature/chat/presentation/views/chat_view.dart';
 import '../../feature/notes/presentation/views/notes_view.dart';
 import '../../feature/profile/presentation/views/my_profile_view.dart';
 import '../utils/base_scaffold.dart';
@@ -36,8 +37,8 @@ class _MainShellState extends State<MainShell> {
   Widget _tabView(int index) {
     if (!_visited.contains(index)) return const SizedBox.shrink();
     return switch (index) {
-      // TODO: 채널 · 이슈 화면 퍼블리싱 후 교체 (#49)
-      0 => const _ComingSoonView(title: '채널', icon: AppIcon.navChannel),
+      0 => const ChatView(),
+      // TODO: 이슈 화면 퍼블리싱 후 교체 (#49)
       1 => const _ComingSoonView(title: '이슈', icon: AppIcon.navIssue),
       2 => const NotesView(),
       _ => const MyProfileView(),
