@@ -11,10 +11,11 @@ void main() {
     await tester.pumpAndSettle();
 
     // 채널 탭에서 시작한다.
-    expect(find.text('채널 화면을 준비 중이에요'), findsOneWidget);
+    expect(find.text('코워크'), findsOneWidget);
     expect(find.text('새 노트'), findsNothing);
 
-    await tester.tap(find.text('회의록'));
+    final navBar = find.byType(CoworkBottomNavigationBar);
+    await tester.tap(find.descendant(of: navBar, matching: find.text('회의록')));
     await tester.pumpAndSettle();
     expect(find.text('새 노트'), findsOneWidget);
   });
