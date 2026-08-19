@@ -103,4 +103,12 @@ class AppIcon {
     fit: BoxFit.contain,
   );
 
+  static Widget clear({double size = AppSize.iconSmall}) => SvgPicture.asset(
+    'assets/images/clear.svg',
+    package: 'cowork_design_system',
+    width: size,
+    height: size,
+    fit: BoxFit.contain,
+  );
+
 }
