@@ -3,11 +3,11 @@ import 'dart:io';
 import 'package:cowork_design_system/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../domain/enums/user_status.dart';
 import '../../domain/profile.dart';
 import '../viewModels/profile_bloc.dart';
-import '../views/edit_profile_view.dart';
 
 /// 프로필 화면 상단의 프로필 카드.
 ///
@@ -183,9 +183,7 @@ class _EditProfileButton extends StatelessWidget {
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: () async {
-        await Navigator.of(context).push(
-          MaterialPageRoute<void>(builder: (_) => const EditProfileView()),
-        );
+        await context.push<void>('/profile/edit');
         // 편집 화면에서 저장한 내용을 프로필에 다시 반영한다.
         if (context.mounted) {
           context.read<ProfileBloc>().add(const ProfileRequested());
