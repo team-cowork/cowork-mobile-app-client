@@ -1,10 +1,10 @@
 import 'package:cowork_design_system/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../domain/note.dart';
 import '../viewModels/notes_bloc.dart';
-import '../views/note_detail_view.dart';
 
 /// 회의록 목록의 카드 한 장.
 ///
@@ -21,9 +21,7 @@ class NoteCard extends StatelessWidget {
       behavior: HitTestBehavior.opaque,
       // 상세에서 편집하면 스토어가 갱신되므로, 돌아오면 목록을 다시 불러온다.
       onTap: () async {
-        await Navigator.of(context).push(
-          MaterialPageRoute<void>(builder: (_) => NoteDetailView(note: note)),
-        );
+        await context.push<void>('/notes/detail', extra: note);
         if (context.mounted) {
           context.read<NotesBloc>().add(const NotesRequested());
         }

@@ -1,6 +1,7 @@
 import 'package:cowork_design_system/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../../core/utils/base_scaffold.dart';
 import '../../domain/note.dart';
@@ -23,7 +24,7 @@ class NoteEditView extends StatelessWidget {
       child: BlocListener<NoteEditBloc, NoteEditState>(
         // 저장이 끝나면 갱신된 노트를 들고 상세 화면으로 돌아간다.
         listenWhen: (previous, current) => current.saved,
-        listener: (context, state) => Navigator.of(context).pop(state.note),
+        listener: (context, state) => context.pop(state.note),
         child: _NoteEditForm(note: note),
       ),
     );
