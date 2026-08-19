@@ -29,7 +29,12 @@ class NotificationsBody extends StatelessWidget {
               child: Column(
                 children: [
                   for (final item in items) ...[
-                    NotificationListItem(item: item),
+                    NotificationListItem(
+                      item: item,
+                      onTap: () => context.read<NotificationsBloc>().add(
+                        NotificationsReadRequested(id: item.id),
+                      ),
+                    ),
                     const Divider(height: 1, thickness: 1, color: AppColors.neutral700),
                   ],
                 ],

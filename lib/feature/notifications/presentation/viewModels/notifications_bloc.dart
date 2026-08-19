@@ -13,6 +13,7 @@ class NotificationsBloc extends Bloc<NotificationsEvent, NotificationsState> {
   NotificationsBloc() : super(const NotificationsState.initial()) {
     on<NotificationsRequested>(_onLoad);
     on<NotificationsAllReadRequested>(_onAllRead);
+    on<NotificationsReadRequested>(_onRead);
   }
 
   void _onLoad(NotificationsRequested event, Emitter<NotificationsState> emit) {
@@ -34,6 +35,21 @@ class NotificationsBloc extends Bloc<NotificationsEvent, NotificationsState> {
     emit(
       NotificationsState.success([
         for (final item in current.data) item.copyWith(isUnread: false),
+      ]),
+    );
+  }
+
+  void _onRead(
+    NotificationsReadRequested event,
+    Emitter<NotificationsState> emit,
+  ) {
+    final current = state;
+    if (current is! AsyncSuccess<List<NotificationItem>>) return;
+
+    emit(
+      NotificationsState.success([
+        for (final item in current.data)
+          if (item.id == event.id) item.copyWith(isUnread: false) else item,
       ]),
     );
   }

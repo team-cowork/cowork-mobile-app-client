@@ -8,6 +8,9 @@ sealed class NotificationsEvent extends Equatable {
   const factory NotificationsEvent.allReadRequested() =
       NotificationsAllReadRequested;
 
+  const factory NotificationsEvent.readRequested({required String id}) =
+      NotificationsReadRequested;
+
   @override
   List<Object?> get props => [];
 }
@@ -18,4 +21,13 @@ final class NotificationsRequested extends NotificationsEvent {
 
 final class NotificationsAllReadRequested extends NotificationsEvent {
   const NotificationsAllReadRequested();
+}
+
+final class NotificationsReadRequested extends NotificationsEvent {
+  const NotificationsReadRequested({required this.id});
+
+  final String id;
+
+  @override
+  List<Object?> get props => [id];
 }
