@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/utils/bloc_scaffold.dart';
+import '../../../notifications/presentation/views/notifications_view.dart';
+import '../../../search/presentation/views/search_view.dart';
 import '../../domain/channel.dart';
 import '../viewModels/chat_bloc.dart';
 import '../widgets/channel_group_header.dart';
@@ -24,7 +26,15 @@ class ChatView extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            HomeHeader(label: data.workspaceName),
+            HomeHeader(
+              label: data.workspaceName,
+              onSearchTap: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(builder: (_) => const SearchView()),
+              ),
+              onNotificationTap: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(builder: (_) => const NotificationsView()),
+              ),
+            ),
             const _ChatShortcutBar(),
             Expanded(child: _ChannelList(channelGroups: data.channelGroups)),
           ],
