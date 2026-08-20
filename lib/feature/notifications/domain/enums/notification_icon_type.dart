@@ -1,0 +1,1 @@
+enum NotificationIconType { taskAssigned, gitPush }

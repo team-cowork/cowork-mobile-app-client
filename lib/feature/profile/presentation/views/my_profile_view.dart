@@ -1,9 +1,9 @@
 import 'package:cowork_design_system/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../../core/utils/bloc_scaffold.dart';
-import '../../../settings/presentation/views/settings_view.dart';
 import '../../data/github_repository.dart';
 import '../../data/profile_repository.dart';
 import '../../domain/profile.dart';
@@ -36,9 +36,7 @@ class MyProfileView extends StatelessWidget {
                 color: AppColors.darkOnSurface,
               ),
               onPressed: () async {
-                await Navigator.of(context).push(
-                  MaterialPageRoute<void>(builder: (_) => const SettingsView()),
-                );
+                await context.push<void>('/profile/settings');
                 // 설정 → 프로필 편집에서 저장한 내용을 반영한다.
                 if (context.mounted) {
                   context.read<ProfileBloc>().add(const ProfileRequested());
