@@ -127,4 +127,63 @@ class AppIcon {
     fit: BoxFit.contain,
   );
 
+  static Widget users({double size = AppSize.iconMedium}) => SvgPicture.asset(
+    'assets/images/users.svg',
+    package: 'cowork_design_system',
+    width: size,
+    height: size,
+    fit: BoxFit.contain,
+  );
+
+  static Widget more({double size = AppSize.iconMedium}) => SvgPicture.asset(
+    'assets/images/more.svg',
+    package: 'cowork_design_system',
+    width: size,
+    height: size,
+    fit: BoxFit.contain,
+  );
+
+  static Widget userPlus({double size = AppSize.iconMedium}) =>
+      SvgPicture.asset(
+        'assets/images/user-plus.svg',
+        package: 'cowork_design_system',
+        width: size,
+        height: size,
+        fit: BoxFit.contain,
+      );
+
+  static Widget chevronBack({double size = AppSize.iconLarge}) =>
+      SvgPicture.asset(
+        'assets/images/chevron-back.svg',
+        package: 'cowork_design_system',
+        width: size,
+        height: size,
+        fit: BoxFit.contain,
+      );
+
+  static Widget hash({double size = AppSize.iconMedium}) => SvgPicture.asset(
+    'assets/images/hash.svg',
+    package: 'cowork_design_system',
+    width: size,
+    height: size,
+    fit: BoxFit.contain,
+  );
+
+  static Widget send({double size = AppSize.iconSmall}) => SvgPicture.asset(
+    'assets/images/send.svg',
+    package: 'cowork_design_system',
+    width: size,
+    height: size,
+    fit: BoxFit.contain,
+  );
+
+  static Widget attach({double size = AppSize.iconMedium}) =>
+      SvgPicture.asset(
+        'assets/images/attach.svg',
+        package: 'cowork_design_system',
+        width: size,
+        height: size,
+        fit: BoxFit.contain,
+      );
+
 }
