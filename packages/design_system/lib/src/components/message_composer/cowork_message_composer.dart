@@ -1,15 +1,11 @@
 import 'package:flutter/material.dart';
 
 import '../../constants/app_radius.dart';
-import '../../constants/app_size.dart';
 import '../../constants/app_spacing.dart';
 import '../../theme/color/app_colors_theme.dart';
+import '../../theme/icon/app_icon.dart';
 import '../../theme/text_style/app_font.dart';
 
-/// 메시지 작성 영역.
-///
-/// 파일 첨부 아이콘, 마크다운 입력 텍스트필드, 전송 버튼으로 구성된다.
-/// 동작 로직은 [onAttach]/[onSend]/[onSubmitted] 콜백으로 위임한다.
 class CoworkMessageComposer extends StatelessWidget {
   const CoworkMessageComposer({
     this.controller,
@@ -19,6 +15,7 @@ class CoworkMessageComposer extends StatelessWidget {
     this.onSubmitted,
     this.onSend,
     this.onAttach,
+    this.showAttachButton = true,
     super.key,
   });
 
@@ -30,36 +27,39 @@ class CoworkMessageComposer extends StatelessWidget {
   final VoidCallback? onSend;
   final VoidCallback? onAttach;
 
+  /// false면 첨부 버튼을 그리지 않는다. (예: 스레드 답글처럼 첨부가 없는 입력창)
+  final bool showAttachButton;
+
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
 
     return Container(
-      padding: const EdgeInsets.all(AppSpacing.s16),
+      // Figma 스펙: 좌14/우8/상하8. 좌우가 비대칭이라 인라인.
+      padding: const EdgeInsets.fromLTRB(14, 8, 8, 8),
       decoration: BoxDecoration(
         color: colors.surface,
         border: Border.all(color: colors.outlineVariant),
-        borderRadius: BorderRadius.circular(AppRadius.r20),
+        borderRadius: BorderRadius.circular(AppRadius.r24),
       ),
       child: Row(
         children: [
-          Material(
-            color: Colors.transparent,
-            shape: const CircleBorder(),
-            child: InkWell(
-              onTap: onAttach,
-              customBorder: const CircleBorder(),
-              child: SizedBox.square(
-                dimension: AppSize.componentMedium,
-                child: Icon(
-                  Icons.attach_file_outlined,
-                  size: AppSize.iconMedium,
-                  color: colors.onSurfaceVariant,
+          if (showAttachButton) ...[
+            Material(
+              color: Colors.transparent,
+              shape: const CircleBorder(),
+              child: InkWell(
+                onTap: onAttach,
+                customBorder: const CircleBorder(),
+                // Figma 전송 버튼(40)보다 작은 보조 액션이라 인라인.
+                child: SizedBox.square(
+                  dimension: 32,
+                  child: Center(child: AppIcon.attach()),
                 ),
               ),
             ),
-          ),
-          const SizedBox(width: AppSpacing.s12),
+            const SizedBox(width: AppSpacing.s10),
+          ],
           Expanded(
             child: TextField(
               controller: controller,
@@ -79,20 +79,17 @@ class CoworkMessageComposer extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(width: AppSpacing.s12),
+          const SizedBox(width: AppSpacing.s10),
           Material(
             color: colors.primary,
             borderRadius: BorderRadius.circular(AppRadius.r14),
             child: InkWell(
               onTap: onSend,
               borderRadius: BorderRadius.circular(AppRadius.r14),
+              // Figma 스펙: 40x40.
               child: SizedBox.square(
-                dimension: AppSize.componentMedium,
-                child: Icon(
-                  Icons.send,
-                  size: AppSize.iconSmall,
-                  color: colors.onPrimary,
-                ),
+                dimension: 40,
+                child: Center(child: AppIcon.send()),
               ),
             ),
           ),
