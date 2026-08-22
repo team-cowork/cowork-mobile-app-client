@@ -21,7 +21,7 @@ class ChannelMemberTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final avatar = CoworkAvatar(
-      initials: member.avatarInitial,
+      initials: member.profile.avatarInitial,
       backgroundColor: _colorFor(member.avatarColor),
       foregroundColor: AppColors.white,
     );
@@ -71,7 +71,7 @@ class ChannelMemberTile extends StatelessWidget {
                   spacing: AppSpacing.s6,
                   children: [
                     Text(
-                      member.name,
+                      member.profile.name,
                       style: AppFont.subtextL.copyWith(
                         color: AppColors.darkOnSurface,
                       ),

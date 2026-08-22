@@ -27,12 +27,12 @@ class ChatMessageRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final item = CoworkMessageItem(
-      username: message.authorName,
+      username: message.author.name,
       timestamp: message.timestamp,
       message: message.text,
-      initials: message.authorInitial,
+      initials: message.author.avatarInitial,
       avatar: CoworkAvatar(
-        initials: message.authorInitial,
+        initials: message.author.avatarInitial,
         size: avatarSize,
         backgroundColor: _colorFor(message.avatarColor),
         foregroundColor: AppColors.white,
