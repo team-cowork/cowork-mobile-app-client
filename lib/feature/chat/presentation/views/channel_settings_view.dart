@@ -200,6 +200,8 @@ class _MemberAvatarStack extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (members.isEmpty) return const SizedBox(height: 26);
+
     return SizedBox(
       height: 26,
       width: 26.0 + (members.length - 1) * 18.0,
