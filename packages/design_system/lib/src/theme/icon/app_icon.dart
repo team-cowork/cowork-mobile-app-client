@@ -10,7 +10,6 @@ class AppIcon {
   static const IconData home = Icons.home_outlined;
   static const IconData back = Icons.arrow_back_ios_new;
   static const IconData close = Icons.close;
-  static const IconData search = Icons.search;
   static const IconData settings = Icons.settings_outlined;
 
 
@@ -180,6 +179,40 @@ class AppIcon {
   static Widget attach({double size = AppSize.iconMedium}) =>
       SvgPicture.asset(
         'assets/images/attach.svg',
+        package: 'cowork_design_system',
+        width: size,
+        height: size,
+        fit: BoxFit.contain,
+      );
+
+  static Widget muted({double size = 14}) => SvgPicture.asset(
+    'assets/images/muted.svg',
+    package: 'cowork_design_system',
+    width: size,
+    height: size,
+    fit: BoxFit.contain,
+  );
+
+  static Widget edit({double size = AppSize.iconMedium}) => SvgPicture.asset(
+    'assets/images/edit.svg',
+    package: 'cowork_design_system',
+    width: size,
+    height: size,
+    fit: BoxFit.contain,
+  );
+
+  static Widget dmHome({double size = AppSize.iconMedium}) =>
+      SvgPicture.asset(
+        'assets/images/dm-home.svg',
+        package: 'cowork_design_system',
+        width: size,
+        height: size,
+        fit: BoxFit.contain,
+      );
+
+  static Widget search({double size = AppSize.iconMedium}) =>
+      SvgPicture.asset(
+        'assets/images/search.svg',
         package: 'cowork_design_system',
         width: size,
         height: size,

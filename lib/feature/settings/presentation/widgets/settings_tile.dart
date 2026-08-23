@@ -9,14 +9,14 @@ import 'package:flutter/material.dart';
 class SettingsTile extends StatelessWidget {
   const SettingsTile({
     super.key,
-    required this.icon,
+    this.icon,
     required this.label,
     this.trailing,
     this.onTap,
     this.destructive = false,
   });
 
-  final IconData icon;
+  final IconData? icon;
   final String label;
   final Widget? trailing;
   final VoidCallback? onTap;
@@ -28,12 +28,14 @@ class SettingsTile extends StatelessWidget {
       padding: const EdgeInsets.all(AppSpacing.s14),
       child: Row(
         children: [
-          Icon(
-            icon,
-            size: 20,
-            color: destructive ? AppColors.red400 : AppColors.neutral300,
-          ),
-          const SizedBox(width: AppSpacing.s12),
+          if (icon != null) ...[
+            Icon(
+              icon,
+              size: 20,
+              color: destructive ? AppColors.red400 : AppColors.neutral300,
+            ),
+            const SizedBox(width: AppSpacing.s12),
+          ],
           Expanded(
             child: Text(
               label,
