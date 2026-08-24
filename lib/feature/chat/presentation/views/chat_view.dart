@@ -7,6 +7,7 @@ import '../viewModels/chat_bloc.dart';
 import '../widgets/channel_list.dart';
 import '../widgets/chat_header.dart';
 import '../widgets/chat_shortcut_bar.dart';
+import '../widgets/team_menu_sheet.dart';
 
 class ChatView extends StatelessWidget {
   const ChatView({super.key});
@@ -23,10 +24,15 @@ class ChatView extends StatelessWidget {
           children: [
             ChatHeader(
               label: data.workspaceName,
+              onTitleTap: () =>
+                  TeamMenuSheet.show(context, teamName: data.workspaceName),
               onSearchTap: () => context.push('/search'),
               onNotificationTap: () => context.push('/notifications'),
             ),
-            ChatShortcutBar(shortcuts: data.workspaceShortcuts),
+            ChatShortcutBar(
+              shortcuts: data.workspaceShortcuts,
+              onDmHomeTap: () => context.push('/dm'),
+            ),
             Expanded(child: ChannelList(channelGroups: data.channelGroups)),
           ],
         ),

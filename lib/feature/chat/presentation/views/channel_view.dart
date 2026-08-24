@@ -26,6 +26,7 @@ class ChannelView extends StatelessWidget {
               description: data.description,
               onBack: () => context.pop(),
               onMembersTap: () => context.push('/chat/channel/members'),
+              onMoreTap: () => context.push('/chat/channel/settings'),
             ),
             Expanded(
               child: ListView.separated(

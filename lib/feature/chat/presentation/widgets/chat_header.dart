@@ -4,12 +4,14 @@ import 'package:flutter/material.dart';
 class ChatHeader extends StatelessWidget {
   const ChatHeader({
     required this.label,
+    this.onTitleTap,
     this.onSearchTap,
     this.onNotificationTap,
     super.key,
   });
 
   final String label;
+  final VoidCallback? onTitleTap;
   final VoidCallback? onSearchTap;
   final VoidCallback? onNotificationTap;
 
@@ -24,26 +26,25 @@ class ChatHeader extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Row(
-            children: [
-              Text(
-                label,
-                style: AppFont.titleM.copyWith(color: AppColors.neutral100),
-              ),
-              const SizedBox(width: AppSpacing.s6),
-              AppIcon.dropDown(),
-            ],
+          GestureDetector(
+            onTap: onTitleTap,
+            child: Row(
+              children: [
+                Text(
+                  label,
+                  style: AppFont.titleM.copyWith(color: AppColors.neutral100),
+                ),
+                const SizedBox(width: AppSpacing.s6),
+                AppIcon.dropDown(),
+              ],
+            ),
           ),
           const Spacer(),
           Row(
             children: [
               GestureDetector(
                 onTap: onSearchTap,
-                child: const Icon(
-                  AppIcon.search,
-                  color: AppColors.neutral300,
-                  size: 22,
-                ),
+                child: AppIcon.search(size: 22),
               ),
               const SizedBox(width: AppSpacing.s18),
               GestureDetector(onTap: onNotificationTap, child: AppIcon.bell()),
