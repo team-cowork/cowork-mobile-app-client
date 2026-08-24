@@ -22,6 +22,7 @@ class BlocScaffold<B extends BlocBase<AsyncState<T>>, T>
     required this.builder,
     this.appBar,
     this.bottomNavigationBar,
+    this.floatingActionButton,
   });
 
   /// 화면 진입 시 Bloc을 만들고 최초 로드 이벤트를 넣는다.
@@ -38,6 +39,7 @@ class BlocScaffold<B extends BlocBase<AsyncState<T>>, T>
 
   final PreferredSizeWidget? appBar;
   final Widget? bottomNavigationBar;
+  final Widget? floatingActionButton;
 
   @override
   Widget build(BuildContext context) {
@@ -46,6 +48,7 @@ class BlocScaffold<B extends BlocBase<AsyncState<T>>, T>
       child: BaseScaffold(
         appBar: appBar,
         bottomNavigationBar: bottomNavigationBar,
+        floatingActionButton: floatingActionButton,
         body: BlocBuilder<B, AsyncState<T>>(
           builder: (context, state) => switch (state) {
             AsyncFailure<T>(:final message) => Center(

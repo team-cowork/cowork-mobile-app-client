@@ -10,12 +10,14 @@ class BaseScaffold extends StatelessWidget {
     this.appBar,
     this.body,
     this.bottomNavigationBar,
+    this.floatingActionButton,
     this.backgroundColor,
   });
 
   final PreferredSizeWidget? appBar;
   final Widget? body;
   final Widget? bottomNavigationBar;
+  final Widget? floatingActionButton;
 
   /// 기본값은 [AppColors.neutral850].
   final Color? backgroundColor;
@@ -27,6 +29,7 @@ class BaseScaffold extends StatelessWidget {
       appBar: appBar,
       body: body,
       bottomNavigationBar: bottomNavigationBar,
+      floatingActionButton: floatingActionButton,
     );
   }
 }
