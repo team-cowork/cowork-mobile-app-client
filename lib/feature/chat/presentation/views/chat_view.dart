@@ -4,7 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/utils/bloc_scaffold.dart';
 import '../../domain/channel.dart';
-import '../viewModels/chat_bloc.dart';
+import '../blocs/chat/chat_bloc.dart';
 import '../widgets/channel_group_header.dart';
 import '../widgets/channel_group_item.dart';
 import '../widgets/chat_button.dart';

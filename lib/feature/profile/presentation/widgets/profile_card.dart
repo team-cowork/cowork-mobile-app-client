@@ -6,7 +6,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../domain/enums/user_status.dart';
 import '../../domain/profile.dart';
-import '../viewModels/profile_bloc.dart';
+import '../blocs/profile/profile_bloc.dart';
 import '../views/edit_profile_view.dart';
 
 /// 프로필 화면 상단의 프로필 카드.

@@ -1,20 +1,12 @@
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../../../core/utils/async_state.dart';
-import '../../data/chat_home_store.dart';
-import '../../domain/channel.dart';
+import '../../../../../core/utils/async_state.dart';
+import '../../../data/chat_home_store.dart';
+import '../../../domain/channel.dart';
 
 part 'chat_event.dart';
-
-/// 홈(채팅 목록) 화면에서 필요한 데이터.
-typedef ChatHomeData = ({
-  String workspaceName,
-  List<ChannelGroup> channelGroups,
-});
-
-/// 홈 화면 상태. 성공 시 [ChatHomeData]를 담는다.
-typedef ChatState = AsyncState<ChatHomeData>;
+part 'chat_state.dart';
 
 /// 홈(채팅 목록) 화면 상태를 관리하는 Bloc.
 ///

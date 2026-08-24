@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../domain/note.dart';
-import '../viewModels/notes_bloc.dart';
+import '../blocs/notes/notes_bloc.dart';
 import '../views/note_detail_view.dart';
 
 /// 회의록 목록의 카드 한 장.

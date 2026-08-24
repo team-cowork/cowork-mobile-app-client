@@ -2,7 +2,7 @@ import 'package:cowork_design_system/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../viewModels/notes_bloc.dart';
+import '../blocs/notes/notes_bloc.dart';
 
 /// 회의록 생성(새 노트) 바텀시트.
 ///

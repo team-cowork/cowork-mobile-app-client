@@ -7,7 +7,7 @@ import '../../../settings/presentation/views/settings_view.dart';
 import '../../data/github_repository.dart';
 import '../../data/profile_repository.dart';
 import '../../domain/profile.dart';
-import '../viewModels/profile_bloc.dart';
+import '../blocs/profile/profile_bloc.dart';
 import '../widgets/github_streak_card.dart';
 import '../widgets/profile_card.dart';
 import '../widgets/profile_meta_chips.dart';

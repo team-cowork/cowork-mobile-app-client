@@ -4,7 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/utils/base_scaffold.dart';
 import '../../domain/note.dart';
-import '../viewModels/note_edit_bloc.dart';
+import '../blocs/note_edit/note_edit_bloc.dart';
 
 /// 회의록 편집 화면.
 ///

@@ -2,18 +2,16 @@ import 'package:dio/dio.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../../../core/utils/async_state.dart';
-import '../../../../core/utils/logger.dart';
-import '../../../../network/http_error_message.dart';
-import '../../data/github_repository.dart';
-import '../../data/profile_repository.dart';
-import '../../data/profile_store.dart';
-import '../../domain/profile.dart';
+import '../../../../../core/utils/async_state.dart';
+import '../../../../../core/utils/logger.dart';
+import '../../../../../network/http_error_message.dart';
+import '../../../data/github_repository.dart';
+import '../../../data/profile_repository.dart';
+import '../../../data/profile_store.dart';
+import '../../../domain/profile.dart';
 
 part 'profile_event.dart';
-
-/// 프로필 화면 상태. 성공 시 [Profile]을 담는다.
-typedef ProfileState = AsyncState<Profile>;
+part 'profile_state.dart';
 
 /// 프로필 화면 상태를 관리하는 Bloc.
 class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {

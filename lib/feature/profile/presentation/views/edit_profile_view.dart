@@ -9,7 +9,7 @@ import '../../../../core/utils/async_state.dart';
 import '../../../../core/utils/base_scaffold.dart';
 import '../../data/profile_repository.dart';
 import '../../domain/edit_profile.dart';
-import '../viewModels/edit_profile_bloc.dart';
+import '../blocs/edit_profile/edit_profile_bloc.dart';
 
 /// 프로필 편집 화면. 설정 화면의 `프로필 편집` 항목에서 진입한다.
 ///
