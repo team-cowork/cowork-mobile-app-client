@@ -2,10 +2,10 @@ import 'package:cowork_design_system/design_system.dart';
 import 'package:flutter/material.dart';
 
 import '../../feature/chat/presentation/views/chat_view.dart';
+import '../../feature/issues/presentation/views/issues_view.dart';
 import '../../feature/notes/presentation/views/notes_view.dart';
 import '../../feature/profile/presentation/views/my_profile_view.dart';
 import '../utils/base_scaffold.dart';
-import 'coming_soon_view.dart';
 
 class MainShell extends StatefulWidget {
   const MainShell({super.key});
@@ -29,8 +29,7 @@ class _MainShellState extends State<MainShell> {
     if (!_visited.contains(index)) return const SizedBox.shrink();
     return switch (index) {
       0 => const ChatView(),
-      // TODO: 이슈 화면 퍼블리싱 후 교체 (#49)
-      1 => const ComingSoonView(title: '이슈', icon: AppIcon.navIssue),
+      1 => const IssuesView(),
       2 => const NotesView(),
       _ => const MyProfileView(),
     };

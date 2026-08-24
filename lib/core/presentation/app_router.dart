@@ -3,6 +3,8 @@ import 'package:go_router/go_router.dart';
 import '../../feature/chat/presentation/views/channel_view.dart';
 import '../../feature/chat/presentation/views/members_view.dart';
 import '../../feature/chat/presentation/views/thread_view.dart';
+import '../../feature/issues/domain/issue.dart';
+import '../../feature/issues/presentation/views/issue_detail_view.dart';
 import '../../feature/notes/domain/note.dart';
 import '../../feature/notes/presentation/views/note_detail_view.dart';
 import '../../feature/notes/presentation/views/note_edit_view.dart';
@@ -48,6 +50,11 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/chat/channel/members',
       builder: (context, state) => const MembersView(),
+    ),
+    GoRoute(
+      path: '/issues/detail',
+      builder: (context, state) =>
+          IssueDetailView(issue: state.extra! as Issue),
     ),
   ],
 );
