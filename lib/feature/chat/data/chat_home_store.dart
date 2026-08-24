@@ -1,5 +1,7 @@
 import '../domain/channel.dart';
 import '../domain/enums/channel_type.dart';
+import '../domain/enums/workspace_avatar_color.dart';
+import '../domain/workspace_shortcut.dart';
 
 /// 홈(채팅 목록) 화면의 목(mock) 데이터 저장소.
 ///
@@ -11,6 +13,22 @@ class ChatHomeStore {
   static final ChatHomeStore instance = ChatHomeStore._();
 
   String get workspaceName => '코워크';
+
+  List<WorkspaceShortcut> get workspaceShortcuts => const [
+    WorkspaceShortcut(
+      id: 'personal',
+      initial: '－',
+      color: WorkspaceAvatarColor.neutral,
+    ),
+    WorkspaceShortcut(
+      id: 'cowork',
+      initial: '코',
+      color: WorkspaceAvatarColor.red,
+      isSelected: true,
+    ),
+    WorkspaceShortcut(id: 'design', initial: '디', color: WorkspaceAvatarColor.blue),
+    WorkspaceShortcut(id: 'gsm', initial: 'G', color: WorkspaceAvatarColor.green),
+  ];
 
   List<ChannelGroup> get channelGroups => const [
     ChannelGroup(

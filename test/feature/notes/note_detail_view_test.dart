@@ -4,6 +4,18 @@ import 'package:cowork_app/feature/notes/presentation/views/notes_view.dart';
 import 'package:cowork_design_system/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
+
+GoRouter _notesRouter() => GoRouter(
+  initialLocation: '/',
+  routes: [
+    GoRoute(path: '/', builder: (context, state) => const NotesView()),
+    GoRoute(
+      path: '/notes/detail',
+      builder: (context, state) => NoteDetailView(note: state.extra! as Note),
+    ),
+  ],
+);
 
 void main() {
   testWidgets('카드를 누르면 상세 화면이 섹션과 액션 아이템을 렌더링한다', (tester) async {
@@ -14,7 +26,7 @@ void main() {
     addTearDown(tester.view.reset);
 
     await tester.pumpWidget(
-      MaterialApp(theme: AppTheme.dark(), home: const NotesView()),
+      MaterialApp.router(theme: AppTheme.dark(), routerConfig: _notesRouter()),
     );
     await tester.pumpAndSettle();
 
@@ -34,7 +46,7 @@ void main() {
     addTearDown(tester.view.reset);
 
     await tester.pumpWidget(
-      MaterialApp(theme: AppTheme.dark(), home: const NotesView()),
+      MaterialApp.router(theme: AppTheme.dark(), routerConfig: _notesRouter()),
     );
     await tester.pumpAndSettle();
     await tester.tap(find.text('2026 1분기 킥오프 회의'));

@@ -1,4 +1,4 @@
-import 'package:cowork_app/core/presentation/auth_gate.dart';
+import 'package:cowork_app/core/presentation/app_router.dart';
 import 'package:cowork_app/network/dev_http_overrides.dart';
 import 'package:cowork_app/feature/auth/data/auth_repository.dart';
 import 'package:cowork_app/feature/auth/data/dgsm_oauth_config.dart';
@@ -37,12 +37,12 @@ class CoworkApp extends StatelessWidget {
         create: (context) =>
             AuthBloc(repository: context.read<AuthRepository>())
               ..add(const AuthEvent.sessionRestored()),
-        child: MaterialApp(
+        child: MaterialApp.router(
           title: 'cowork',
           debugShowCheckedModeBanner: false,
           // 디자인이 다크 전용이라 시스템 설정과 무관하게 다크로 고정한다.
           theme: AppTheme.dark(),
-          home: const AuthGate(),
+          routerConfig: appRouter,
         ),
       ),
     );

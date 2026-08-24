@@ -3,6 +3,7 @@ part of 'chat_bloc.dart';
 /// 홈(채팅 목록) 화면에서 필요한 데이터.
 typedef ChatHomeData = ({
   String workspaceName,
+  List<WorkspaceShortcut> workspaceShortcuts,
   List<ChannelGroup> channelGroups,
 });
 

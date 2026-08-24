@@ -1,11 +1,11 @@
 import 'package:cowork_design_system/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../../core/utils/base_scaffold.dart';
 import '../../../profile/data/profile_store.dart';
 import '../../domain/note.dart';
-import 'note_edit_view.dart';
 
 /// 회의록 상세 화면.
 ///
@@ -39,9 +39,7 @@ class _NoteDetailViewState extends State<NoteDetailView> {
       _note.author.authorId == ProfileStore.instance.currentUserId;
 
   Future<void> _openEditor() async {
-    final updated = await Navigator.of(
-      context,
-    ).push<Note>(MaterialPageRoute(builder: (_) => NoteEditView(note: _note)));
+    final updated = await context.push<Note>('/notes/edit', extra: _note);
     if (updated != null) setState(() => _note = updated);
   }
 

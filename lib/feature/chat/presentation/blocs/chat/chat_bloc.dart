@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../../core/utils/async_state.dart';
 import '../../../data/chat_home_store.dart';
 import '../../../domain/channel.dart';
+import '../../../domain/workspace_shortcut.dart';
 
 part 'chat_event.dart';
 part 'chat_state.dart';
@@ -23,6 +24,7 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
       emit(
         ChatState.success((
           workspaceName: store.workspaceName,
+          workspaceShortcuts: store.workspaceShortcuts,
           channelGroups: store.channelGroups,
         )),
       );
