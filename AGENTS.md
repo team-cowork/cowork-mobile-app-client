@@ -117,6 +117,8 @@ cd widgetbook && flutter pub run build_runner build --delete-conflicting-outputs
 
 스킬을 추가하거나 수정할 때는 반드시 `.agents/skills/` 아래를 수정하고, `.claude/skills/`에는 symlink만 둔다.
 
+루트 `CLAUDE.md`는 `@AGENTS.md` 한 줄짜리 import다. 규칙은 AGENTS.md에만 적는다.
+
 ## Repo-local 스킬
 
 ### `$commit`
