@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/utils/bloc_scaffold.dart';
-import '../viewModels/dm_list_bloc.dart';
+import '../viewModels/personal_chat_bloc.dart';
 import '../widgets/dm_list_header.dart';
 import '../widgets/dm_list_tile.dart';
 import '../widgets/dm_online_strip.dart';
@@ -13,10 +13,13 @@ class DmListView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocScaffold<DmListBloc, DmListData>(
-      create: (_) => DmListBloc()..add(const DmListRequested()),
+    return BlocScaffold<PersonalChatBloc, PersonalChatData>(
+      create: (_) =>
+          PersonalChatBloc()..add(const PersonalChatEvent.requested()),
       errorTitle: 'DM 목록을 불러오지 못했어요',
-      onRetry: (context) => context.read<DmListBloc>().add(const DmListRequested()),
+      onRetry: (context) => context.read<PersonalChatBloc>().add(
+        const PersonalChatEvent.requested(),
+      ),
       builder: (context, data) => SafeArea(
         child: Column(
           children: [

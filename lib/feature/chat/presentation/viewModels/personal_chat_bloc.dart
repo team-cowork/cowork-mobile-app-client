@@ -6,34 +6,34 @@ import '../../data/direct_message_store.dart';
 import '../../domain/direct_message_preview.dart';
 import '../../domain/dm_presence_entry.dart';
 
-part 'dm_list_event.dart';
+part 'personal_chat_event.dart';
 
-typedef DmListData = ({
+typedef PersonalChatData = ({
   List<DmPresenceEntry> onlineStrip,
   List<DirectMessagePreview> pinned,
   List<DirectMessagePreview> recent,
 });
 
-typedef DmListState = AsyncState<DmListData>;
+typedef PersonalChatState = AsyncState<PersonalChatData>;
 
-class DmListBloc extends Bloc<DmListEvent, DmListState> {
-  DmListBloc() : super(const DmListState.initial()) {
-    on<DmListRequested>(_onLoad);
+class PersonalChatBloc extends Bloc<PersonalChatEvent, PersonalChatState> {
+  PersonalChatBloc() : super(const PersonalChatState.initial()) {
+    on<PersonalChatRequested>(_onLoad);
   }
 
-  void _onLoad(DmListRequested event, Emitter<DmListState> emit) {
-    emit(const DmListState.loading());
+  void _onLoad(PersonalChatRequested event, Emitter<PersonalChatState> emit) {
+    emit(const PersonalChatState.loading());
     try {
       final store = DirectMessageStore.instance;
       emit(
-        DmListState.success((
+        PersonalChatState.success((
           onlineStrip: store.onlineStrip,
           pinned: store.pinned,
           recent: store.recent,
         )),
       );
     } catch (_) {
-      emit(const DmListState.failure());
+      emit(const PersonalChatState.failure());
     }
   }
 }
