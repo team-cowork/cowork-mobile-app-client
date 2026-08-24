@@ -3,13 +3,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../../core/utils/bloc_scaffold.dart';
+import '../../../../core/utils/bloc_section_scaffold.dart';
 import '../../../settings/presentation/widgets/settings_section.dart';
 import '../../../settings/presentation/widgets/settings_tile.dart';
 import '../../domain/channel_member.dart';
 import '../../domain/channel_settings.dart';
 import '../../domain/enums/channel_settings_toggle.dart';
-import '../viewModels/channel_settings_bloc.dart';
+import '../viewModels/group_chat_bloc.dart';
 import '../widgets/channel_settings_header.dart';
 import '../widgets/chat_color_mapping.dart';
 
@@ -24,14 +24,16 @@ class ChannelSettingsView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocScaffold<ChannelSettingsBloc, ChannelSettings>(
+    return BlocSectionScaffold<GroupChatBloc, GroupChatState, ChannelSettings>(
       create: (_) =>
-          ChannelSettingsBloc()..add(const ChannelSettingsRequested()),
+          GroupChatBloc()..add(const GroupChatEvent.settingsRequested()),
+      selector: (state) => state.settings,
       errorTitle: '채널 설정을 불러오지 못했어요',
-      onRetry: (context) =>
-          context.read<ChannelSettingsBloc>().add(const ChannelSettingsRequested()),
+      onRetry: (context) => context.read<GroupChatBloc>().add(
+        const GroupChatEvent.settingsRequested(),
+      ),
       builder: (context, settings) {
-        final bloc = context.read<ChannelSettingsBloc>();
+        final bloc = context.read<GroupChatBloc>();
 
         return SafeArea(
           child: Column(
@@ -74,7 +76,7 @@ class ChannelSettingsView extends StatelessWidget {
                               value: settings.isPrivate,
                               semanticLabel: '비공개 채널',
                               onChanged: (v) => bloc.add(
-                                ChannelSettingsEvent.toggled(
+                                GroupChatEvent.settingsToggled(
                                   ChannelSettingsToggle.isPrivate,
                                   v,
                                 ),
@@ -99,7 +101,7 @@ class ChannelSettingsView extends StatelessWidget {
                               value: settings.isMuted,
                               semanticLabel: '이 채널 음소거',
                               onChanged: (v) => bloc.add(
-                                ChannelSettingsEvent.toggled(
+                                GroupChatEvent.settingsToggled(
                                   ChannelSettingsToggle.isMuted,
                                   v,
                                 ),
