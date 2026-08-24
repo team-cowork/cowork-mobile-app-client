@@ -73,6 +73,7 @@ type(scope): 설명
 ## 상태관리 / DI / 네트워크 규칙
 
 - 상태관리는 flutter_bloc을 사용한다. 화면 단위 Bloc은 `feature/<name>/presentation/blocs/<bloc>/` 아래 `_bloc`/`_event`/`_state` 세 파일로 둔다.
+- 시트/폼처럼 화면이 닫히면 버려지는 입력값은 Bloc 없이 `StatefulWidget` + `setState` 로 든다.
 - 단일 데이터를 불러오는 화면은 `AsyncState<T>` + `BlocScaffold`를 쓴다. 로딩/실패 화면을 개별 구현하지 않는다.
 - Bloc 주입은 `BlocProvider`로 한다. 별도 DI 컨테이너는 쓰지 않는다.
 - 백엔드 연동 전까지 데이터는 `data/*_store.dart` 인메모리 싱글턴에 둔다. 실제 API 연동 시 이 싱글턴을 리포지토리로 교체한다.

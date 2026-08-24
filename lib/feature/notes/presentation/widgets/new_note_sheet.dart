@@ -8,7 +8,9 @@ import '../blocs/notes/notes_bloc.dart';
 ///
 /// Figma `Sheet / 새 노트` 스펙. 제목·내용 입력과 템플릿 선택을 제공하고,
 /// `노트 만들기`를 누르면 [NotesBloc]에 [NoteAdded]를 보낸다.
-class NewNoteSheet extends StatelessWidget {
+///
+/// ponytail: 입력값은 시트가 닫히면 버려지는 화면 로컬 상태라 Bloc 없이 setState 로 든다.
+class NewNoteSheet extends StatefulWidget {
   const NewNoteSheet({super.key});
 
   /// 시트를 띄운다. [context]는 [NotesBloc] 하위여야 한다.
@@ -23,13 +25,8 @@ class NewNoteSheet extends StatelessWidget {
         borderRadius: BorderRadius.vertical(top: Radius.circular(_sheetRadius)),
       ),
       // 시트는 별도 라우트라 목록 Bloc을 직접 넘겨준다.
-      builder: (_) => BlocProvider.value(
-        value: notesBloc,
-        child: BlocProvider(
-          create: (_) => NewNoteBloc(),
-          child: const NewNoteSheet(),
-        ),
-      ),
+      builder: (_) =>
+          BlocProvider.value(value: notesBloc, child: const NewNoteSheet()),
     );
   }
 
@@ -41,16 +38,24 @@ class NewNoteSheet extends StatelessWidget {
     (label: '스프린트 회고', description: 'Keep · Problem · Try'),
   ];
 
-  void _submit(BuildContext context) {
-    // buildWhen 때문에 버튼이 들고 있는 form 은 낡을 수 있어 현재 상태를 읽는다.
-    final form = context.read<NewNoteBloc>().state;
+  @override
+  State<NewNoteSheet> createState() => _NewNoteSheetState();
+}
 
+class _NewNoteSheetState extends State<NewNoteSheet> {
+  String _title = '';
+  String _content = '';
+  int _template = 0;
+
+  /// 제목이 있어야 노트를 만들 수 있다.
+  bool get _canSubmit => _title.trim().isNotEmpty;
+
+  void _submit() {
     context.read<NotesBloc>().add(
       NoteAdded(
-        title: form.title,
-        content: form.content,
-        template:
-            (templates.elementAtOrNull(form.template) ?? templates.first).label,
+        title: _title,
+        content: _content,
+        template: NewNoteSheet.templates[_template].label,
       ),
     );
     Navigator.of(context).pop();
@@ -59,7 +64,6 @@ class NewNoteSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    final bloc = context.read<NewNoteBloc>();
 
     return SafeArea(
       child: Padding(
@@ -109,51 +113,44 @@ class NewNoteSheet extends StatelessWidget {
                 labelText: '제목',
                 hintText: '노트 제목을 입력하세요',
                 textInputAction: TextInputAction.next,
-                onChanged: (value) => bloc.add(NewNoteChanged(title: value)),
+                onChanged: (value) => setState(() => _title = value),
               ),
               CoworkTextArea(
                 labelText: '내용',
                 hintText: '회의 안건과 논의 내용을 적어보세요. 편집 화면에서 이어서 작성할 수 있어요.',
                 minLines: 4,
-                onChanged: (value) => bloc.add(NewNoteChanged(content: value)),
+                onChanged: (value) => setState(() => _content = value),
               ),
-              BlocBuilder<NewNoteBloc, NewNoteForm>(
-                builder: (context, form) => Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  spacing: AppSpacing.s8,
-                  children: [
-                    Text(
-                      '템플릿',
-                      style: AppFont.subtextS.copyWith(
-                        fontWeight: AppFont.semiBold,
-                        color: colors.onSurfaceVariant,
-                      ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                spacing: AppSpacing.s8,
+                children: [
+                  Text(
+                    '템플릿',
+                    style: AppFont.subtextS.copyWith(
+                      fontWeight: AppFont.semiBold,
+                      color: colors.onSurfaceVariant,
                     ),
-                    for (final (index, template) in templates.indexed)
-                      CoworkOptionCard(
-                        label: template.label,
-                        description: template.description,
-                        icon: AppIcon.navNote,
-                        selected: index == form.template,
-                        onTap: () => bloc.add(NewNoteChanged(template: index)),
-                        trailing: _TemplateRadio(
-                          selected: index == form.template,
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-              BlocBuilder<NewNoteBloc, NewNoteForm>(
-                buildWhen: (previous, current) =>
-                    previous.canSubmit != current.canSubmit,
-                builder: (context, form) => SizedBox(
-                  width: double.infinity,
-                  child: CoworkButton(
-                    label: '노트 만들기',
-                    size: CoworkButtonSize.large,
-                    enabled: form.canSubmit,
-                    onPressed: () => _submit(context),
                   ),
+                  for (final (index, template)
+                      in NewNoteSheet.templates.indexed)
+                    CoworkOptionCard(
+                      label: template.label,
+                      description: template.description,
+                      icon: AppIcon.navNote,
+                      selected: index == _template,
+                      onTap: () => setState(() => _template = index),
+                      trailing: _TemplateRadio(selected: index == _template),
+                    ),
+                ],
+              ),
+              SizedBox(
+                width: double.infinity,
+                child: CoworkButton(
+                  label: '노트 만들기',
+                  size: CoworkButtonSize.large,
+                  enabled: _canSubmit,
+                  onPressed: _submit,
                 ),
               ),
             ],

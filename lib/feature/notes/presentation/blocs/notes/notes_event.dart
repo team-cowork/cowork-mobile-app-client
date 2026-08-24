@@ -37,28 +37,3 @@ final class NoteAdded extends NotesEvent {
   @override
   List<Object?> get props => [title, content, template];
 }
-
-sealed class NewNoteEvent extends Equatable {
-  const NewNoteEvent();
-
-  /// 새 노트 시트의 입력값이 바뀌었다. 전달한 항목만 갱신한다.
-  const factory NewNoteEvent.changed({
-    String? title,
-    String? content,
-    int? template,
-  }) = NewNoteChanged;
-
-  @override
-  List<Object?> get props => [];
-}
-
-final class NewNoteChanged extends NewNoteEvent {
-  const NewNoteChanged({this.title, this.content, this.template});
-
-  final String? title;
-  final String? content;
-  final int? template;
-
-  @override
-  List<Object?> get props => [title, content, template];
-}
