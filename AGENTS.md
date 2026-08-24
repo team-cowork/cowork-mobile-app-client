@@ -54,6 +54,8 @@ type(scope): 설명
 - 기능 변경 시 관련 feature 경계 안에서 먼저 해결한다.
 - 공통화가 필요한 경우에만 shared/core 성격의 위치로 이동한다.
 - 새로운 구조나 추상화는 기존 패턴을 먼저 확인한 뒤 최소한으로 추가한다.
+- 위젯은 쓰이는 곳 수로 위치를 정한다. 여러 feature에서 쓰면 `core/` 또는 design_system, 한 feature의 여러 화면에서 쓰면 `feature/<name>/presentation/widgets/`, 한 화면에서만 쓰면 그 화면 파일 안 private 클래스로 둔다.
+- 위젯 테스트가 직접 참조하는 위젯은 두 번째 소비자가 있는 것으로 보고 `widgets/` 에 남긴다.
 
 ## UI / 기능 개발 경계
 
