@@ -8,6 +8,7 @@ import '../blocs/chat/chat_bloc.dart';
 import '../widgets/channel_group_header.dart';
 import '../widgets/channel_group_item.dart';
 import '../widgets/chat_button.dart';
+import '../widgets/create_sheets.dart';
 import '../widgets/home_header.dart';
 
 /// 홈(채팅 목록) 화면.
@@ -24,7 +25,10 @@ class ChatView extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            HomeHeader(label: data.workspaceName),
+            HomeHeader(
+              label: data.workspaceName,
+              onTitleTap: () => NewProjectSheet.show(context),
+            ),
             const _ChatShortcutBar(),
             Expanded(child: _ChannelList(channelGroups: data.channelGroups)),
           ],
@@ -52,7 +56,11 @@ class _ChatShortcutBar extends StatelessWidget {
         child: Row(
           spacing: 14,
           children: [
-            CoworkIconButton.custom(icon: AppIcon.plus()),
+            CoworkIconButton.custom(
+              icon: AppIcon.plus(),
+              semanticLabel: '새 채널',
+              onPressed: () => NewChannelSheet.show(context),
+            ),
             ChatButton(onTap: () {}),
           ],
         ),
