@@ -337,8 +337,11 @@ class _VisibilityOption extends StatelessWidget {
   }
 }
 
-/// 시트가 돌려주는 입력값. [template]은 [NewProjectSheet.templates] 인덱스.
-typedef NewProjectForm = ({int template, String name});
+/// 시트가 돌려주는 입력값. [template]은 고른 템플릿의 라벨.
+///
+/// 인덱스가 아니라 라벨을 넘긴다. 서버가 템플릿 목록을 내려주기 시작하면
+/// [NewProjectSheet.templates] 순서가 바뀌어도 고른 값이 어긋나지 않는다.
+typedef NewProjectForm = ({String template, String name});
 
 /// 프로젝트 생성 바텀시트.
 ///
@@ -418,8 +421,10 @@ class _NewProjectSheetState extends State<NewProjectSheet> {
             label: '프로젝트 만들기',
             size: CoworkButtonSize.large,
             enabled: _canSubmit,
-            onPressed: () =>
-                Navigator.of(context).pop((template: _template, name: _name)),
+            onPressed: () => Navigator.of(context).pop((
+              template: NewProjectSheet.templates[_template].label,
+              name: _name,
+            )),
           ),
         ),
       ],
