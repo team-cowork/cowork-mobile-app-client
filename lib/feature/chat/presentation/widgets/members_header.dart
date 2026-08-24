@@ -42,7 +42,9 @@ class MembersHeader extends StatelessWidget {
               children: [
                 Text(
                   '멤버',
-                  style: AppFont.labelS.copyWith(color: AppColors.darkOnSurface),
+                  style: AppFont.labelS.copyWith(
+                    color: AppColors.darkOnSurface,
+                  ),
                 ),
                 Text(
                   '# $channelName · $memberCount명',

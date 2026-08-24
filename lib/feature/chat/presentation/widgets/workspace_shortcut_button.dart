@@ -5,7 +5,11 @@ import '../../domain/enums/workspace_avatar_color.dart';
 import '../../domain/workspace_shortcut.dart';
 
 class WorkspaceShortcutButton extends StatelessWidget {
-  const WorkspaceShortcutButton({super.key, required this.shortcut, this.onTap});
+  const WorkspaceShortcutButton({
+    super.key,
+    required this.shortcut,
+    this.onTap,
+  });
 
   final WorkspaceShortcut shortcut;
   final VoidCallback? onTap;
@@ -17,7 +21,9 @@ class WorkspaceShortcutButton extends StatelessWidget {
       child: Container(
         width: AppSize.componentLarge,
         height: AppSize.componentLarge,
-        padding: shortcut.isSelected ? const EdgeInsets.all(2) : EdgeInsets.zero,
+        padding: shortcut.isSelected
+            ? const EdgeInsets.all(2)
+            : EdgeInsets.zero,
         decoration: shortcut.isSelected
             ? BoxDecoration(
                 shape: BoxShape.circle,
@@ -26,7 +32,9 @@ class WorkspaceShortcutButton extends StatelessWidget {
             : null,
         child: CoworkAvatar(
           initials: shortcut.initial,
-          size: shortcut.isSelected ? AppSize.componentLarge - 4 : AppSize.componentLarge,
+          size: shortcut.isSelected
+              ? AppSize.componentLarge - 4
+              : AppSize.componentLarge,
           backgroundColor: _backgroundColor(shortcut.color),
           foregroundColor: AppColors.white,
         ),

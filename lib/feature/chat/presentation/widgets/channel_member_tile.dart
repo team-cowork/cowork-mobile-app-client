@@ -100,7 +100,10 @@ class _OwnerBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s6, vertical: 2),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.s6,
+        vertical: 2,
+      ),
       decoration: BoxDecoration(
         color: const Color(0xFF3D2050),
         borderRadius: BorderRadius.circular(AppRadius.r4),

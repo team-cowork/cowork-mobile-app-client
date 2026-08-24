@@ -26,8 +26,16 @@ class ChatHomeStore {
       color: WorkspaceAvatarColor.red,
       isSelected: true,
     ),
-    WorkspaceShortcut(id: 'design', initial: '디', color: WorkspaceAvatarColor.blue),
-    WorkspaceShortcut(id: 'gsm', initial: 'G', color: WorkspaceAvatarColor.green),
+    WorkspaceShortcut(
+      id: 'design',
+      initial: '디',
+      color: WorkspaceAvatarColor.blue,
+    ),
+    WorkspaceShortcut(
+      id: 'gsm',
+      initial: 'G',
+      color: WorkspaceAvatarColor.green,
+    ),
   ];
 
   List<ChannelGroup> get channelGroups => const [

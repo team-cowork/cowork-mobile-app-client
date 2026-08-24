@@ -51,7 +51,9 @@ class ChannelHeader extends StatelessWidget {
               children: [
                 Text(
                   name,
-                  style: AppFont.labelS.copyWith(color: AppColors.darkOnSurface),
+                  style: AppFont.labelS.copyWith(
+                    color: AppColors.darkOnSurface,
+                  ),
                 ),
                 Text(
                   description,
