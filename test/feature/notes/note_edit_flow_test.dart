@@ -23,9 +23,7 @@ void main() {
     expect(find.byIcon(Icons.edit_outlined), findsOneWidget);
   });
 
-  testWidgets('수정 아이콘 → 편집 화면에서 제목을 바꿔 저장하면 상세에 반영된다', (
-    tester,
-  ) async {
+  testWidgets('수정 아이콘 → 편집 화면에서 제목을 바꿔 저장하면 상세에 반영된다', (tester) async {
     await _openNote(tester, '2026 1분기 킥오프 회의');
 
     await tester.tap(find.byIcon(Icons.edit_outlined));

@@ -28,7 +28,8 @@ class CoworkApp extends StatelessWidget {
       providers: [
         RepositoryProvider(create: (_) => AuthRepository()),
         RepositoryProvider(
-          create: (context) => ProfileRepository(context.read<AuthRepository>()),
+          create: (context) =>
+              ProfileRepository(context.read<AuthRepository>()),
         ),
         RepositoryProvider(create: (_) => GithubRepository()),
       ],

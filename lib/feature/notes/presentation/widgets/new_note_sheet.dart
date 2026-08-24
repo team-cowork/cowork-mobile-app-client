@@ -136,7 +136,9 @@ class NewNoteSheet extends StatelessWidget {
                         icon: AppIcon.navNote,
                         selected: index == form.template,
                         onTap: () => bloc.add(NewNoteChanged(template: index)),
-                        trailing: _TemplateRadio(selected: index == form.template),
+                        trailing: _TemplateRadio(
+                          selected: index == form.template,
+                        ),
                       ),
                   ],
                 ),

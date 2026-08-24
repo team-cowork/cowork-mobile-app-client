@@ -20,10 +20,7 @@ class NotesBloc extends Bloc<NotesEvent, NotesState> {
     on<NoteAdded>(_onAdd);
   }
 
-  void _onLoad(
-    NotesRequested event,
-    Emitter<NotesState> emit,
-  ) {
+  void _onLoad(NotesRequested event, Emitter<NotesState> emit) {
     emit(const NotesState.loading());
     try {
       emit(NotesState.success(NotesStore.instance.notes));

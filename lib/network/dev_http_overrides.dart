@@ -34,5 +34,6 @@ class DevHttpOverrides extends HttpOverrides {
   @override
   HttpClient createHttpClient(SecurityContext? context) =>
       super.createHttpClient(context)
-        ..badCertificateCallback = (_, host, _) => allowsBadCertificateFor(host);
+        ..badCertificateCallback = (_, host, _) =>
+            allowsBadCertificateFor(host);
 }

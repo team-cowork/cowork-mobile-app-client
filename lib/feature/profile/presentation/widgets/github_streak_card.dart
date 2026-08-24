@@ -97,11 +97,7 @@ class _Heatmap extends StatelessWidget {
               children: [
                 for (var day = 0; day < 7; day++)
                   _cell(
-                    DateTime(
-                      today.year,
-                      today.month,
-                      from + week * 7 + day,
-                    ),
+                    DateTime(today.year, today.month, from + week * 7 + day),
                     today,
                   ),
               ],

@@ -18,11 +18,10 @@ class MyProfileView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocScaffold<ProfileBloc, Profile>(
-      create: (context) =>
-          ProfileBloc(
-            context.read<ProfileRepository>(),
-            context.read<GithubRepository>(),
-          )..add(const ProfileRequested()),
+      create: (context) => ProfileBloc(
+        context.read<ProfileRepository>(),
+        context.read<GithubRepository>(),
+      )..add(const ProfileRequested()),
       errorTitle: '프로필을 불러오지 못했어요',
       onRetry: (context) =>
           context.read<ProfileBloc>().add(const ProfileRequested()),

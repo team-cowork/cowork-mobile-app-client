@@ -89,7 +89,10 @@ void main() {
   test('재시도가 또 401 이어도 무한히 갱신하지 않는다', () async {
     final s = _subject(script: [401, 401], refreshSucceeds: true);
 
-    await expectLater(s.dio.get<dynamic>('/notes'), throwsA(isA<DioException>()));
+    await expectLater(
+      s.dio.get<dynamic>('/notes'),
+      throwsA(isA<DioException>()),
+    );
     expect(s.adapter.sent, ['Bearer old', 'Bearer new'], reason: '재시도는 한 번뿐');
     expect(s.refreshCalls, hasLength(1));
   });
@@ -115,7 +118,10 @@ void main() {
   test('401 이 아닌 실패는 그대로 통과시킨다', () async {
     final s = _subject(script: [500], refreshSucceeds: true);
 
-    await expectLater(s.dio.get<dynamic>('/notes'), throwsA(isA<DioException>()));
+    await expectLater(
+      s.dio.get<dynamic>('/notes'),
+      throwsA(isA<DioException>()),
+    );
     expect(s.adapter.sent, hasLength(1));
     expect(s.refreshCalls, isEmpty);
   });
@@ -123,7 +129,10 @@ void main() {
   test('로그아웃 상태면 헤더를 붙이지도, 갱신하지도 않는다', () async {
     final s = _subject(script: [401], token: null, refreshSucceeds: true);
 
-    await expectLater(s.dio.get<dynamic>('/notes'), throwsA(isA<DioException>()));
+    await expectLater(
+      s.dio.get<dynamic>('/notes'),
+      throwsA(isA<DioException>()),
+    );
     expect(s.adapter.sent, [null]);
     expect(s.refreshCalls, isEmpty);
   });

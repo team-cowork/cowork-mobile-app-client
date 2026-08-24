@@ -18,10 +18,7 @@ class EditProfile extends Equatable {
   });
 
   /// `GET /users/me` 응답을 편집 폼 초기값으로 바꾼다.
-  factory EditProfile.fromMe(
-    UserResponse me, {
-    String? localAvatarPath,
-  }) {
+  factory EditProfile.fromMe(UserResponse me, {String? localAvatarPath}) {
     final name = me.name ?? '';
     return EditProfile(
       name: name,

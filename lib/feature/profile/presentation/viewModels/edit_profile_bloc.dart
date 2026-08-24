@@ -42,9 +42,7 @@ class EditProfileBloc extends Bloc<EditProfileEvent, EditProfileState> {
     } catch (e, s) {
       Logger.e('프로필 조회 실패', tag: 'Profile', error: e, stackTrace: s);
       emit(
-        EditProfileState.failure(
-          e is DioException ? dioErrorMessage(e) : null,
-        ),
+        EditProfileState.failure(e is DioException ? dioErrorMessage(e) : null),
       );
     }
   }
@@ -59,7 +57,8 @@ class EditProfileBloc extends Bloc<EditProfileEvent, EditProfileState> {
     EditProfileSubmitted event,
     Emitter<EditProfileState> emit,
   ) async {
-    final store = ProfileStore.instance..localAvatarPath = event.localAvatarPath;
+    final store = ProfileStore.instance
+      ..localAvatarPath = event.localAvatarPath;
     emit(const EditProfileState.loading());
     try {
       final uploaded = event.localAvatarPath;

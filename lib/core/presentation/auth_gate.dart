@@ -13,7 +13,8 @@ class AuthGate extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocConsumer<AuthBloc, AuthState>(
-      listenWhen: (_, state) => state is Unauthenticated && state.message != null,
+      listenWhen: (_, state) =>
+          state is Unauthenticated && state.message != null,
       listener: (context, state) => ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text((state as Unauthenticated).message!)),
       ),

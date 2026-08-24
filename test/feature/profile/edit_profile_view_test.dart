@@ -62,15 +62,13 @@ Future<_StubAdapter> _openEditProfile(
     profileImageUrl: profileImageUrl,
     saveStatus: saveStatus,
   );
-  final dio =
-      Dio(
-          BaseOptions(
-            baseUrl: 'https://example.test/api',
-            contentType: Headers.jsonContentType,
-            responseType: ResponseType.plain,
-          ),
-        )
-        ..httpClientAdapter = adapter;
+  final dio = Dio(
+    BaseOptions(
+      baseUrl: 'https://example.test/api',
+      contentType: Headers.jsonContentType,
+      responseType: ResponseType.plain,
+    ),
+  )..httpClientAdapter = adapter;
 
   await tester.pumpWidget(
     RepositoryProvider(
@@ -122,10 +120,7 @@ void main() {
 
     expect(
       adapter.requests.map((r) => '${r.method} ${r.path}'),
-      containsAllInOrder([
-        'DELETE /users/me/profile-image',
-        'PATCH /users/me',
-      ]),
+      containsAllInOrder(['DELETE /users/me/profile-image', 'PATCH /users/me']),
       reason: '사진을 먼저 지우고 나머지 값을 저장한다',
     );
     expect(find.text('열기'), findsOneWidget, reason: '저장이 끝나야 화면이 닫힌다');

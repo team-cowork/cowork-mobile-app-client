@@ -24,11 +24,7 @@ class ChatHomeStore {
           name: '계정 공유',
           type: ChannelType.accountShare,
         ),
-        Channel(
-          id: 'meeting-note',
-          name: '회의록',
-          type: ChannelType.meetingNote,
-        ),
+        Channel(id: 'meeting-note', name: '회의록', type: ChannelType.meetingNote),
         Channel(id: 'voice', name: '음성', type: ChannelType.voice),
       ],
     ),

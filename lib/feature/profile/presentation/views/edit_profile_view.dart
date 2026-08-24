@@ -98,9 +98,9 @@ class _EditProfileViewState extends State<EditProfileView> {
     final name = _name.text.trim();
     final username = _username.text.trim();
     if (name.isEmpty || username.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('이름과 사용자명은 필수 입력 항목이에요.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('이름과 사용자명은 필수 입력 항목이에요.')));
       return;
     }
     setState(() => _saving = true);
@@ -210,11 +210,7 @@ class _EditProfileViewState extends State<EditProfileView> {
             controller: _statusMessage,
             hintText: '예: PR 리뷰 환영 🙌',
           ),
-          CoworkTextArea(
-            labelText: '자기소개',
-            controller: _bio,
-            minLines: 3,
-          ),
+          CoworkTextArea(labelText: '자기소개', controller: _bio, minLines: 3),
         ],
       ),
     );
