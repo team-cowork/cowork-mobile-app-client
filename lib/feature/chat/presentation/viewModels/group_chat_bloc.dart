@@ -136,6 +136,8 @@ class GroupChatBloc extends Bloc<GroupChatEvent, GroupChatState> {
     final settingsState = state.settings;
     if (settingsState is! AsyncSuccess<ChannelSettings>) return;
 
+    ChannelSettingsStore.instance.updateToggle(event.toggle, event.value);
+
     final settings = settingsState.data;
     final updated = switch (event.toggle) {
       ChannelSettingsToggle.isPrivate => settings.copyWith(
