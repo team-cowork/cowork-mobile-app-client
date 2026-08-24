@@ -4,7 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/utils/bloc_scaffold.dart';
-import '../viewModels/channel_bloc.dart';
+import '../blocs/channel/channel_bloc.dart';
 import '../widgets/channel_header.dart';
 import '../widgets/chat_message_row.dart';
 
@@ -37,7 +37,9 @@ class ChannelView extends StatelessWidget {
                 separatorBuilder: (_, _) =>
                     const SizedBox(height: AppSpacing.s18),
                 itemBuilder: (context, index) => Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.s4,
+                  ),
                   child: ChatMessageRow(
                     message: data.messages[index],
                     onTap: () => context.push('/chat/channel/thread'),

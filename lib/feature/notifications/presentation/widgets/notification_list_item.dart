@@ -21,7 +21,9 @@ class NotificationListItem extends StatelessWidget {
           vertical: AppSpacing.s14,
         ),
         decoration: BoxDecoration(
-          color: item.isUnread ? AppColors.red400.withValues(alpha: 0.06) : null,
+          color: item.isUnread
+              ? AppColors.red400.withValues(alpha: 0.06)
+              : null,
           borderRadius: BorderRadius.circular(AppRadius.r14),
         ),
         child: Row(
@@ -45,11 +47,15 @@ class NotificationListItem extends StatelessWidget {
                     item.description,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: AppFont.subtextM.copyWith(color: AppColors.neutral300),
+                    style: AppFont.subtextM.copyWith(
+                      color: AppColors.neutral300,
+                    ),
                   ),
                   Text(
                     item.time,
-                    style: AppFont.subtextS.copyWith(color: AppColors.neutral300),
+                    style: AppFont.subtextS.copyWith(
+                      color: AppColors.neutral300,
+                    ),
                   ),
                 ],
               ),

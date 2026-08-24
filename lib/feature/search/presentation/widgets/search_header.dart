@@ -34,7 +34,11 @@ class SearchHeader extends StatelessWidget {
             child: const SizedBox(
               width: 32,
               height: 44,
-              child: Icon(AppIcon.back, size: 20, color: AppColors.darkOnSurface),
+              child: Icon(
+                AppIcon.back,
+                size: 20,
+                color: AppColors.darkOnSurface,
+              ),
             ),
           ),
           Expanded(
@@ -49,12 +53,18 @@ class SearchHeader extends StatelessWidget {
               child: Row(
                 spacing: AppSpacing.s8,
                 children: [
-                  const Icon(AppIcon.search, size: 18, color: AppColors.neutral300),
+                  const Icon(
+                    AppIcon.search,
+                    size: 18,
+                    color: AppColors.neutral300,
+                  ),
                   Expanded(
                     child: TextField(
                       controller: controller,
                       onSubmitted: onSubmitted,
-                      style: AppFont.subtextL.copyWith(color: AppColors.darkOnSurface),
+                      style: AppFont.subtextL.copyWith(
+                        color: AppColors.darkOnSurface,
+                      ),
                       decoration: const InputDecoration(
                         isCollapsed: true,
                         border: InputBorder.none,

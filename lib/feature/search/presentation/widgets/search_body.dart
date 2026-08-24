@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../domain/search_result.dart';
-import '../viewModels/search_bloc.dart';
+import '../blocs/search/search_bloc.dart';
 import 'search_channel_result_tile.dart';
 import 'search_header.dart';
 import 'search_person_result_tile.dart';

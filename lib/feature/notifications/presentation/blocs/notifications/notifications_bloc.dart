@@ -1,13 +1,12 @@
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../../../core/utils/async_state.dart';
-import '../../data/notifications_store.dart';
-import '../../domain/notification_item.dart';
+import '../../../../../core/utils/async_state.dart';
+import '../../../data/notifications_store.dart';
+import '../../../domain/notification_item.dart';
 
 part 'notifications_event.dart';
-
-typedef NotificationsState = AsyncState<List<NotificationItem>>;
+part 'notifications_state.dart';
 
 class NotificationsBloc extends Bloc<NotificationsEvent, NotificationsState> {
   NotificationsBloc() : super(const NotificationsState.initial()) {

@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../domain/notification_item.dart';
-import '../viewModels/notifications_bloc.dart';
+import '../blocs/notifications/notifications_bloc.dart';
 import 'notification_list_item.dart';
 import 'notifications_header.dart';
 
@@ -35,7 +35,11 @@ class NotificationsBody extends StatelessWidget {
                         NotificationsReadRequested(id: item.id),
                       ),
                     ),
-                    const Divider(height: 1, thickness: 1, color: AppColors.neutral700),
+                    const Divider(
+                      height: 1,
+                      thickness: 1,
+                      color: AppColors.neutral700,
+                    ),
                   ],
                 ],
               ),

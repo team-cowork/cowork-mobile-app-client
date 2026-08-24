@@ -1,15 +1,12 @@
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../../../core/utils/async_state.dart';
-import '../../data/channel_members_store.dart';
-import '../../domain/channel_member.dart';
+import '../../../../../core/utils/async_state.dart';
+import '../../../data/channel_members_store.dart';
+import '../../../domain/channel_member.dart';
 
 part 'members_event.dart';
-
-typedef ChannelMembersData = ({String channelName, List<ChannelMember> members});
-
-typedef MembersState = AsyncState<ChannelMembersData>;
+part 'members_state.dart';
 
 class MembersBloc extends Bloc<MembersEvent, MembersState> {
   MembersBloc() : super(const MembersState.initial()) {

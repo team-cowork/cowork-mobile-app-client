@@ -4,7 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/utils/bloc_scaffold.dart';
-import '../viewModels/members_bloc.dart';
+import '../blocs/members/members_bloc.dart';
 import '../widgets/channel_member_tile.dart';
 import '../widgets/members_header.dart';
 

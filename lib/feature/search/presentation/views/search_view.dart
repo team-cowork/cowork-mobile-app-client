@@ -3,7 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/utils/bloc_scaffold.dart';
 import '../../domain/search_result.dart';
-import '../viewModels/search_bloc.dart';
+import '../blocs/search/search_bloc.dart';
 import '../widgets/search_body.dart';
 
 class SearchView extends StatelessWidget {

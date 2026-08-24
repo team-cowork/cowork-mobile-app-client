@@ -25,7 +25,11 @@ class NotificationsHeader extends StatelessWidget {
             child: const SizedBox(
               width: 32,
               height: 44,
-              child: Icon(AppIcon.back, size: 24, color: AppColors.darkOnSurface),
+              child: Icon(
+                AppIcon.back,
+                size: 24,
+                color: AppColors.darkOnSurface,
+              ),
             ),
           ),
           Expanded(

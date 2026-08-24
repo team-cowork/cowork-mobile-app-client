@@ -5,7 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/utils/bloc_scaffold.dart';
 import '../../domain/message_thread.dart';
-import '../viewModels/thread_bloc.dart';
+import '../blocs/thread/thread_bloc.dart';
 import '../widgets/chat_message_row.dart';
 import '../widgets/thread_header.dart';
 

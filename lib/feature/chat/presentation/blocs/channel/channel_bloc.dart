@@ -1,19 +1,12 @@
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../../../core/utils/async_state.dart';
-import '../../data/channel_conversation_store.dart';
-import '../../domain/chat_message.dart';
+import '../../../../../core/utils/async_state.dart';
+import '../../../data/channel_conversation_store.dart';
+import '../../../domain/chat_message.dart';
 
 part 'channel_event.dart';
-
-typedef ChannelConversationData = ({
-  String name,
-  String description,
-  List<ChatMessage> messages,
-});
-
-typedef ChannelState = AsyncState<ChannelConversationData>;
+part 'channel_state.dart';
 
 class ChannelBloc extends Bloc<ChannelEvent, ChannelState> {
   ChannelBloc() : super(const ChannelState.initial()) {

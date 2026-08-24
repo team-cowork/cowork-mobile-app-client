@@ -1,13 +1,12 @@
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../../../core/utils/async_state.dart';
-import '../../data/thread_store.dart';
-import '../../domain/message_thread.dart';
+import '../../../../../core/utils/async_state.dart';
+import '../../../data/thread_store.dart';
+import '../../../domain/message_thread.dart';
 
 part 'thread_event.dart';
-
-typedef ThreadState = AsyncState<MessageThread>;
+part 'thread_state.dart';
 
 class ThreadBloc extends Bloc<ThreadEvent, ThreadState> {
   ThreadBloc() : super(const ThreadState.initial()) {
