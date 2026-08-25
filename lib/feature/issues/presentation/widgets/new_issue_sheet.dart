@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../profile/domain/profile_entity.dart';
 import '../../data/issues_store.dart';
+import '../../domain/enums/issue_priority.dart';
 import '../../domain/enums/issue_status.dart';
 import '../../domain/enums/issue_tag_color.dart';
 import '../../domain/issue.dart';
@@ -63,6 +64,9 @@ class NewIssueSheet extends StatelessWidget {
         ? null
         : _assigneeCandidates[form.assigneeIndex!];
 
+    final dueDate = form.dueDate.trim();
+    final milestone = form.milestone.trim();
+
     context.read<IssuesBloc>().add(
       IssuesEvent.added(
         Issue(
@@ -72,6 +76,9 @@ class NewIssueSheet extends StatelessWidget {
           labels: [label],
           status: form.status,
           assignee: assignee,
+          priority: form.priority,
+          dueDate: dueDate.isEmpty ? null : dueDate,
+          milestone: milestone.isEmpty ? null : milestone,
         ),
       ),
     );
@@ -219,6 +226,49 @@ class NewIssueSheet extends StatelessWidget {
                     ),
                   ),
                 ],
+              ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                spacing: AppSpacing.s8,
+                children: [
+                  Text(
+                    '우선순위',
+                    style: AppFont.subtextS.copyWith(
+                      fontWeight: AppFont.semiBold,
+                      color: AppColors.neutral300,
+                    ),
+                  ),
+                  BlocBuilder<NewIssueBloc, NewIssueForm>(
+                    buildWhen: (previous, current) =>
+                        previous.priority != current.priority,
+                    builder: (context, form) => CoworkSegmentedControl<
+                      IssuePriority
+                    >(
+                      groupValue: form.priority,
+                      onChanged: (value) =>
+                          bloc.add(NewIssueEvent.priorityChanged(value)),
+                      segments: [
+                        for (final priority in IssuePriority.values)
+                          CoworkSegment(
+                            value: priority,
+                            label: priority.label,
+                          ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              CoworkTextField(
+                labelText: '마감일',
+                hintText: '예: 2026.03.20',
+                onChanged: (value) =>
+                    bloc.add(NewIssueEvent.dueDateChanged(value)),
+              ),
+              CoworkTextField(
+                labelText: '마일스톤',
+                hintText: '예: MVP · 1차',
+                onChanged: (value) =>
+                    bloc.add(NewIssueEvent.milestoneChanged(value)),
               ),
               BlocBuilder<NewIssueBloc, NewIssueForm>(
                 buildWhen: (previous, current) =>

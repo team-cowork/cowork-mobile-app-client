@@ -14,6 +14,15 @@ sealed class NewIssueEvent extends Equatable {
   const factory NewIssueEvent.assigneeToggled(int index) =
       NewIssueAssigneeToggled;
 
+  const factory NewIssueEvent.priorityChanged(IssuePriority priority) =
+      NewIssuePriorityChanged;
+
+  const factory NewIssueEvent.dueDateChanged(String dueDate) =
+      NewIssueDueDateChanged;
+
+  const factory NewIssueEvent.milestoneChanged(String milestone) =
+      NewIssueMilestoneChanged;
+
   @override
   List<Object?> get props => [];
 }
@@ -52,4 +61,31 @@ final class NewIssueAssigneeToggled extends NewIssueEvent {
 
   @override
   List<Object?> get props => [index];
+}
+
+final class NewIssuePriorityChanged extends NewIssueEvent {
+  const NewIssuePriorityChanged(this.priority);
+
+  final IssuePriority priority;
+
+  @override
+  List<Object?> get props => [priority];
+}
+
+final class NewIssueDueDateChanged extends NewIssueEvent {
+  const NewIssueDueDateChanged(this.dueDate);
+
+  final String dueDate;
+
+  @override
+  List<Object?> get props => [dueDate];
+}
+
+final class NewIssueMilestoneChanged extends NewIssueEvent {
+  const NewIssueMilestoneChanged(this.milestone);
+
+  final String milestone;
+
+  @override
+  List<Object?> get props => [milestone];
 }
