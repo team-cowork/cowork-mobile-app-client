@@ -94,11 +94,7 @@ class _ChatHeader extends StatelessWidget {
             children: [
               GestureDetector(
                 onTap: onSearchTap,
-                child: const Icon(
-                  AppIcon.search,
-                  color: AppColors.neutral300,
-                  size: 22,
-                ),
+                child: AppIcon.search(size: 22),
               ),
               const SizedBox(width: AppSpacing.s18),
               GestureDetector(onTap: onNotificationTap, child: AppIcon.bell()),

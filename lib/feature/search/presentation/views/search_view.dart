@@ -159,11 +159,7 @@ class _SearchHeader extends StatelessWidget {
               child: Row(
                 spacing: AppSpacing.s8,
                 children: [
-                  const Icon(
-                    AppIcon.search,
-                    size: 18,
-                    color: AppColors.neutral300,
-                  ),
+                  AppIcon.search(size: 18),
                   Expanded(
                     child: TextField(
                       controller: controller,
