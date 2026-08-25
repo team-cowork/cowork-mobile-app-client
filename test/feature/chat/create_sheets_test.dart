@@ -63,6 +63,9 @@ void main() {
 
     await tester.tap(find.text('코워크'));
     await tester.pumpAndSettle();
+    // 타이틀 탭은 팀 메뉴를 열고, 프로젝트 시트는 그 안에서 들어간다.
+    await tester.tap(find.text('카테고리 만들기'));
+    await tester.pumpAndSettle();
 
     SelectableCard templateOf(String label) =>
         tester.widget(find.widgetWithText(SelectableCard, label));
