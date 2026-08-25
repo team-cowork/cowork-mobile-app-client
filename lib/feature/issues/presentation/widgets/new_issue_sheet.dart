@@ -11,7 +11,10 @@ import '../../domain/issue.dart';
 import '../../domain/issue_label.dart';
 import '../viewModels/issues_bloc.dart';
 import '../viewModels/new_issue_bloc.dart';
+import 'add_assignee_button.dart';
+import 'issue_assignee_avatar.dart';
 import 'issue_color_mapping.dart';
+import 'issue_label_toggle.dart';
 
 class NewIssueSheet extends StatelessWidget {
   const NewIssueSheet({super.key});
@@ -181,7 +184,7 @@ class NewIssueSheet extends StatelessWidget {
                       spacing: AppSpacing.s8,
                       children: [
                         for (final (index, candidate) in _labelCandidates.indexed)
-                          _LabelToggle(
+                          IssueLabelToggle(
                             label: candidate,
                             selected: index == form.labelIndex,
                             onTap: () =>
@@ -213,7 +216,7 @@ class NewIssueSheet extends StatelessWidget {
                           index,
                           candidate,
                         ) in _assigneeCandidates.indexed)
-                          _AssigneeAvatar(
+                          IssueAssigneeAvatar(
                             profile: candidate,
                             color: _avatarColorFor(index),
                             selected: index == form.assigneeIndex,
@@ -221,7 +224,7 @@ class NewIssueSheet extends StatelessWidget {
                               NewIssueEvent.assigneeToggled(index),
                             ),
                           ),
-                        const _AddAssigneeButton(),
+                        const AddAssigneeButton(),
                       ],
                     ),
                   ),
@@ -287,105 +290,6 @@ class NewIssueSheet extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
-}
-
-class _LabelToggle extends StatelessWidget {
-  const _LabelToggle({
-    required this.label,
-    required this.selected,
-    this.onTap,
-  });
-
-  final IssueLabel label;
-  final bool selected;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final color = label.color!;
-
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.s12,
-          vertical: 7,
-        ),
-        decoration: BoxDecoration(
-          color: selected ? color.background : AppColors.neutral750,
-          border: Border.all(
-            color: selected ? color.foreground : AppColors.neutral700,
-          ),
-          borderRadius: BorderRadius.circular(AppRadius.r8),
-        ),
-        child: Text(
-          label.name,
-          style: AppFont.labelXs.copyWith(
-            fontSize: 13,
-            color: selected ? color.foreground : AppColors.neutral300,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _AssigneeAvatar extends StatelessWidget {
-  const _AssigneeAvatar({
-    required this.profile,
-    required this.color,
-    required this.selected,
-    this.onTap,
-  });
-
-  final ProfileEntity profile;
-  final Color color;
-  final bool selected;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: EdgeInsets.all(selected ? 2 : 0),
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          border: selected
-              ? Border.all(color: AppColors.red400, width: 2)
-              : null,
-        ),
-        child: CoworkAvatar(
-          initials: profile.avatarInitial,
-          size: 32,
-          backgroundColor: color,
-          foregroundColor: AppColors.white,
-        ),
-      ),
-    );
-  }
-}
-
-class _AddAssigneeButton extends StatelessWidget {
-  const _AddAssigneeButton();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 32,
-      height: 32,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: AppColors.neutral750,
-        shape: BoxShape.circle,
-        border: Border.all(
-          color: AppColors.neutral700,
-          style: BorderStyle.solid,
-        ),
-      ),
-      child: AppIcon.plus(size: 16),
     );
   }
 }
