@@ -54,11 +54,11 @@ final GoRouter appRouter = GoRouter(
       builder: (context, state) => const MembersView(),
     ),
     GoRoute(
-      feat/issues-kanban-board
       path: '/issues/detail',
       builder: (context, state) =>
           IssueDetailView(issue: state.extra! as Issue),
     ),
+    GoRoute(
       path: '/chat/channel/settings',
       builder: (context, state) => const ChannelSettingsView(),
     ),
