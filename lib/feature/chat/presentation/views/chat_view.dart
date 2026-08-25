@@ -10,6 +10,7 @@ import '../../domain/enums/workspace_avatar_color.dart';
 import '../../domain/workspace_shortcut.dart';
 import '../blocs/chat/chat_bloc.dart';
 import '../widgets/create_sheets.dart';
+import '../widgets/team_menu_sheet.dart';
 
 class ChatView extends StatelessWidget {
   const ChatView({super.key});
@@ -26,12 +27,18 @@ class ChatView extends StatelessWidget {
           children: [
             _ChatHeader(
               label: data.workspaceName,
-              onTitleTap: () => NewProjectSheet.show(context),
+              onTitleTap: () => TeamMenuSheet.show(
+                context,
+                teamName: data.workspaceName,
+                onCreateChannel: () => NewChannelSheet.show(context),
+                onCreateProject: () => NewProjectSheet.show(context),
+              ),
               onSearchTap: () => context.push('/search'),
               onNotificationTap: () => context.push('/notifications'),
             ),
             _ChatShortcutBar(
               shortcuts: data.workspaceShortcuts,
+              onDmHomeTap: () => context.push('/dm'),
               onCreateChannel: () => NewChannelSheet.show(context),
             ),
             Expanded(child: _ChannelList(channelGroups: data.channelGroups)),
@@ -104,9 +111,16 @@ class _ChatHeader extends StatelessWidget {
 }
 
 class _ChatShortcutBar extends StatelessWidget {
-  const _ChatShortcutBar({required this.shortcuts, this.onCreateChannel});
+  const _ChatShortcutBar({
+    required this.shortcuts,
+    this.onDmHomeTap,
+    this.onCreateChannel,
+  });
 
   final List<WorkspaceShortcut> shortcuts;
+
+  /// DM 홈 버튼을 눌렀을 때.
+  final VoidCallback? onDmHomeTap;
 
   /// `+` 를 눌렀을 때. 없으면 정적인 버튼이 된다.
   final VoidCallback? onCreateChannel;
@@ -125,6 +139,19 @@ class _ChatShortcutBar extends StatelessWidget {
         child: Row(
           spacing: 14,
           children: [
+            GestureDetector(
+              onTap: onDmHomeTap,
+              child: Container(
+                width: AppSize.componentLarge,
+                height: AppSize.componentLarge,
+                alignment: Alignment.center,
+                decoration: const BoxDecoration(
+                  color: AppColors.neutral750,
+                  shape: BoxShape.circle,
+                ),
+                child: AppIcon.dmHome(),
+              ),
+            ),
             for (final shortcut in shortcuts)
               _WorkspaceShortcutButton(shortcut: shortcut, onTap: () {}),
             CoworkIconButton.custom(

@@ -3,21 +3,24 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../../core/utils/bloc_scaffold.dart';
+import '../../../../core/utils/bloc_section_scaffold.dart';
 import '../../domain/channel_member.dart';
 import '../../domain/enums/chat_avatar_color.dart';
-import '../blocs/members/members_bloc.dart';
+import '../viewModels/group_chat_bloc.dart';
 
 class MembersView extends StatelessWidget {
   const MembersView({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return BlocScaffold<MembersBloc, ChannelMembersData>(
-      create: (_) => MembersBloc()..add(const MembersRequested()),
+    return BlocSectionScaffold<GroupChatBloc, GroupChatState,
+        ChannelMembersData>(
+      create: (_) =>
+          GroupChatBloc()..add(const GroupChatEvent.membersRequested()),
+      selector: (state) => state.members,
       errorTitle: '멤버를 불러오지 못했어요',
       onRetry: (context) =>
-          context.read<MembersBloc>().add(const MembersRequested()),
+          context.read<GroupChatBloc>().add(const GroupChatEvent.membersRequested()),
       builder: (context, data) {
         final online = data.members.where((m) => m.isOnline).toList();
         final offline = data.members.where((m) => !m.isOnline).toList();

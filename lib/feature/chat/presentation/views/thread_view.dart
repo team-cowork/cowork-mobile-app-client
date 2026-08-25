@@ -3,9 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../../core/utils/bloc_scaffold.dart';
+import '../../../../core/utils/bloc_section_scaffold.dart';
 import '../../domain/message_thread.dart';
-import '../blocs/thread/thread_bloc.dart';
+import '../viewModels/group_chat_bloc.dart';
 import '../widgets/chat_message_row.dart';
 
 class ThreadView extends StatelessWidget {
@@ -13,11 +13,13 @@ class ThreadView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocScaffold<ThreadBloc, MessageThread>(
-      create: (_) => ThreadBloc()..add(const ThreadRequested()),
+    return BlocSectionScaffold<GroupChatBloc, GroupChatState, MessageThread>(
+      create: (_) =>
+          GroupChatBloc()..add(const GroupChatEvent.threadRequested()),
+      selector: (state) => state.thread,
       errorTitle: '스레드를 불러오지 못했어요',
       onRetry: (context) =>
-          context.read<ThreadBloc>().add(const ThreadRequested()),
+          context.read<GroupChatBloc>().add(const GroupChatEvent.threadRequested()),
       builder: (context, thread) => SafeArea(
         child: Column(
           children: [
