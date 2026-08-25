@@ -1,6 +1,6 @@
 import 'package:cowork_app/core/presentation/main_shell.dart';
 import 'package:cowork_app/core/utils/base_scaffold.dart';
-import 'package:cowork_app/feature/auth/presentation/viewModels/auth_bloc.dart';
+import 'package:cowork_app/feature/auth/presentation/blocs/auth/auth_bloc.dart';
 import 'package:cowork_app/feature/auth/presentation/views/login_view.dart';
 import 'package:cowork_design_system/design_system.dart';
 import 'package:flutter/material.dart';
@@ -13,7 +13,8 @@ class AuthGate extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocConsumer<AuthBloc, AuthState>(
-      listenWhen: (_, state) => state is Unauthenticated && state.message != null,
+      listenWhen: (_, state) =>
+          state is Unauthenticated && state.message != null,
       listener: (context, state) => ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text((state as Unauthenticated).message!)),
       ),

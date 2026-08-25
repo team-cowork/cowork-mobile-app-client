@@ -75,8 +75,7 @@ class AuthInterceptor extends Interceptor {
   ///
   /// 갱신이 예외로 끝나도 인터셉터 밖으로 새면 안 된다. 실패는 false 로 눕히고
   /// 호출부가 원래 401 을 그대로 돌려주게 한다.
-  Future<bool> _refreshOnce() =>
-      _refreshing ??= _refresh()
-          .catchError((_) => false)
-          .whenComplete(() => _refreshing = null);
+  Future<bool> _refreshOnce() => _refreshing ??= _refresh()
+      .catchError((_) => false)
+      .whenComplete(() => _refreshing = null);
 }

@@ -187,4 +187,3 @@ String codeChallengeOf(String verifier) =>
 
 String _base64UrlNoPad(List<int> bytes) =>
     base64Url.encode(bytes).replaceAll('=', '');
-

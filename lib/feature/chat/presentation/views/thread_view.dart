@@ -7,7 +7,6 @@ import '../../../../core/utils/bloc_section_scaffold.dart';
 import '../../domain/message_thread.dart';
 import '../viewModels/group_chat_bloc.dart';
 import '../widgets/chat_message_row.dart';
-import '../widgets/thread_header.dart';
 
 class ThreadView extends StatelessWidget {
   const ThreadView({super.key});
@@ -24,7 +23,7 @@ class ThreadView extends StatelessWidget {
       builder: (context, thread) => SafeArea(
         child: Column(
           children: [
-            ThreadHeader(
+            _ThreadHeader(
               channelName: thread.channelName,
               onBack: () => context.pop(),
             ),
@@ -92,6 +91,57 @@ class ThreadView extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _ThreadHeader extends StatelessWidget {
+  const _ThreadHeader({required this.channelName, this.onBack});
+
+  final String channelName;
+  final VoidCallback? onBack;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.s12,
+        AppSpacing.s8,
+        AppSpacing.s16,
+        AppSpacing.s12,
+      ),
+      decoration: BoxDecoration(
+        border: Border(bottom: BorderSide(color: colors.outlineVariant)),
+      ),
+      child: Row(
+        children: [
+          GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: onBack,
+            child: SizedBox(
+              width: 32,
+              height: 44,
+              child: Center(child: AppIcon.chevronBack()),
+            ),
+          ),
+          const SizedBox(width: AppSpacing.s10),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '스레드',
+                style: AppFont.labelS.copyWith(color: AppColors.darkOnSurface),
+              ),
+              Text(
+                '# $channelName',
+                style: AppFont.subtextS.copyWith(color: AppColors.neutral300),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }

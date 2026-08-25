@@ -61,9 +61,7 @@ void main() {
     expect(find.byIcon(Icons.check), findsNWidgets(2));
   });
 
-  testWidgets('참여자가 5명을 넘으면 아바타 4개 + 카운터만 표시하고 탭하면 전체 목록이 나온다', (
-    tester,
-  ) async {
+  testWidgets('참여자가 5명을 넘으면 아바타 4개 + 카운터만 표시하고 탭하면 전체 목록이 나온다', (tester) async {
     const note = Note(
       id: 999,
       title: '대규모 회의',
@@ -79,7 +77,10 @@ void main() {
     );
 
     await tester.pumpWidget(
-      MaterialApp(theme: AppTheme.dark(), home: const NoteDetailView(note: note)),
+      MaterialApp(
+        theme: AppTheme.dark(),
+        home: const NoteDetailView(note: note),
+      ),
     );
     await tester.pumpAndSettle();
 

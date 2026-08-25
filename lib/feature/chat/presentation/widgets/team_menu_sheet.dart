@@ -2,20 +2,40 @@ import 'package:cowork_design_system/design_system.dart';
 import 'package:flutter/material.dart';
 
 class TeamMenuSheet extends StatelessWidget {
-  const TeamMenuSheet({required this.teamName, super.key});
+  const TeamMenuSheet({
+    required this.teamName,
+    this.onCreateChannel,
+    this.onCreateProject,
+    super.key,
+  });
 
   final String teamName;
 
+  /// '채널 만들기' 를 눌렀을 때. 시트가 닫힌 뒤에 불린다.
+  final VoidCallback? onCreateChannel;
+
+  /// '카테고리 만들기' 를 눌렀을 때. 시트가 닫힌 뒤에 불린다.
+  final VoidCallback? onCreateProject;
+
   static const double _sheetRadius = 20;
 
-  static Future<void> show(BuildContext context, {required String teamName}) {
+  static Future<void> show(
+    BuildContext context, {
+    required String teamName,
+    VoidCallback? onCreateChannel,
+    VoidCallback? onCreateProject,
+  }) {
     return showModalBottomSheet<void>(
       context: context,
       backgroundColor: AppColors.neutral800,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(_sheetRadius)),
       ),
-      builder: (_) => TeamMenuSheet(teamName: teamName),
+      builder: (_) => TeamMenuSheet(
+        teamName: teamName,
+        onCreateChannel: onCreateChannel,
+        onCreateProject: onCreateProject,
+      ),
     );
   }
 
@@ -66,8 +86,12 @@ class TeamMenuSheet extends StatelessWidget {
             ),
             const _MenuRow(emoji: '⚙️', label: '팀 설정'),
             const _MenuRow(emoji: '➕', label: '멤버 초대'),
-            const _MenuRow(emoji: '#', label: '채널 만들기'),
-            const _MenuRow(emoji: '📁', label: '카테고리 만들기'),
+            _MenuRow(emoji: '#', label: '채널 만들기', onSelected: onCreateChannel),
+            _MenuRow(
+              emoji: '📁',
+              label: '카테고리 만들기',
+              onSelected: onCreateProject,
+            ),
             const _MenuRow(emoji: '🔔', label: '알림 설정'),
             const Divider(height: 1, thickness: 1, color: AppColors.neutral600),
             const _MenuRow(emoji: '🚪', label: '팀 나가기', destructive: true),
@@ -82,17 +106,24 @@ class _MenuRow extends StatelessWidget {
   const _MenuRow({
     required this.emoji,
     required this.label,
+    this.onSelected,
     this.destructive = false,
   });
 
   final String emoji;
   final String label;
+
+  /// 시트를 닫은 뒤에 불린다. 없으면 닫히기만 한다.
+  final VoidCallback? onSelected;
   final bool destructive;
 
   @override
   Widget build(BuildContext context) {
     return InkWell(
-      onTap: () => Navigator.of(context).pop(),
+      onTap: () {
+        Navigator.of(context).pop();
+        onSelected?.call();
+      },
       child: Container(
         height: 52,
         padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s20),

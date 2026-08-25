@@ -2,7 +2,7 @@ import 'package:cowork_app/core/presentation/app_router.dart';
 import 'package:cowork_app/network/dev_http_overrides.dart';
 import 'package:cowork_app/feature/auth/data/auth_repository.dart';
 import 'package:cowork_app/feature/auth/data/dgsm_oauth_config.dart';
-import 'package:cowork_app/feature/auth/presentation/viewModels/auth_bloc.dart';
+import 'package:cowork_app/feature/auth/presentation/blocs/auth/auth_bloc.dart';
 import 'package:cowork_app/feature/profile/data/github_repository.dart';
 import 'package:cowork_app/feature/profile/data/profile_repository.dart';
 import 'package:cowork_design_system/design_system.dart';
@@ -28,7 +28,8 @@ class CoworkApp extends StatelessWidget {
       providers: [
         RepositoryProvider(create: (_) => AuthRepository()),
         RepositoryProvider(
-          create: (context) => ProfileRepository(context.read<AuthRepository>()),
+          create: (context) =>
+              ProfileRepository(context.read<AuthRepository>()),
         ),
         RepositoryProvider(create: (_) => GithubRepository()),
       ],

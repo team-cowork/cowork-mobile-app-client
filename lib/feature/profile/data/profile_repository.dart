@@ -35,13 +35,17 @@ class ProfileRepository {
   /// 내 프로필 수정. 서버가 갱신된 프로필을 그대로 돌려준다.
   ///
   /// 프로필 사진은 여기서 못 바꾼다. 업로드는 [uploadProfileImage] 가 맡는다.
-  Future<UserResponse> updateMe(UpdateMeRequest request) async =>
-      _cache(await _get(_dio.patch<String>('/users/me', data: request.toJson())));
+  Future<UserResponse> updateMe(UpdateMeRequest request) async => _cache(
+    await _get(_dio.patch<String>('/users/me', data: request.toJson())),
+  );
 
   /// 상태 메시지 변경. `status` 는 필수라 서버가 들고 있던 값을 그대로 돌려보낸다.
-  Future<UserResponse> updateStatus(UpdateStatusRequest request) async => _cache(
-    await _get(_dio.patch<String>('/users/me/status', data: request.toJson())),
-  );
+  Future<UserResponse> updateStatus(UpdateStatusRequest request) async =>
+      _cache(
+        await _get(
+          _dio.patch<String>('/users/me/status', data: request.toJson()),
+        ),
+      );
 
   /// 프로필 사진 업로드. presigned 발급 → 스토리지 PUT → confirm 3단계다.
   ///
@@ -52,10 +56,9 @@ class ProfileRepository {
     final presigned = PresignedUploadResponse.fromJson(
       unwrapPayload(
         (await _dio.post<String>(
-                  '/users/me/profile-image/presigned',
-                  data: PresignedUploadRequest(contentType: contentType).toJson(),
-                ))
-                .data ??
+              '/users/me/profile-image/presigned',
+              data: PresignedUploadRequest(contentType: contentType).toJson(),
+            )).data ??
             '',
       ),
     );

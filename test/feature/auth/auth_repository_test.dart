@@ -34,15 +34,13 @@ class _StubAdapter implements HttpClientAdapter {
 /// `createDio()` 와 같은 BaseOptions 로 POST 한 뒤 예외를 돌려준다. baseUrl 은
 /// dart-define 없이 비어 있어 여기서만 더미 값을 쓴다.
 Future<DioException> _postFailure(int status, String body) async {
-  final dio =
-      Dio(
-          BaseOptions(
-            baseUrl: 'https://example.test/api',
-            contentType: Headers.jsonContentType,
-            responseType: ResponseType.plain,
-          ),
-        )
-        ..httpClientAdapter = _StubAdapter(status, body);
+  final dio = Dio(
+    BaseOptions(
+      baseUrl: 'https://example.test/api',
+      contentType: Headers.jsonContentType,
+      responseType: ResponseType.plain,
+    ),
+  )..httpClientAdapter = _StubAdapter(status, body);
   try {
     await dio.post<String>('/auth/refresh', data: {'refresh_token': 'r'});
     fail('$status 는 throw 했어야 한다');
@@ -77,7 +75,11 @@ void main() {
 
   test('서버가 거절하면 상태 코드와 서버 사유를 살린다', () async {
     final e = await _postFailure(401, jsonEncode({'message': 'Unauthorized'}));
-    expect(e.response, isNotNull, reason: 'dio 가 4xx 를 response 없이 던지면 매핑이 무너진다');
+    expect(
+      e.response,
+      isNotNull,
+      reason: 'dio 가 4xx 를 response 없이 던지면 매핑이 무너진다',
+    );
     expect(authExceptionOf(e).message, '(401) Unauthorized');
   });
 

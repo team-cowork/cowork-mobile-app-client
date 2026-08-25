@@ -5,7 +5,6 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/utils/bloc_section_scaffold.dart';
 import '../viewModels/group_chat_bloc.dart';
-import '../widgets/channel_header.dart';
 import '../widgets/chat_message_row.dart';
 
 class ChannelView extends StatelessWidget {
@@ -25,7 +24,7 @@ class ChannelView extends StatelessWidget {
       builder: (context, data) => SafeArea(
         child: Column(
           children: [
-            ChannelHeader(
+            _ChannelHeader(
               name: data.name,
               description: data.description,
               onBack: () => context.pop(),
@@ -42,7 +41,9 @@ class ChannelView extends StatelessWidget {
                 separatorBuilder: (_, _) =>
                     const SizedBox(height: AppSpacing.s18),
                 itemBuilder: (context, index) => Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.s4,
+                  ),
                   child: ChatMessageRow(
                     message: data.messages[index],
                     onTap: () => context.push('/chat/channel/thread'),
@@ -61,6 +62,78 @@ class ChannelView extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _ChannelHeader extends StatelessWidget {
+  const _ChannelHeader({
+    required this.name,
+    required this.description,
+    this.onBack,
+    this.onMembersTap,
+    // ignore: unused_element_parameter -- 더보기 동작 미연결. 배선되면 이 줄을 지운다.
+    this.onMoreTap,
+  });
+
+  final String name;
+  final String description;
+  final VoidCallback? onBack;
+  final VoidCallback? onMembersTap;
+  final VoidCallback? onMoreTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.s12,
+        AppSpacing.s8,
+        AppSpacing.s16,
+        AppSpacing.s12,
+      ),
+      decoration: BoxDecoration(
+        border: Border(bottom: BorderSide(color: colors.outlineVariant)),
+      ),
+      child: Row(
+        children: [
+          GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: onBack,
+            child: SizedBox(
+              width: 32,
+              height: 44,
+              child: Center(child: AppIcon.chevronBack()),
+            ),
+          ),
+          const SizedBox(width: AppSpacing.s6),
+          AppIcon.hash(),
+          const SizedBox(width: AppSpacing.s10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  name,
+                  style: AppFont.labelS.copyWith(
+                    color: AppColors.darkOnSurface,
+                  ),
+                ),
+                Text(
+                  description,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppFont.subtextS.copyWith(color: AppColors.neutral300),
+                ),
+              ],
+            ),
+          ),
+          GestureDetector(onTap: onMembersTap, child: AppIcon.users()),
+          const SizedBox(width: AppSpacing.s16),
+          GestureDetector(onTap: onMoreTap, child: AppIcon.more()),
+        ],
       ),
     );
   }

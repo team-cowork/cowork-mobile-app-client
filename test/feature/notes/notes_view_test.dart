@@ -6,10 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   testWidgets('회의록 화면이 헤더와 시드 카드를 렌더링한다', (tester) async {
     await tester.pumpWidget(
-      MaterialApp(
-        theme: AppTheme.dark(),
-        home: const NotesView(),
-      ),
+      MaterialApp(theme: AppTheme.dark(), home: const NotesView()),
     );
     await tester.pumpAndSettle();
 

@@ -5,9 +5,9 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/utils/bloc_scaffold.dart';
-import '../../../auth/presentation/viewModels/auth_bloc.dart';
+import '../../../auth/presentation/blocs/auth/auth_bloc.dart';
 import '../../domain/settings.dart';
-import '../viewModels/settings_bloc.dart';
+import '../blocs/settings/settings_bloc.dart';
 import '../widgets/settings_section.dart';
 import '../widgets/settings_tile.dart';
 

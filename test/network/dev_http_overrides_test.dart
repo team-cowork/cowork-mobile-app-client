@@ -11,7 +11,10 @@ void main() {
   test('다른 호스트는 평소대로 검증에 실패시킨다', () {
     expect(overrides.allowsBadCertificateFor('attacker.example.com'), isFalse);
     // 서브도메인/접미사를 붙여 우회하는 것도 막힌다.
-    expect(overrides.allowsBadCertificateFor('dev.example.com.evil.io'), isFalse);
+    expect(
+      overrides.allowsBadCertificateFor('dev.example.com.evil.io'),
+      isFalse,
+    );
     expect(overrides.allowsBadCertificateFor('notdev.example.com'), isFalse);
   });
 
