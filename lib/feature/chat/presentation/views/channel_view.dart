@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../../core/utils/bloc_scaffold.dart';
-import '../viewModels/channel_bloc.dart';
+import '../../../../core/utils/bloc_section_scaffold.dart';
+import '../viewModels/group_chat_bloc.dart';
 import '../widgets/channel_header.dart';
 import '../widgets/chat_message_row.dart';
 
@@ -13,11 +13,15 @@ class ChannelView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocScaffold<ChannelBloc, ChannelConversationData>(
-      create: (_) => ChannelBloc()..add(const ChannelRequested()),
+    return BlocSectionScaffold<GroupChatBloc, GroupChatState,
+        ChannelConversationData>(
+      create: (_) =>
+          GroupChatBloc()..add(const GroupChatEvent.conversationRequested()),
+      selector: (state) => state.conversation,
       errorTitle: '채널을 불러오지 못했어요',
-      onRetry: (context) =>
-          context.read<ChannelBloc>().add(const ChannelRequested()),
+      onRetry: (context) => context.read<GroupChatBloc>().add(
+        const GroupChatEvent.conversationRequested(),
+      ),
       builder: (context, data) => SafeArea(
         child: Column(
           children: [
@@ -26,6 +30,7 @@ class ChannelView extends StatelessWidget {
               description: data.description,
               onBack: () => context.pop(),
               onMembersTap: () => context.push('/chat/channel/members'),
+              onMoreTap: () => context.push('/chat/channel/settings'),
             ),
             Expanded(
               child: ListView.separated(

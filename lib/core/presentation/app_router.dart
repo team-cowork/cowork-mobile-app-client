@@ -1,6 +1,8 @@
 import 'package:go_router/go_router.dart';
 
+import '../../feature/chat/presentation/views/channel_settings_view.dart';
 import '../../feature/chat/presentation/views/channel_view.dart';
+import '../../feature/chat/presentation/views/dm_list_view.dart';
 import '../../feature/chat/presentation/views/members_view.dart';
 import '../../feature/chat/presentation/views/thread_view.dart';
 import '../../feature/issues/domain/issue.dart';
@@ -52,9 +54,14 @@ final GoRouter appRouter = GoRouter(
       builder: (context, state) => const MembersView(),
     ),
     GoRoute(
+      feat/issues-kanban-board
       path: '/issues/detail',
       builder: (context, state) =>
           IssueDetailView(issue: state.extra! as Issue),
     ),
+      path: '/chat/channel/settings',
+      builder: (context, state) => const ChannelSettingsView(),
+    ),
+    GoRoute(path: '/dm', builder: (context, state) => const DmListView()),
   ],
 );

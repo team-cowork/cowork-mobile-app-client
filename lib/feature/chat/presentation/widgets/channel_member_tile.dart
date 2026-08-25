@@ -2,7 +2,7 @@ import 'package:cowork_design_system/design_system.dart';
 import 'package:flutter/material.dart';
 
 import '../../domain/channel_member.dart';
-import '../../domain/enums/chat_avatar_color.dart';
+import 'chat_color_mapping.dart';
 
 class ChannelMemberTile extends StatelessWidget {
   const ChannelMemberTile({required this.member, this.onMoreTap, super.key});
@@ -10,19 +10,11 @@ class ChannelMemberTile extends StatelessWidget {
   final ChannelMember member;
   final VoidCallback? onMoreTap;
 
-  static Color _colorFor(ChatAvatarColor color) => switch (color) {
-    ChatAvatarColor.blue => AppColors.blue500,
-    ChatAvatarColor.green => AppColors.green500,
-    ChatAvatarColor.amber => AppColors.amber500,
-    ChatAvatarColor.red => AppColors.red400,
-    ChatAvatarColor.neutral => AppColors.neutral700,
-  };
-
   @override
   Widget build(BuildContext context) {
     final avatar = CoworkAvatar(
       initials: member.profile.avatarInitial,
-      backgroundColor: _colorFor(member.avatarColor),
+      backgroundColor: member.avatarColor.toColor(),
       foregroundColor: AppColors.white,
     );
 

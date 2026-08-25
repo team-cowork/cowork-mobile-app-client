@@ -5,9 +5,14 @@ import '../../domain/workspace_shortcut.dart';
 import 'workspace_shortcut_button.dart';
 
 class ChatShortcutBar extends StatelessWidget {
-  const ChatShortcutBar({super.key, required this.shortcuts});
+  const ChatShortcutBar({
+    super.key,
+    required this.shortcuts,
+    this.onDmHomeTap,
+  });
 
   final List<WorkspaceShortcut> shortcuts;
+  final VoidCallback? onDmHomeTap;
 
   @override
   Widget build(BuildContext context) {
@@ -23,6 +28,19 @@ class ChatShortcutBar extends StatelessWidget {
         child: Row(
           spacing: 14,
           children: [
+            GestureDetector(
+              onTap: onDmHomeTap,
+              child: Container(
+                width: AppSize.componentLarge,
+                height: AppSize.componentLarge,
+                alignment: Alignment.center,
+                decoration: const BoxDecoration(
+                  color: AppColors.neutral750,
+                  shape: BoxShape.circle,
+                ),
+                child: AppIcon.dmHome(),
+              ),
+            ),
             for (final shortcut in shortcuts)
               WorkspaceShortcutButton(shortcut: shortcut, onTap: () {}),
             CoworkIconButton.custom(icon: AppIcon.plus()),
