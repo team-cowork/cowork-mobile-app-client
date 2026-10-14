@@ -30,7 +30,7 @@ class AuthException implements Exception {
 /// 3. refresh token 만 secure storage 에 남긴다. access token 은 30분짜리라 메모리로 충분하다.
 class AuthRepository {
   AuthRepository({Dio? dio, FlutterSecureStorage? storage})
-    : _dio = dio ?? createDio(),
+    : _dio = dio ?? createDio(ApiService.authorization),
       _storage = storage ?? const FlutterSecureStorage();
 
   final Dio _dio;
