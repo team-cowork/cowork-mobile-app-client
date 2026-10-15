@@ -35,7 +35,7 @@ class ChatView extends StatelessWidget {
             ),
           ),
         ),
-        _ => SafeArea(
+        final teamId => SafeArea(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -44,7 +44,7 @@ class ChatView extends StatelessWidget {
                 onTitleTap: () => TeamMenuSheet.show(
                   context,
                   teamName: data.workspaceName,
-                  onCreateChannel: () => NewChannelSheet.show(context),
+                  onCreateChannel: () => _createChannel(context, teamId),
                   onCreateProject: () => NewProjectSheet.show(context),
                 ),
                 onSearchTap: () => context.push('/search'),
@@ -55,13 +55,25 @@ class ChatView extends StatelessWidget {
                 onDmHomeTap: () => context.push('/dm'),
                 onTeamTap: (id) =>
                     context.read<ChatBloc>().add(ChatEvent.teamSelected(id)),
-                onCreateChannel: () => NewChannelSheet.show(context),
+                onCreateChannel: () => _createChannel(context, teamId),
               ),
               Expanded(child: _ChannelList(channelGroups: data.channelGroups)),
             ],
           ),
         ),
       },
+    );
+  }
+
+  /// 채널 생성 시트를 띄우고, 만들어지면 목록 끝에 붙이고 알린다.
+  static Future<void> _createChannel(BuildContext context, int teamId) async {
+    final bloc = context.read<ChatBloc>();
+    final messenger = ScaffoldMessenger.of(context);
+    final channel = await NewChannelSheet.show(context, teamId: teamId);
+    if (channel == null) return;
+    bloc.add(ChatEvent.channelAdded(channel));
+    messenger.showSnackBar(
+      SnackBar(content: Text('#${channel.name} 채널을 만들었어요.')),
     );
   }
 }

@@ -3,6 +3,7 @@ import 'package:dio/dio.dart';
 import '../../../network/dio_client.dart';
 import '../../auth/data/auth_repository.dart';
 import '../domain/channel.dart';
+import 'channel_request.dart';
 import 'channel_response.dart';
 import 'team_response.dart';
 
@@ -40,4 +41,16 @@ class ChatRepository {
     ))
       ChannelResponse.fromJson(json).toChannel(),
   ];
+
+  /// 채널을 만들고 서버가 저장한 채널을 돌려준다.
+  Future<Channel> createChannel(CreateChannelRequest request) async =>
+      ChannelResponse.fromJson(
+        unwrapPayload(
+          (await _channel.post<String>(
+                '/channels',
+                data: request.toJson(),
+              )).data ??
+              '',
+        ),
+      ).toChannel();
 }

@@ -25,6 +25,7 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
   ChatBloc(this._repository) : super(const ChatState.initial()) {
     on<ChatRequested>(_onLoad);
     on<ChatTeamSelected>(_onTeamSelected);
+    on<ChatChannelAdded>(_onChannelAdded);
   }
 
   final ChatRepository _repository;
@@ -69,6 +70,21 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     if (team == null || team.id == _teamId) return;
     emit(const ChatState.loading());
     await _loadChannels(team, emit);
+  }
+
+  /// 새 채널을 목록 끝에 붙인다.
+  ///
+  /// 서버는 새 채널을 팀의 마지막 순서로 저장하므로, 목록을 다시 읽지 않고 붙여도
+  /// 서버 순서와 같다. 다시 읽으면 홈 전체가 로딩 화면으로 깜빡인다.
+  void _onChannelAdded(ChatChannelAdded event, Emitter<ChatState> emit) {
+    final current = state;
+    if (current is! AsyncSuccess<ChatHomeData>) return;
+    final team = _currentTeam();
+    if (team == null) return;
+    final channels = current.data.channelGroups.expand(
+      (group) => group.channels,
+    );
+    emit(ChatState.success(_homeOf(team, [...channels, event.channel])));
   }
 
   /// 보고 있던 팀. 그 팀에서 나갔으면 첫 팀, 팀이 없으면 null.
