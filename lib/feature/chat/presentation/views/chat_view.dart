@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/utils/bloc_scaffold.dart';
+import '../../data/chat_repository.dart';
 import '../../domain/channel.dart';
 import '../../domain/enums/channel_type.dart';
 import '../../domain/enums/workspace_avatar_color.dart';
@@ -18,33 +19,49 @@ class ChatView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocScaffold<ChatBloc, ChatHomeData>(
-      create: (_) => ChatBloc()..add(const ChatRequested()),
-      errorTitle: '채널 목록을 불러오지 못했어요',
+      create: (context) =>
+          ChatBloc(context.read<ChatRepository>())..add(const ChatRequested()),
+      // 어느 단계(팀/채널)가 실패했는지는 설명 문구에 실려 온다. (#94)
+      errorTitle: '홈을 불러오지 못했어요',
       onRetry: (context) => context.read<ChatBloc>().add(const ChatRequested()),
-      builder: (context, data) => SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _ChatHeader(
-              label: data.workspaceName,
-              onTitleTap: () => TeamMenuSheet.show(
-                context,
-                teamName: data.workspaceName,
-                onCreateChannel: () => NewChannelSheet.show(context),
-                onCreateProject: () => NewProjectSheet.show(context),
-              ),
-              onSearchTap: () => context.push('/search'),
-              onNotificationTap: () => context.push('/notifications'),
+      builder: (context, data) => switch (data.teamId) {
+        null => const Center(
+          child: Padding(
+            padding: EdgeInsets.all(AppSpacing.s16),
+            child: CoworkEmptyState(
+              icon: Icons.groups_outlined,
+              title: '아직 속한 팀이 없어요',
+              description: '팀에 초대받으면 채널이 여기에 보여요.',
             ),
-            _ChatShortcutBar(
-              shortcuts: data.workspaceShortcuts,
-              onDmHomeTap: () => context.push('/dm'),
-              onCreateChannel: () => NewChannelSheet.show(context),
-            ),
-            Expanded(child: _ChannelList(channelGroups: data.channelGroups)),
-          ],
+          ),
         ),
-      ),
+        _ => SafeArea(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _ChatHeader(
+                label: data.workspaceName,
+                onTitleTap: () => TeamMenuSheet.show(
+                  context,
+                  teamName: data.workspaceName,
+                  onCreateChannel: () => NewChannelSheet.show(context),
+                  onCreateProject: () => NewProjectSheet.show(context),
+                ),
+                onSearchTap: () => context.push('/search'),
+                onNotificationTap: () => context.push('/notifications'),
+              ),
+              _ChatShortcutBar(
+                shortcuts: data.workspaceShortcuts,
+                onDmHomeTap: () => context.push('/dm'),
+                onTeamTap: (id) =>
+                    context.read<ChatBloc>().add(ChatEvent.teamSelected(id)),
+                onCreateChannel: () => NewChannelSheet.show(context),
+              ),
+              Expanded(child: _ChannelList(channelGroups: data.channelGroups)),
+            ],
+          ),
+        ),
+      },
     );
   }
 }
@@ -110,6 +127,7 @@ class _ChatShortcutBar extends StatelessWidget {
   const _ChatShortcutBar({
     required this.shortcuts,
     this.onDmHomeTap,
+    this.onTeamTap,
     this.onCreateChannel,
   });
 
@@ -117,6 +135,9 @@ class _ChatShortcutBar extends StatelessWidget {
 
   /// DM 홈 버튼을 눌렀을 때.
   final VoidCallback? onDmHomeTap;
+
+  /// 팀 아바타를 눌렀을 때. 누른 팀 id 를 넘긴다.
+  final ValueChanged<int>? onTeamTap;
 
   /// `+` 를 눌렀을 때. 없으면 정적인 버튼이 된다.
   final VoidCallback? onCreateChannel;
@@ -149,7 +170,10 @@ class _ChatShortcutBar extends StatelessWidget {
               ),
             ),
             for (final shortcut in shortcuts)
-              _WorkspaceShortcutButton(shortcut: shortcut, onTap: () {}),
+              _WorkspaceShortcutButton(
+                shortcut: shortcut,
+                onTap: () => onTeamTap?.call(shortcut.id),
+              ),
             CoworkIconButton.custom(
               icon: AppIcon.plus(),
               semanticLabel: '새 채널',
