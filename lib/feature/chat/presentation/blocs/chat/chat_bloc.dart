@@ -24,6 +24,7 @@ part 'chat_state.dart';
 class ChatBloc extends Bloc<ChatEvent, ChatState> {
   ChatBloc(this._repository) : super(const ChatState.initial()) {
     on<ChatRequested>(_onLoad);
+    on<ChatRefreshed>(_onRefresh);
     on<ChatTeamSelected>(_onTeamSelected);
     on<ChatChannelAdded>(_onChannelAdded);
   }
@@ -62,6 +63,32 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     await _loadChannels(team, emit);
   }
 
+  /// 팀·채널을 다시 읽어, 로딩 화면 없이 보이는 목록을 바꾼다.
+  ///
+  /// 보이는 목록이 있을 때만 한다. 실패하면 보이던 목록을 그대로 둔다. 사용자가
+  /// 하던 일을 백그라운드 갱신 실패로 오류 화면이 가로막으면 안 되기 때문이다.
+  Future<void> _onRefresh(ChatRefreshed event, Emitter<ChatState> emit) async {
+    if (state is! AsyncSuccess<ChatHomeData>) return;
+    final before = _teamId;
+    try {
+      final teams = await _repository.fetchMyTeams();
+      final team =
+          teams.where((team) => team.id == before).firstOrNull ??
+          teams.firstOrNull;
+      final channels = team == null
+          ? const <Channel>[]
+          : await _repository.fetchChannels(team.id);
+
+      // 읽는 사이 다른 팀으로 옮겼다면 이 결과는 낡았다.
+      if (state is! AsyncSuccess<ChatHomeData> || _teamId != before) return;
+      _teams = teams;
+      _teamId = team?.id;
+      emit(ChatState.success(team == null ? _noTeam : _homeOf(team, channels)));
+    } catch (e, s) {
+      Logger.e('홈 새로고침 실패', tag: 'Chat', error: e, stackTrace: s);
+    }
+  }
+
   Future<void> _onTeamSelected(
     ChatTeamSelected event,
     Emitter<ChatState> emit,
@@ -84,6 +111,8 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     final channels = current.data.channelGroups.expand(
       (group) => group.channels,
     );
+    // 새로고침이 먼저 끝나 이미 목록에 있으면 두 번 붙이지 않는다.
+    if (channels.any((channel) => channel.id == event.channel.id)) return;
     emit(ChatState.success(_homeOf(team, [...channels, event.channel])));
   }
 

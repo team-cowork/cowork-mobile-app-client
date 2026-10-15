@@ -1,5 +1,6 @@
 import 'package:cowork_app/feature/chat/presentation/views/chat_view.dart';
 import 'package:cowork_design_system/design_system.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'chat_test_server.dart';
@@ -61,6 +62,62 @@ void main() {
     await tester.tap(find.text('다시 시도'));
     await tester.pumpAndSettle();
 
+    expect(find.text('코워크'), findsOneWidget);
+    expect(find.text('일반'), findsOneWidget);
+  });
+
+  /// 앱을 백그라운드로 보냈다가 다시 앞으로 가져온다.
+  Future<void> backgroundAndResume(WidgetTester tester) async {
+    for (final state in const [
+      AppLifecycleState.inactive,
+      AppLifecycleState.hidden,
+      AppLifecycleState.paused,
+      AppLifecycleState.hidden,
+      AppLifecycleState.inactive,
+      AppLifecycleState.resumed,
+    ]) {
+      tester.binding.handleAppLifecycleStateChanged(state);
+    }
+    await tester.pumpAndSettle();
+  }
+
+  testWidgets('앱이 다시 앞으로 오면 다른 곳에서 만든 채널이 보인다', (tester) async {
+    final server = FakeChatServer();
+    await pumpChat(tester, server);
+    expect(find.text('웹에서-만듦'), findsNothing);
+
+    server.channels[1]!.add({
+      'id': 50,
+      'name': '웹에서-만듦',
+      'type': 'TEXT',
+      'viewType': 'TEXT',
+    });
+    await backgroundAndResume(tester);
+
+    expect(find.text('웹에서-만듦'), findsOneWidget);
+    expect(find.text('일반'), findsOneWidget);
+  });
+
+  testWidgets('팀이 없던 화면도 다시 앞으로 오면 새로 들어간 팀을 보여준다', (tester) async {
+    final server = FakeChatServer(teams: []);
+    await pumpChat(tester, server);
+    expect(find.text('아직 속한 팀이 없어요'), findsOneWidget);
+
+    server.teams.add({'id': 1, 'name': '코워크'});
+    await backgroundAndResume(tester);
+
+    expect(find.text('코워크'), findsOneWidget);
+    expect(find.text('일반'), findsOneWidget);
+  });
+
+  testWidgets('다시 앞으로 왔을 때 새로고침이 실패하면 보이던 목록을 그대로 둔다', (tester) async {
+    final server = FakeChatServer();
+    await pumpChat(tester, server);
+
+    server.failTeams = const ServerFailure.offline();
+    await backgroundAndResume(tester);
+
+    expect(find.text('홈을 불러오지 못했어요'), findsNothing);
     expect(find.text('코워크'), findsOneWidget);
     expect(find.text('일반'), findsOneWidget);
   });

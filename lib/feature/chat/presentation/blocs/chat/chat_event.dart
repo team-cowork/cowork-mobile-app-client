@@ -6,6 +6,11 @@ sealed class ChatEvent extends Equatable {
   /// 홈 화면 데이터 로드를 요청한다.
   const factory ChatEvent.requested() = ChatRequested;
 
+  /// 보이는 목록을 그대로 둔 채 서버 목록으로 조용히 갈아끼운다.
+  ///
+  /// 다른 기기·사람이 만든 팀·채널을 반영하려고, 앱이 다시 앞으로 올 때 보낸다.
+  const factory ChatEvent.refreshed() = ChatRefreshed;
+
   /// 단축 바에서 다른 팀을 골랐다.
   const factory ChatEvent.teamSelected(int teamId) = ChatTeamSelected;
 
@@ -18,6 +23,10 @@ sealed class ChatEvent extends Equatable {
 
 final class ChatRequested extends ChatEvent {
   const ChatRequested();
+}
+
+final class ChatRefreshed extends ChatEvent {
+  const ChatRefreshed();
 }
 
 final class ChatTeamSelected extends ChatEvent {
