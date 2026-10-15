@@ -41,7 +41,7 @@ void main() {
   }
 
   final submit = find.widgetWithText(CoworkButton, '채널 만들기');
-  final submitting = find.widgetWithText(CoworkButton, '만드는 중…');
+  final submitting = find.widgetWithText(CoworkButton, '채널 생성 중…');
 
   testWidgets('새 채널 시트에서 유형·공개 범위를 고르고 이름이 있어야 만들 수 있다', (tester) async {
     final server = FakeChatServer();
