@@ -4,6 +4,8 @@ import 'package:cowork_design_system/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'chat_test_server.dart';
+
 void main() {
   // 기본 800x600 뷰에서는 시트 하단 CTA가 화면 밖이라 폰 크기로 맞춘다.
   setUp(() {
@@ -16,7 +18,11 @@ void main() {
 
   Future<void> pumpChat(WidgetTester tester) async {
     await tester.pumpWidget(
-      MaterialApp(theme: AppTheme.dark(), home: const ChatView()),
+      chatTestApp(
+        FakeChatServer(),
+        theme: AppTheme.dark(),
+        home: const ChatView(),
+      ),
     );
     await tester.pumpAndSettle();
   }
