@@ -9,6 +9,9 @@ sealed class ChatEvent extends Equatable {
   /// 단축 바에서 다른 팀을 골랐다.
   const factory ChatEvent.teamSelected(int teamId) = ChatTeamSelected;
 
+  /// 채널 생성 시트가 서버에 채널을 만들었다.
+  const factory ChatEvent.channelAdded(Channel channel) = ChatChannelAdded;
+
   @override
   List<Object?> get props => [];
 }
@@ -24,4 +27,13 @@ final class ChatTeamSelected extends ChatEvent {
 
   @override
   List<Object?> get props => [teamId];
+}
+
+final class ChatChannelAdded extends ChatEvent {
+  const ChatChannelAdded(this.channel);
+
+  final Channel channel;
+
+  @override
+  List<Object?> get props => [channel];
 }
