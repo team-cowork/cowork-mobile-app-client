@@ -338,7 +338,7 @@ class _NewChannelSheetState extends State<NewChannelSheet> {
             SizedBox(
               width: double.infinity,
               child: CoworkButton(
-                label: submitting ? '만드는 중…' : '채널 만들기',
+                label: submitting ? '채널 생성 중…' : '채널 만들기',
                 size: CoworkButtonSize.large,
                 enabled: _canSubmit && !submitting,
                 onPressed: () => context.read<_CreateChannel>().add(
@@ -505,7 +505,7 @@ class _NewTeamSheetState extends State<NewTeamSheet> {
             SizedBox(
               width: double.infinity,
               child: CoworkButton(
-                label: submitting ? '만드는 중…' : '팀 만들기',
+                label: submitting ? '팀 생성 중…' : '팀 만들기',
                 size: CoworkButtonSize.large,
                 enabled: _canSubmit && !submitting,
                 onPressed: () => context.read<_CreateTeam>().add(
