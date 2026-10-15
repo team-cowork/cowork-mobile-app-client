@@ -1,0 +1,53 @@
+import 'package:cowork_app/feature/chat/data/channel_socket_event.dart';
+import 'package:cowork_app/feature/chat/domain/enums/channel_type.dart';
+import 'package:flutter_test/flutter_test.dart';
+
+void main() {
+  test('channel:created 는 channelId 로 채널을 만들고 viewType 을 앱 유형으로 옮긴다', () {
+    final event = ChannelSocketEvent.from((
+      name: 'channel:created',
+      data: {
+        'channelId': 7,
+        'teamId': 1,
+        'name': '회의',
+        'viewType': 'MEETING_NOTE',
+      },
+    ));
+
+    expect(event, isA<ChannelUpserted>());
+    final upserted = event as ChannelUpserted;
+    expect(upserted.teamId, 1);
+    expect(upserted.channel.id, '7');
+    expect(upserted.channel.name, '회의');
+    expect(upserted.channel.type, ChannelType.meetingNote);
+  });
+
+  test('삭제와 읽기 권한 회수는 모두 채널을 빼는 이벤트다', () {
+    for (final name in ['channel:deleted', 'channel:access:revoked']) {
+      final event = ChannelSocketEvent.from((
+        name: name,
+        data: {'channelId': 7},
+      ));
+      expect((event as ChannelRemoved).channelId, '7');
+    }
+  });
+
+  test('team:access:revoked 는 팀 id 를 담는다', () {
+    final event = ChannelSocketEvent.from((
+      name: 'team:access:revoked',
+      data: {'teamId': 3},
+    ));
+    expect((event as TeamAccessRevoked).teamId, 3);
+  });
+
+  test('id 가 없거나 모르는 이벤트는 무시한다', () {
+    expect(
+      ChannelSocketEvent.from((name: 'channel:created', data: {'name': 'x'})),
+      isNull,
+    );
+    expect(
+      ChannelSocketEvent.from((name: 'message:new', data: {'channelId': 1})),
+      isNull,
+    );
+  });
+}

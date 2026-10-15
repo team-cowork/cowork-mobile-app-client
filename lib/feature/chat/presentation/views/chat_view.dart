@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/utils/bloc_scaffold.dart';
+import '../../../../network/chat_socket.dart';
 import '../../data/chat_repository.dart';
 import '../../domain/channel.dart';
 import '../../domain/enums/channel_type.dart';
@@ -20,67 +21,64 @@ class ChatView extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocScaffold<ChatBloc, ChatHomeData>(
       create: (context) =>
-          ChatBloc(context.read<ChatRepository>())..add(const ChatRequested()),
+          ChatBloc(context.read<ChatRepository>(), context.read<ChatSocket>())
+            ..add(const ChatRequested()),
       // 어느 단계(팀/채널)가 실패했는지는 설명 문구에 실려 온다. (#94)
       errorTitle: '홈을 불러오지 못했어요',
       onRetry: (context) => context.read<ChatBloc>().add(const ChatRequested()),
-      builder: (context, data) => _RefreshOnResume(
-        child: switch (data.teamId) {
-          // 팀이 없어도 단축 바는 둔다. 팀 생성 진입점을 `+` 하나로 맞추려는 것이다.
-          null => SafeArea(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _ChatShortcutBar(
-                  shortcuts: const [],
-                  onDmHomeTap: () => context.push('/dm'),
-                  onCreateTeam: () => _createTeam(context),
-                ),
-                const Expanded(
-                  child: Center(
-                    child: Padding(
-                      padding: EdgeInsets.all(AppSpacing.s16),
-                      child: CoworkEmptyState(
-                        icon: Icons.groups_outlined,
-                        title: '아직 속한 팀이 없어요',
-                        description: '+ 로 팀을 만들거나 초대받으면 채널이 여기에 보여요.',
-                      ),
+      builder: (context, data) => switch (data.teamId) {
+        // 팀이 없어도 단축 바는 둔다. 팀 생성 진입점을 `+` 하나로 맞추려는 것이다.
+        null => SafeArea(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _ChatShortcutBar(
+                shortcuts: const [],
+                onDmHomeTap: () => context.push('/dm'),
+                onCreateTeam: () => _createTeam(context),
+              ),
+              const Expanded(
+                child: Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(AppSpacing.s16),
+                    child: CoworkEmptyState(
+                      icon: Icons.groups_outlined,
+                      title: '아직 속한 팀이 없어요',
+                      description: '+ 로 팀을 만들거나 초대받으면 채널이 여기에 보여요.',
                     ),
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-          final teamId => SafeArea(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _ChatHeader(
-                  label: data.workspaceName,
-                  onTitleTap: () => TeamMenuSheet.show(
-                    context,
-                    teamName: data.workspaceName,
-                    onCreateChannel: () => _createChannel(context, teamId),
-                    onCreateProject: () => NewProjectSheet.show(context),
-                  ),
-                  onSearchTap: () => context.push('/search'),
-                  onNotificationTap: () => context.push('/notifications'),
+        ),
+        final teamId => SafeArea(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _ChatHeader(
+                label: data.workspaceName,
+                onTitleTap: () => TeamMenuSheet.show(
+                  context,
+                  teamName: data.workspaceName,
+                  onCreateChannel: () => _createChannel(context, teamId),
+                  onCreateProject: () => NewProjectSheet.show(context),
                 ),
-                _ChatShortcutBar(
-                  shortcuts: data.workspaceShortcuts,
-                  onDmHomeTap: () => context.push('/dm'),
-                  onTeamTap: (id) =>
-                      context.read<ChatBloc>().add(ChatEvent.teamSelected(id)),
-                  onCreateTeam: () => _createTeam(context),
-                ),
-                Expanded(
-                  child: _ChannelList(channelGroups: data.channelGroups),
-                ),
-              ],
-            ),
+                onSearchTap: () => context.push('/search'),
+                onNotificationTap: () => context.push('/notifications'),
+              ),
+              _ChatShortcutBar(
+                shortcuts: data.workspaceShortcuts,
+                onDmHomeTap: () => context.push('/dm'),
+                onTeamTap: (id) =>
+                    context.read<ChatBloc>().add(ChatEvent.teamSelected(id)),
+                onCreateTeam: () => _createTeam(context),
+              ),
+              Expanded(child: _ChannelList(channelGroups: data.channelGroups)),
+            ],
           ),
-        },
-      ),
+        ),
+      },
     );
   }
 
@@ -105,41 +103,6 @@ class ChatView extends StatelessWidget {
       SnackBar(content: Text('#${channel.name} 채널을 만들었어요.')),
     );
   }
-}
-
-/// 앱이 다시 앞으로 오면 홈을 로딩 화면 없이 새로 읽는다.
-///
-/// 다른 기기나 사람이 만든 팀·채널은 다시 읽어야 보인다. 팀은 서버가 알려주는
-/// 이벤트가 없고, 채널 이벤트(소켓)는 아직 붙이지 않았다. 웹도 창에 다시 포커스할
-/// 때 목록을 다시 읽는다.
-class _RefreshOnResume extends StatefulWidget {
-  const _RefreshOnResume({required this.child});
-
-  final Widget child;
-
-  @override
-  State<_RefreshOnResume> createState() => _RefreshOnResumeState();
-}
-
-class _RefreshOnResumeState extends State<_RefreshOnResume> {
-  late final AppLifecycleListener _listener;
-
-  @override
-  void initState() {
-    super.initState();
-    _listener = AppLifecycleListener(
-      onResume: () => context.read<ChatBloc>().add(const ChatEvent.refreshed()),
-    );
-  }
-
-  @override
-  void dispose() {
-    _listener.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) => widget.child;
 }
 
 class _ChatHeader extends StatelessWidget {
