@@ -152,6 +152,95 @@ void main() {
     expect(server.created, hasLength(1));
   });
 
+  group('새 팀 시트', () {
+    final teamName = find.widgetWithText(CoworkTextField, '팀 이름');
+    final teamDescription = find.widgetWithText(CoworkTextField, '팀 설명');
+    final createTeam = find.widgetWithText(CoworkButton, '팀 만들기');
+
+    testWidgets('팀 목록 끝 + 로 팀을 만들면 그 팀으로 옮긴다', (tester) async {
+      final server = FakeChatServer();
+      await pumpChat(tester, server);
+
+      await tester.tap(find.bySemanticsLabel('새 팀'));
+      await tester.pumpAndSettle();
+
+      // 이름이 비면 만들 수 없다.
+      expect(tester.widget<CoworkButton>(createTeam).enabled, isFalse);
+
+      await tester.enterText(teamName, '  백엔드팀  ');
+      await tester.enterText(teamDescription, '서버 개발');
+      await tester.pumpAndSettle();
+      await tester.tap(createTeam);
+      await tester.pumpAndSettle();
+
+      expect(server.createdTeams.single, {
+        'name': '백엔드팀',
+        'description': '서버 개발',
+      });
+      // 새 팀은 채널이 없다. 전 팀의 채널이 남아 있으면 안 된다.
+      expect(find.text('백엔드팀'), findsOneWidget);
+      expect(find.text('일반'), findsNothing);
+      expect(find.text('백엔드팀 팀을 만들었어요.'), findsOneWidget);
+    });
+
+    testWidgets('설명을 비우면 description 을 보내지 않는다', (tester) async {
+      final server = FakeChatServer();
+      await pumpChat(tester, server);
+
+      await tester.tap(find.bySemanticsLabel('새 팀'));
+      await tester.pumpAndSettle();
+      await tester.enterText(teamName, '디자인');
+      await tester.enterText(teamDescription, '   ');
+      await tester.pumpAndSettle();
+      await tester.tap(createTeam);
+      await tester.pumpAndSettle();
+
+      expect(server.createdTeams.single, {'name': '디자인'});
+    });
+
+    testWidgets('팀이 없는 빈 화면에서 팀을 만들면 바로 그 팀 홈이 된다', (tester) async {
+      final server = FakeChatServer(teams: []);
+      await pumpChat(tester, server);
+
+      await tester.tap(createTeam);
+      await tester.pumpAndSettle();
+      await tester.enterText(teamName, '첫 팀');
+      await tester.pumpAndSettle();
+      await tester.tap(createTeam.last);
+      await tester.pumpAndSettle();
+
+      expect(find.text('아직 속한 팀이 없어요'), findsNothing);
+      expect(find.text('첫 팀'), findsOneWidget);
+      expect(find.bySemanticsLabel('새 팀'), findsOneWidget);
+    });
+
+    testWidgets('팀 생성이 실패하면 시트에 팀 생성 실패와 사유를 보여준다', (tester) async {
+      final server = FakeChatServer()
+        ..failCreateTeam = const ServerFailure.offline();
+      await pumpChat(tester, server);
+
+      await tester.tap(find.bySemanticsLabel('새 팀'));
+      await tester.pumpAndSettle();
+      await tester.enterText(teamName, '백엔드팀');
+      await tester.pumpAndSettle();
+      await tester.tap(createTeam);
+      await tester.pumpAndSettle();
+
+      expect(find.text('팀을 만들지 못했어요'), findsOneWidget);
+      expect(find.text('네트워크에 연결할 수 없습니다.'), findsOneWidget);
+      // 시트 뒤 홈의 `채널` 그룹 헤더는 빼고 시트 안만 본다.
+      expect(
+        find.descendant(
+          of: find.byType(BottomSheet),
+          matching: find.textContaining('채널'),
+        ),
+        findsNothing,
+      );
+      // 홈은 원래 팀 그대로다.
+      expect(find.text('코워크'), findsOneWidget);
+    });
+  });
+
   testWidgets('새 프로젝트 시트에서 템플릿을 고르고 이름이 있어야 만들 수 있다', (tester) async {
     await pumpChat(tester, FakeChatServer());
 

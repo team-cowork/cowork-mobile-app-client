@@ -46,12 +46,16 @@ class FakeChatServer implements HttpClientAdapter {
   ServerFailure? failTeams;
   ServerFailure? failChannels;
   ServerFailure? failCreate;
+  ServerFailure? failCreateTeam;
 
   /// 걸어 두면 채널 생성 응답을 이 Future 가 끝날 때까지 붙잡는다.
   Future<void>? createGate;
 
   /// 채널 생성 요청 본문.
   final created = <Map<String, dynamic>>[];
+
+  /// 팀 생성 요청 본문.
+  final createdTeams = <Map<String, dynamic>>[];
 
   int _nextId = 100;
 
@@ -64,6 +68,9 @@ class FakeChatServer implements HttpClientAdapter {
     final path = options.uri.path.replaceFirst('/api', '');
     final body = await _body(requestStream);
 
+    if (path == '/team/teams' && options.method == 'POST') {
+      return _respond(options, failCreateTeam, () => _createTeam(body));
+    }
     if (path == '/team/teams') {
       return _respond(options, failTeams, () => teams);
     }
@@ -76,6 +83,20 @@ class FakeChatServer implements HttpClientAdapter {
       return _respond(options, failCreate, () => _create(body));
     }
     return _json({'message': '없는 경로: $path'}, 404);
+  }
+
+  /// 서버처럼 팀만 만들고 채널은 만들지 않는다.
+  Map<String, dynamic> _createTeam(Map<String, dynamic> body) {
+    createdTeams.add(body);
+    final team = {
+      'id': _nextId++,
+      'name': body['name'],
+      'description': body['description'],
+      'iconUrl': null,
+      'ownerId': 1,
+    };
+    teams.add({...team, 'myRole': 'OWNER'});
+    return team;
   }
 
   Map<String, dynamic> _create(Map<String, dynamic> body) {
