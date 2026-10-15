@@ -26,25 +26,29 @@ class ChatView extends StatelessWidget {
       onRetry: (context) => context.read<ChatBloc>().add(const ChatRequested()),
       builder: (context, data) => _RefreshOnResume(
         child: switch (data.teamId) {
-          null => Center(
-            child: Padding(
-              padding: const EdgeInsets.all(AppSpacing.s16),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                spacing: AppSpacing.s16,
-                children: [
-                  const CoworkEmptyState(
-                    icon: Icons.groups_outlined,
-                    title: '아직 속한 팀이 없어요',
-                    description: '팀을 만들거나 초대받으면 채널이 여기에 보여요.',
+          // 팀이 없어도 단축 바는 둔다. 팀 생성 진입점을 `+` 하나로 맞추려는 것이다.
+          null => SafeArea(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _ChatShortcutBar(
+                  shortcuts: const [],
+                  onDmHomeTap: () => context.push('/dm'),
+                  onCreateTeam: () => _createTeam(context),
+                ),
+                const Expanded(
+                  child: Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(AppSpacing.s16),
+                      child: CoworkEmptyState(
+                        icon: Icons.groups_outlined,
+                        title: '아직 속한 팀이 없어요',
+                        description: '+ 로 팀을 만들거나 초대받으면 채널이 여기에 보여요.',
+                      ),
+                    ),
                   ),
-                  // 팀이 없으면 단축 바(`+`)도 없으므로 여기서 만든다.
-                  CoworkButton(
-                    label: '팀 만들기',
-                    onPressed: () => _createTeam(context),
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
           final teamId => SafeArea(

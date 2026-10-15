@@ -198,15 +198,17 @@ void main() {
       expect(server.createdTeams.single, {'name': '디자인'});
     });
 
-    testWidgets('팀이 없는 빈 화면에서 팀을 만들면 바로 그 팀 홈이 된다', (tester) async {
+    testWidgets('팀이 없는 빈 화면도 + 로 팀을 만들면 바로 그 팀 홈이 된다', (tester) async {
       final server = FakeChatServer(teams: []);
       await pumpChat(tester, server);
 
-      await tester.tap(createTeam);
+      // 팀 생성 진입점은 + 하나다. 빈 화면에 따로 버튼을 두지 않는다.
+      expect(createTeam, findsNothing);
+      await tester.tap(find.bySemanticsLabel('새 팀'));
       await tester.pumpAndSettle();
       await tester.enterText(teamName, '첫 팀');
       await tester.pumpAndSettle();
-      await tester.tap(createTeam.last);
+      await tester.tap(createTeam);
       await tester.pumpAndSettle();
 
       expect(find.text('아직 속한 팀이 없어요'), findsNothing);
