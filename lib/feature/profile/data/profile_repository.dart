@@ -15,7 +15,10 @@ import 'user_response.dart';
 /// 화면용 변환은 각 도메인 모델의 `fromMe` 팩토리가 맡는다.
 class ProfileRepository {
   ProfileRepository(AuthRepository auth)
-    : this.withDio(createAuthedDio(auth), createDio());
+    : this.withDio(
+        createAuthedDio(ApiService.user, auth),
+        createDio(ApiService.user),
+      );
 
   ProfileRepository.withDio(this._dio, [Dio? uploader])
     : _uploader = uploader ?? _dio;
