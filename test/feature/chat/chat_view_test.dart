@@ -1,14 +1,23 @@
 import 'package:cowork_app/feature/chat/presentation/views/chat_view.dart';
 import 'package:cowork_design_system/design_system.dart';
-import 'package:flutter/widgets.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'chat_test_server.dart';
 
 void main() {
-  Future<void> pumpChat(WidgetTester tester, FakeChatServer server) async {
+  Future<void> pumpChat(
+    WidgetTester tester,
+    FakeChatServer server, {
+    FakeChatSocket? socket,
+  }) async {
     await tester.pumpWidget(
-      chatTestApp(server, theme: AppTheme.dark(), home: const ChatView()),
+      chatTestApp(
+        server,
+        socket: socket,
+        theme: AppTheme.dark(),
+        home: const ChatView(),
+      ),
     );
     await tester.pumpAndSettle();
   }
@@ -66,60 +75,128 @@ void main() {
     expect(find.text('일반'), findsOneWidget);
   });
 
-  /// 앱을 백그라운드로 보냈다가 다시 앞으로 가져온다.
-  Future<void> backgroundAndResume(WidgetTester tester) async {
-    for (final state in const [
-      AppLifecycleState.inactive,
-      AppLifecycleState.hidden,
-      AppLifecycleState.paused,
-      AppLifecycleState.hidden,
-      AppLifecycleState.inactive,
-      AppLifecycleState.resumed,
-    ]) {
-      tester.binding.handleAppLifecycleStateChanged(state);
-    }
-    await tester.pumpAndSettle();
-  }
+  group('소켓', () {
+    late FakeChatSocket socket;
 
-  testWidgets('앱이 다시 앞으로 오면 다른 곳에서 만든 채널이 보인다', (tester) async {
-    final server = FakeChatServer();
-    await pumpChat(tester, server);
-    expect(find.text('웹에서-만듦'), findsNothing);
+    setUp(() => socket = FakeChatSocket());
 
-    server.channels[1]!.add({
-      'id': 50,
-      'name': '웹에서-만듦',
+    /// 서버가 팀 방으로 보내는 채널 payload. REST 와 달리 id 가 `channelId` 다.
+    Map<String, dynamic> channel(int id, String name, {int teamId = 1}) => {
+      'channelId': id,
+      'teamId': teamId,
+      'projectId': null,
+      'name': name,
       'type': 'TEXT',
       'viewType': 'TEXT',
+      'isPrivate': false,
+    };
+
+    testWidgets('보고 있는 팀 방만 구독하고, 팀을 바꾸면 구독도 옮긴다', (tester) async {
+      await pumpChat(tester, FakeChatServer(), socket: socket);
+      expect(socket.joined, {1});
+
+      await tester.tap(find.text('디'));
+      await tester.pumpAndSettle();
+      expect(socket.joined, {2});
     });
-    await backgroundAndResume(tester);
 
-    expect(find.text('웹에서-만듦'), findsOneWidget);
-    expect(find.text('일반'), findsOneWidget);
-  });
+    testWidgets('다른 곳에서 만든 채널이 목록 끝에 붙는다', (tester) async {
+      await pumpChat(tester, FakeChatServer(), socket: socket);
 
-  testWidgets('팀이 없던 화면도 다시 앞으로 오면 새로 들어간 팀을 보여준다', (tester) async {
-    final server = FakeChatServer(teams: []);
-    await pumpChat(tester, server);
-    expect(find.text('아직 속한 팀이 없어요'), findsOneWidget);
+      socket.push('channel:created', channel(50, '웹에서-만듦'));
+      await tester.pumpAndSettle();
 
-    server.teams.add({'id': 1, 'name': '코워크'});
-    await backgroundAndResume(tester);
+      expect(find.text('웹에서-만듦'), findsOneWidget);
+      expect(find.text('일반'), findsOneWidget);
+    });
 
-    expect(find.text('코워크'), findsOneWidget);
-    expect(find.text('일반'), findsOneWidget);
-  });
+    testWidgets('다른 팀의 채널 이벤트는 반영하지 않는다', (tester) async {
+      await pumpChat(tester, FakeChatServer(), socket: socket);
 
-  testWidgets('다시 앞으로 왔을 때 새로고침이 실패하면 보이던 목록을 그대로 둔다', (tester) async {
-    final server = FakeChatServer();
-    await pumpChat(tester, server);
+      socket.push('channel:created', channel(50, '남의-팀', teamId: 2));
+      await tester.pumpAndSettle();
 
-    server.failTeams = const ServerFailure.offline();
-    await backgroundAndResume(tester);
+      expect(find.text('남의-팀'), findsNothing);
+    });
 
-    expect(find.text('홈을 불러오지 못했어요'), findsNothing);
-    expect(find.text('코워크'), findsOneWidget);
-    expect(find.text('일반'), findsOneWidget);
+    testWidgets('바뀐 채널은 그 자리에서 바뀌고, 지워지거나 못 읽게 된 채널은 빠진다', (tester) async {
+      await pumpChat(tester, FakeChatServer(), socket: socket);
+
+      socket.push('channel:updated', channel(10, '공지'));
+      await tester.pumpAndSettle();
+      expect(find.text('공지'), findsOneWidget);
+      expect(find.text('일반'), findsNothing);
+
+      socket.push('channel:deleted', {'channelId': 10, 'teamId': 1});
+      await tester.pumpAndSettle();
+      expect(find.text('공지'), findsNothing);
+
+      socket.push('channel:access:revoked', {'channelId': 11});
+      await tester.pumpAndSettle();
+      expect(find.text('배포'), findsNothing);
+    });
+
+    testWidgets('내가 만든 채널이 이벤트로 다시 와도 한 번만 보인다', (tester) async {
+      // 기본 800x600 에서는 시트 하단 CTA 가 화면 밖이라 폰 크기로 맞춘다.
+      tester.view.physicalSize = const Size(400, 900);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      final server = FakeChatServer();
+      await pumpChat(tester, server, socket: socket);
+
+      await tester.tap(find.text('코워크'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('채널 만들기'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextFormField), '새-채널');
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(CoworkButton, '채널 만들기'));
+      await tester.pumpAndSettle();
+      expect(server.created, hasLength(1));
+
+      // 가짜 서버가 붙인 id(100)로 서버 이벤트가 뒤따라온다.
+      socket.push('channel:created', channel(100, '새-채널'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('새-채널'), findsOneWidget);
+    });
+
+    testWidgets('보던 팀에서 빠지면 남은 팀으로 옮기고 구독도 옮긴다', (tester) async {
+      await pumpChat(tester, FakeChatServer(), socket: socket);
+
+      socket.push('team:access:revoked', {'teamId': 1});
+      await tester.pumpAndSettle();
+
+      expect(find.text('디자인팀'), findsOneWidget);
+      expect(find.text('시안'), findsOneWidget);
+      expect(find.text('코'), findsNothing);
+      expect(socket.joined, {2});
+    });
+
+    testWidgets('마지막 팀에서 빠지면 빈 화면이 되고 구독을 모두 끊는다', (tester) async {
+      final server = FakeChatServer(
+        teams: [
+          {'id': 1, 'name': '코워크'},
+        ],
+      );
+      await pumpChat(tester, server, socket: socket);
+
+      socket.push('team:access:revoked', {'teamId': 1});
+      await tester.pumpAndSettle();
+
+      expect(find.text('아직 속한 팀이 없어요'), findsOneWidget);
+      expect(socket.joined, isEmpty);
+    });
+
+    testWidgets('홈을 떠나면 팀 방 구독을 끊는다', (tester) async {
+      await pumpChat(tester, FakeChatServer(), socket: socket);
+      expect(socket.joined, {1});
+
+      await tester.pumpWidget(const SizedBox());
+      await tester.pumpAndSettle();
+
+      expect(socket.joined, isEmpty);
+    });
   });
 
   testWidgets('속한 팀이 없으면 빈 화면을 보여준다', (tester) async {

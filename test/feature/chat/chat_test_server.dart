@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:cowork_app/feature/chat/data/chat_repository.dart';
+import 'package:cowork_app/network/chat_socket.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -180,11 +181,40 @@ ChatRepository chatRepositoryOf(FakeChatServer server) {
 }
 
 /// [home] 을 [server] 에 붙은 [ChatRepository] 와 함께 띄우는 앱.
+/// 가짜 채팅 소켓. 구독한 팀 방을 기록하고, 테스트가 서버 이벤트를 [push] 한다.
+class FakeChatSocket implements ChatSocket {
+  final _events = StreamController<SocketEvent>.broadcast();
+
+  /// 지금 구독 중인 팀 방.
+  final joined = <int>{};
+
+  /// 서버가 [name] 이벤트를 보낸 것처럼 흘린다.
+  void push(String name, Map<String, dynamic> data) =>
+      _events.add((name: name, data: data));
+
+  @override
+  Stream<SocketEvent> get events => _events.stream;
+
+  @override
+  void joinTeam(int teamId) => joined.add(teamId);
+
+  @override
+  void leaveTeam(int teamId) => joined.remove(teamId);
+
+  @override
+  void dispose() => _events.close();
+}
+
+/// [home] 을 [server] 에 붙은 [ChatRepository] 와 [socket] 과 함께 띄우는 앱.
 Widget chatTestApp(
   FakeChatServer server, {
   required Widget home,
+  FakeChatSocket? socket,
   ThemeData? theme,
-}) => RepositoryProvider.value(
-  value: chatRepositoryOf(server),
+}) => MultiRepositoryProvider(
+  providers: [
+    RepositoryProvider.value(value: chatRepositoryOf(server)),
+    RepositoryProvider<ChatSocket>.value(value: socket ?? FakeChatSocket()),
+  ],
   child: MaterialApp(theme: theme, home: home),
 );
