@@ -26,13 +26,24 @@ class ChatView extends StatelessWidget {
       onRetry: (context) => context.read<ChatBloc>().add(const ChatRequested()),
       builder: (context, data) => _RefreshOnResume(
         child: switch (data.teamId) {
-          null => const Center(
+          null => Center(
             child: Padding(
-              padding: EdgeInsets.all(AppSpacing.s16),
-              child: CoworkEmptyState(
-                icon: Icons.groups_outlined,
-                title: '아직 속한 팀이 없어요',
-                description: '팀에 초대받으면 채널이 여기에 보여요.',
+              padding: const EdgeInsets.all(AppSpacing.s16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                spacing: AppSpacing.s16,
+                children: [
+                  const CoworkEmptyState(
+                    icon: Icons.groups_outlined,
+                    title: '아직 속한 팀이 없어요',
+                    description: '팀을 만들거나 초대받으면 채널이 여기에 보여요.',
+                  ),
+                  // 팀이 없으면 단축 바(`+`)도 없으므로 여기서 만든다.
+                  CoworkButton(
+                    label: '팀 만들기',
+                    onPressed: () => _createTeam(context),
+                  ),
+                ],
               ),
             ),
           ),
@@ -56,7 +67,7 @@ class ChatView extends StatelessWidget {
                   onDmHomeTap: () => context.push('/dm'),
                   onTeamTap: (id) =>
                       context.read<ChatBloc>().add(ChatEvent.teamSelected(id)),
-                  onCreateChannel: () => _createChannel(context, teamId),
+                  onCreateTeam: () => _createTeam(context),
                 ),
                 Expanded(
                   child: _ChannelList(channelGroups: data.channelGroups),
@@ -67,6 +78,16 @@ class ChatView extends StatelessWidget {
         },
       ),
     );
+  }
+
+  /// 팀 생성 시트를 띄우고, 만들어지면 그 팀으로 옮기고 알린다.
+  static Future<void> _createTeam(BuildContext context) async {
+    final bloc = context.read<ChatBloc>();
+    final messenger = ScaffoldMessenger.of(context);
+    final team = await NewTeamSheet.show(context);
+    if (team == null) return;
+    bloc.add(ChatEvent.teamCreated(team));
+    messenger.showSnackBar(SnackBar(content: Text('${team.name} 팀을 만들었어요.')));
   }
 
   /// 채널 생성 시트를 띄우고, 만들어지면 목록 끝에 붙이고 알린다.
@@ -179,7 +200,7 @@ class _ChatShortcutBar extends StatelessWidget {
     required this.shortcuts,
     this.onDmHomeTap,
     this.onTeamTap,
-    this.onCreateChannel,
+    this.onCreateTeam,
   });
 
   final List<WorkspaceShortcut> shortcuts;
@@ -190,8 +211,8 @@ class _ChatShortcutBar extends StatelessWidget {
   /// 팀 아바타를 눌렀을 때. 누른 팀 id 를 넘긴다.
   final ValueChanged<int>? onTeamTap;
 
-  /// `+` 를 눌렀을 때. 없으면 정적인 버튼이 된다.
-  final VoidCallback? onCreateChannel;
+  /// 팀 목록 끝 `+` 를 눌렀을 때. 웹 팀 레일의 `팀 추가` 와 같은 자리다.
+  final VoidCallback? onCreateTeam;
 
   @override
   Widget build(BuildContext context) {
@@ -227,8 +248,8 @@ class _ChatShortcutBar extends StatelessWidget {
               ),
             CoworkIconButton.custom(
               icon: AppIcon.plus(),
-              semanticLabel: '새 채널',
-              onPressed: onCreateChannel,
+              semanticLabel: '새 팀',
+              onPressed: onCreateTeam,
             ),
           ],
         ),

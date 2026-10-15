@@ -1,6 +1,7 @@
 /// `GET /teams` 응답 원소. 내가 속한 팀 하나.
 ///
 /// 게이트웨이 envelope 을 벗긴 `data` 배열의 원소를 받는다(`unwrapListPayload`).
+/// `POST /teams` 응답도 화면에서 쓰는 id·이름이 같아 이 모델로 받는다.
 class TeamSummaryResponse {
   const TeamSummaryResponse({required this.id, required this.name});
 

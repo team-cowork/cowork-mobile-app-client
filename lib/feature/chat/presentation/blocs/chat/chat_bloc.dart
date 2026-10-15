@@ -26,6 +26,7 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     on<ChatRequested>(_onLoad);
     on<ChatRefreshed>(_onRefresh);
     on<ChatTeamSelected>(_onTeamSelected);
+    on<ChatTeamCreated>(_onTeamCreated);
     on<ChatChannelAdded>(_onChannelAdded);
   }
 
@@ -97,6 +98,18 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     if (team == null || team.id == _teamId) return;
     emit(const ChatState.loading());
     await _loadChannels(team, emit);
+  }
+
+  /// 새로 만든 팀으로 옮긴다.
+  ///
+  /// 서버는 팀을 만들 때 채널을 만들지 않으므로 채널 목록을 읽지 않고 빈 목록으로
+  /// 보여준다. 만든 직후엔 채널 서비스가 아직 새 팀 멤버십을 모를 수 있어(이벤트로
+  /// 전파된다) 바로 읽으면 403 이 날 수 있다는 점도 있다.
+  void _onTeamCreated(ChatTeamCreated event, Emitter<ChatState> emit) {
+    final team = event.team;
+    _teams = [..._teams.where((other) => other.id != team.id), team];
+    _teamId = team.id;
+    emit(ChatState.success(_homeOf(team, const [])));
   }
 
   /// 새 채널을 목록 끝에 붙인다.
