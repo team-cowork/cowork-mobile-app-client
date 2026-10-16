@@ -7,7 +7,7 @@ import 'package:image_picker/image_picker.dart';
 
 import '../../../../core/utils/async_state.dart';
 import '../../../../core/utils/base_scaffold.dart';
-import '../../data/profile_repository.dart';
+import '../../data/repositories/profile_repository.dart';
 import '../../domain/edit_profile.dart';
 import '../blocs/edit_profile/edit_profile_bloc.dart';
 
