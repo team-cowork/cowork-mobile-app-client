@@ -1,6 +1,6 @@
 import 'package:dio/dio.dart';
 
-import '../../../core/utils/logger.dart';
+import '../../../../core/utils/logger.dart';
 
 /// GitHub 공개 이벤트로 커밋 스트릭을 만든다.
 ///

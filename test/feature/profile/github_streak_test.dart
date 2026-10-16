@@ -1,8 +1,8 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
-import 'package:cowork_app/feature/profile/data/github_repository.dart';
-import 'package:cowork_app/feature/profile/data/user_response.dart';
+import 'package:cowork_app/feature/profile/data/repositories/github_repository.dart';
+import 'package:cowork_app/feature/profile/data/model/responses/user_response.dart';
 import 'package:cowork_app/feature/profile/domain/profile.dart';
 import 'package:cowork_app/feature/profile/presentation/widgets/github_streak_card.dart';
 import 'package:cowork_design_system/design_system.dart';

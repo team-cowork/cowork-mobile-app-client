@@ -2,11 +2,15 @@ import 'dart:io';
 
 import 'package:dio/dio.dart';
 
-import '../../../network/dio_client.dart';
-import '../../auth/data/auth_repository.dart';
-import 'profile_store.dart';
-import 'user_request.dart';
-import 'user_response.dart';
+import '../../../../network/dio_client.dart';
+import '../../../auth/data/auth_repository.dart';
+import '../model/requests/confirm_profile_image_request.dart';
+import '../model/requests/presigned_upload_request.dart';
+import '../model/requests/update_me_request.dart';
+import '../model/requests/update_status_request.dart';
+import '../model/responses/presigned_upload_response.dart';
+import '../model/responses/user_response.dart';
+import '../profile_store.dart';
 
 /// `/users/me` 를 다루는 저장소. 내 프로필 조회·수정과 프로필 사진을 맡는다.
 ///

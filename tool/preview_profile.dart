@@ -11,8 +11,8 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
-import 'package:cowork_app/feature/profile/data/github_repository.dart';
-import 'package:cowork_app/feature/profile/data/profile_repository.dart';
+import 'package:cowork_app/feature/profile/data/repositories/github_repository.dart';
+import 'package:cowork_app/feature/profile/data/repositories/profile_repository.dart';
 import 'package:cowork_app/feature/profile/presentation/views/my_profile_view.dart';
 import 'package:cowork_design_system/design_system.dart';
 import 'package:dio/dio.dart';

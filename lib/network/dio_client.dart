@@ -12,7 +12,7 @@ import 'auth_interceptor.dart';
 /// 게이트웨이는 `/api/<service>/...` 로 서비스를 가른다. Swagger 의 서비스별
 /// basePath(`/v3/api-docs/<service>`)와 같은 값이라, 저장소의 요청 경로를 스펙과
 /// 똑같이 적을 수 있다. 쓰는 서비스만 둔다.
-enum ApiService { authorization, user }
+enum ApiService { authorization, user, team, channel }
 
 /// [service] 를 향하는 Cowork API 게이트웨이 dio 인스턴스를 만든다.
 ///
@@ -83,4 +83,14 @@ Map<String, dynamic> unwrapPayload(String body) {
   if (decoded is! Map<String, dynamic>) return const {};
   final data = decoded['data'];
   return data is Map<String, dynamic> ? data : decoded;
+}
+
+/// 목록 응답용 [unwrapPayload]. `data` 가 배열이면 그것을, 아니면 본문이 배열일
+/// 때 그것을 준다. 배열이 아니면 빈 목록.
+List<Map<String, dynamic>> unwrapListPayload(String body) {
+  if (body.isEmpty) return const [];
+  final decoded = jsonDecode(body);
+  final data = decoded is Map<String, dynamic> ? decoded['data'] : decoded;
+  if (data is! List) return const [];
+  return data.whereType<Map<String, dynamic>>().toList();
 }

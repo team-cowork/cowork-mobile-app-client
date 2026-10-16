@@ -1,7 +1,21 @@
 import 'package:cowork_design_system/design_system.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../../core/utils/async_state.dart';
+import '../../../../core/utils/command_bloc.dart';
+import '../../data/model/requests/create_channel_request.dart';
+import '../../data/repositories/chat_repository.dart';
+import '../../data/model/requests/create_team_request.dart';
+import '../../data/model/responses/team_summary_response.dart';
+import '../../domain/channel.dart';
 import '../../domain/enums/channel_type.dart';
+
+/// 채널 생성 요청 하나를 실행하는 [CommandBloc].
+typedef _CreateChannel = CommandBloc<CreateChannelRequest, Channel>;
+
+/// 팀 생성 요청 하나를 실행하는 [CommandBloc].
+typedef _CreateTeam = CommandBloc<CreateTeamRequest, TeamSummaryResponse>;
 
 /// 선택 여부를 보더로 표시하는 카드 컨테이너.
 ///
@@ -52,17 +66,25 @@ class SelectableCard extends StatelessWidget {
   }
 }
 
-/// 채널·프로젝트 생성 바텀시트의 공통 껍데기.
+/// 팀·채널·프로젝트 생성 바텀시트의 공통 껍데기.
 ///
 /// 핸들, 제목 + 닫기 버튼, 키보드 회피, 스크롤을 맡는다. 시트마다 다른 입력
 /// 항목과 CTA 는 [children] 으로 받는다.
 class _CreateSheet extends StatelessWidget {
-  const _CreateSheet({required this.title, required this.children});
+  const _CreateSheet({
+    required this.title,
+    required this.children,
+    this.dismissible = true,
+  });
 
   final String title;
 
   /// 입력 항목과 CTA. 세로로 [AppSpacing.s16] 간격을 두고 쌓인다.
   final List<Widget> children;
+
+  /// false 면 닫기 버튼·뒤로 가기·바깥 탭으로 닫히지 않는다. 서버에 요청을 보내는
+  /// 중에 닫혀 결과를 놓치지 않게 할 때 쓴다.
+  final bool dismissible;
 
   static const double _radius = 22;
 
@@ -83,7 +105,7 @@ class _CreateSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.colors;
 
-    return SafeArea(
+    final sheet = SafeArea(
       child: Padding(
         // 키보드가 올라오면 시트 전체를 밀어 올린다.
         padding: EdgeInsets.only(
@@ -123,7 +145,9 @@ class _CreateSheet extends StatelessWidget {
                     variant: CoworkIconButtonVariant.weak,
                     color: CoworkIconButtonColor.neutral,
                     semanticLabel: '닫기',
-                    onPressed: () => Navigator.of(context).pop(),
+                    onPressed: dismissible
+                        ? () => Navigator.of(context).pop()
+                        : null,
                   ),
                 ],
               ),
@@ -133,6 +157,8 @@ class _CreateSheet extends StatelessWidget {
         ),
       ),
     );
+
+    return PopScope(canPop: dismissible, child: sheet);
   }
 }
 
@@ -154,23 +180,32 @@ class _SectionLabel extends StatelessWidget {
   }
 }
 
-/// 시트가 돌려주는 입력값.
-typedef NewChannelForm = ({ChannelType type, String name, bool isPrivate});
-
 /// 채널 생성 바텀시트.
 ///
 /// Figma `Modal / 채널 만들기` 웹 스펙을 시트 형태로 옮겼다. 채널 유형·이름·공개
-/// 범위를 받고, `채널 만들기` 를 누르면 입력값([NewChannelForm])을 돌려주며 닫힌다.
+/// 범위를 받고, `채널 만들기` 를 누르면 [teamId] 팀에 채널을 만든다. 만드는 동안은
+/// 입력과 닫기를 잠그고, 실패하면 입력값을 둔 채 사유를 보여 다시 시도하게 한다.
+/// 성공하면 서버가 만든 [Channel] 을 돌려주며 닫힌다.
 ///
-/// ponytail: 입력값은 시트가 닫히면 버려지는 화면 로컬 상태라 Bloc 없이 setState 로 든다.
+/// ponytail: 입력값은 시트가 닫히면 버려지는 화면 로컬 상태라 setState 로 들고,
+/// 서버 요청 상태만 [CommandBloc] 이 맡는다. 생성 중·실패를 홈 상태에 실으면 홈
+/// 전체가 로딩 화면으로 바뀌고 시트 입력값도 사라지므로, 시트와 같이 생기고 같이
+/// 버려지는 Bloc 을 따로 둔다.
 class NewChannelSheet extends StatefulWidget {
-  const NewChannelSheet({super.key});
+  const NewChannelSheet({required this.teamId, super.key});
 
-  /// 시트를 띄우고 입력값을 돌려준다. 취소하면 null.
-  static Future<NewChannelForm?> show(BuildContext context) {
-    return _CreateSheet.show<NewChannelForm>(
+  /// 채널을 만들 팀.
+  final int teamId;
+
+  /// 시트를 띄우고 만든 채널을 돌려준다. 만들지 않고 닫으면 null.
+  static Future<Channel?> show(BuildContext context, {required int teamId}) {
+    final repository = context.read<ChatRepository>();
+    return _CreateSheet.show<Channel>(
       context,
-      (_) => const NewChannelSheet(),
+      (_) => BlocProvider(
+        create: (_) => _CreateChannel(repository.createChannel, tag: 'Chat'),
+        child: NewChannelSheet(teamId: teamId),
+      ),
     );
   }
 
@@ -234,61 +269,121 @@ class _NewChannelSheetState extends State<NewChannelSheet> {
 
   @override
   Widget build(BuildContext context) {
-    return _CreateSheet(
-      title: '새 채널',
-      children: [
-        const _SectionLabel('채널 유형'),
-        Column(
-          spacing: AppSpacing.s8,
+    return BlocConsumer<_CreateChannel, AsyncState<Channel>>(
+      listener: (context, state) {
+        if (state case AsyncSuccess(:final data)) {
+          Navigator.of(context).pop(data);
+        }
+      },
+      builder: (context, state) {
+        // 성공 직후 닫히기 전 한 프레임도 잠가 둔다.
+        final submitting = state is AsyncLoading || state is AsyncSuccess;
+
+        return _CreateSheet(
+          title: '새 채널',
+          dismissible: !submitting,
           children: [
-            for (final entry in NewChannelSheet.types)
-              CoworkOptionCard(
-                label: entry.label,
-                description: entry.description,
-                icon: entry.icon,
-                selected: entry.type == _type,
-                onTap: () => setState(() => _type = entry.type),
-              ),
-          ],
-        ),
-        CoworkTextField(
-          labelText: '채널 이름',
-          hintText: '# 새-채널',
-          textInputAction: TextInputAction.done,
-          onChanged: (value) => setState(() => _name = value),
-        ),
-        const _SectionLabel('공개 범위'),
-        Row(
-          spacing: AppSpacing.s10,
-          children: [
-            for (final entry in NewChannelSheet.visibilities)
-              Expanded(
-                child: SelectableCard(
-                  selected: entry.isPrivate == _isPrivate,
-                  // 공개 범위 카드는 템플릿 카드보다 한 단계 낮은 세로 패딩.
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.s14,
-                    vertical: AppSpacing.s10,
-                  ),
-                  onTap: () => setState(() => _isPrivate = entry.isPrivate),
-                  child: _VisibilityOption(
+            const _SectionLabel('채널 유형'),
+            Column(
+              spacing: AppSpacing.s8,
+              children: [
+                for (final entry in NewChannelSheet.types)
+                  CoworkOptionCard(
                     label: entry.label,
                     description: entry.description,
+                    icon: entry.icon,
+                    selected: entry.type == _type,
+                    onTap: submitting
+                        ? null
+                        : () => setState(() => _type = entry.type),
+                  ),
+              ],
+            ),
+            CoworkTextField(
+              labelText: '채널 이름',
+              hintText: '# 새-채널',
+              enabled: !submitting,
+              textInputAction: TextInputAction.done,
+              onChanged: (value) => setState(() => _name = value),
+            ),
+            const _SectionLabel('공개 범위'),
+            Row(
+              spacing: AppSpacing.s10,
+              children: [
+                for (final entry in NewChannelSheet.visibilities)
+                  Expanded(
+                    child: SelectableCard(
+                      selected: entry.isPrivate == _isPrivate,
+                      // 공개 범위 카드는 템플릿 카드보다 한 단계 낮은 세로 패딩.
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.s14,
+                        vertical: AppSpacing.s10,
+                      ),
+                      onTap: submitting
+                          ? null
+                          : () => setState(() => _isPrivate = entry.isPrivate),
+                      child: _VisibilityOption(
+                        label: entry.label,
+                        description: entry.description,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            if (state case AsyncFailure(:final message))
+              _SubmitError(
+                title: '채널을 만들지 못했어요',
+                message: message ?? '잠시 후 다시 시도해 주세요.',
+              ),
+            SizedBox(
+              width: double.infinity,
+              child: CoworkButton(
+                label: submitting ? '채널 생성 중…' : '채널 만들기',
+                size: CoworkButtonSize.large,
+                enabled: _canSubmit && !submitting,
+                onPressed: () => context.read<_CreateChannel>().add(
+                  CommandEvent.run(
+                    CreateChannelRequest.of(
+                      teamId: widget.teamId,
+                      name: _name.trim(),
+                      type: _type,
+                      isPrivate: _isPrivate,
+                    ),
                   ),
                 ),
               ),
+            ),
           ],
+        );
+      },
+    );
+  }
+}
+
+/// 제출이 실패했을 때 CTA 위에 띄우는 제목 + 사유.
+///
+/// 시트가 화면을 덮고 있어 스낵바는 시트 뒤에 깔려 안 보이므로 시트 안에 그린다.
+class _SubmitError extends StatelessWidget {
+  const _SubmitError({required this.title, required this.message});
+
+  final String title;
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    final error = context.colors.error;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      spacing: AppSpacing.s4,
+      children: [
+        Text(
+          title,
+          style: AppFont.labelXs.copyWith(height: null, color: error),
         ),
-        SizedBox(
-          width: double.infinity,
-          child: CoworkButton(
-            label: '채널 만들기',
-            size: CoworkButtonSize.large,
-            enabled: _canSubmit,
-            onPressed: () => Navigator.of(
-              context,
-            ).pop((type: _type, name: _name, isPrivate: _isPrivate)),
-          ),
+        Text(
+          message,
+          style: AppFont.subtextS.copyWith(height: null, color: error),
         ),
       ],
     );
@@ -333,6 +428,99 @@ class _VisibilityOption extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// 팀 생성 바텀시트.
+///
+/// 웹 `팀 만들기` 모달과 같은 항목(이름, 선택 설명)을 받는다. 채널 시트처럼 만드는
+/// 동안은 입력과 닫기를 잠그고, 실패하면 입력값을 둔 채 사유를 보여준다. 성공하면
+/// 서버가 만든 팀을 돌려주며 닫힌다.
+///
+/// ponytail: 웹은 이름 50자·설명 100자로 막는데 [CoworkTextField] 에 글자 수 제한이
+/// 없어 아직 못 막는다. 넘치면 서버가 거절한 사유가 시트에 뜬다.
+class NewTeamSheet extends StatefulWidget {
+  const NewTeamSheet({super.key});
+
+  /// 시트를 띄우고 만든 팀을 돌려준다. 만들지 않고 닫으면 null.
+  static Future<TeamSummaryResponse?> show(BuildContext context) {
+    final repository = context.read<ChatRepository>();
+    return _CreateSheet.show<TeamSummaryResponse>(
+      context,
+      (_) => BlocProvider(
+        create: (_) => _CreateTeam(repository.createTeam, tag: 'Chat'),
+        child: const NewTeamSheet(),
+      ),
+    );
+  }
+
+  @override
+  State<NewTeamSheet> createState() => _NewTeamSheetState();
+}
+
+class _NewTeamSheetState extends State<NewTeamSheet> {
+  String _name = '';
+  String _description = '';
+
+  /// 이름이 있어야 팀을 만들 수 있다.
+  bool get _canSubmit => _name.trim().isNotEmpty;
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocConsumer<_CreateTeam, AsyncState<TeamSummaryResponse>>(
+      listener: (context, state) {
+        if (state case AsyncSuccess(:final data)) {
+          Navigator.of(context).pop(data);
+        }
+      },
+      builder: (context, state) {
+        // 성공 직후 닫히기 전 한 프레임도 잠가 둔다.
+        final submitting = state is AsyncLoading || state is AsyncSuccess;
+        final description = _description.trim();
+
+        return _CreateSheet(
+          title: '새 팀',
+          dismissible: !submitting,
+          children: [
+            CoworkTextField(
+              labelText: '팀 이름',
+              hintText: '팀 이름을 입력하세요',
+              enabled: !submitting,
+              textInputAction: TextInputAction.next,
+              onChanged: (value) => setState(() => _name = value),
+            ),
+            CoworkTextField(
+              labelText: '팀 설명',
+              hintText: '팀을 한 줄로 소개해 보세요 (선택)',
+              enabled: !submitting,
+              textInputAction: TextInputAction.done,
+              onChanged: (value) => setState(() => _description = value),
+            ),
+            if (state case AsyncFailure(:final message))
+              _SubmitError(
+                title: '팀을 만들지 못했어요',
+                message: message ?? '잠시 후 다시 시도해 주세요.',
+              ),
+            SizedBox(
+              width: double.infinity,
+              child: CoworkButton(
+                label: submitting ? '팀 생성 중…' : '팀 만들기',
+                size: CoworkButtonSize.large,
+                enabled: _canSubmit && !submitting,
+                onPressed: () => context.read<_CreateTeam>().add(
+                  CommandEvent.run(
+                    CreateTeamRequest(
+                      name: _name.trim(),
+                      description: description.isEmpty ? null : description,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }

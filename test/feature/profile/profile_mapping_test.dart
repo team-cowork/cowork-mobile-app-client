@@ -1,5 +1,5 @@
 import 'package:cowork_app/feature/profile/data/profile_store.dart';
-import 'package:cowork_app/feature/profile/data/user_response.dart';
+import 'package:cowork_app/feature/profile/data/model/responses/user_response.dart';
 import 'package:cowork_app/feature/profile/domain/edit_profile.dart';
 import 'package:cowork_app/feature/profile/domain/enums/user_status.dart';
 import 'package:cowork_app/feature/profile/domain/profile.dart';
