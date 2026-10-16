@@ -1,4 +1,4 @@
-import 'package:cowork_app/feature/chat/data/channel_socket_event.dart';
+import 'package:cowork_app/feature/chat/data/model/channel_socket_event.dart';
 import 'package:cowork_app/feature/chat/domain/enums/channel_type.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -47,6 +47,17 @@ void main() {
     );
     expect(
       ChannelSocketEvent.from((name: 'message:new', data: {'channelId': 1})),
+      isNull,
+    );
+  });
+
+  test('필드 타입이 다르면 예외 없이 무시한다', () {
+    // 던지면 소켓 스트림이 오류로 끊긴다.
+    expect(
+      ChannelSocketEvent.from((
+        name: 'channel:created',
+        data: {'channelId': '7', 'teamId': 1, 'name': 'x'},
+      )),
       isNull,
     );
   });

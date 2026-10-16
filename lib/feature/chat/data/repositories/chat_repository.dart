@@ -1,12 +1,12 @@
 import 'package:dio/dio.dart';
 
-import '../../../network/dio_client.dart';
-import '../../auth/data/auth_repository.dart';
-import '../domain/channel.dart';
-import 'channel_request.dart';
-import 'channel_response.dart';
-import 'team_request.dart';
-import 'team_response.dart';
+import '../../../../network/dio_client.dart';
+import '../../../auth/data/auth_repository.dart';
+import '../../domain/channel.dart';
+import '../model/requests/create_channel_request.dart';
+import '../model/requests/create_team_request.dart';
+import '../model/responses/channel_response.dart';
+import '../model/responses/team_summary_response.dart';
 
 /// 채팅 홈의 팀·채널 저장소.
 ///

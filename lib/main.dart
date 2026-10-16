@@ -3,7 +3,7 @@ import 'package:cowork_app/network/dev_http_overrides.dart';
 import 'package:cowork_app/feature/auth/data/auth_repository.dart';
 import 'package:cowork_app/feature/auth/data/dgsm_oauth_config.dart';
 import 'package:cowork_app/feature/auth/presentation/blocs/auth/auth_bloc.dart';
-import 'package:cowork_app/feature/chat/data/chat_repository.dart';
+import 'package:cowork_app/feature/chat/data/repositories/chat_repository.dart';
 import 'package:cowork_app/feature/profile/data/github_repository.dart';
 import 'package:cowork_app/feature/profile/data/profile_repository.dart';
 import 'package:cowork_app/network/chat_socket.dart';

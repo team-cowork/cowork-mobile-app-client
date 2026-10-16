@@ -1,4 +1,4 @@
-import 'package:cowork_app/feature/chat/data/channel_request.dart';
+import 'package:cowork_app/feature/chat/data/model/requests/create_channel_request.dart';
 import 'package:cowork_app/feature/chat/domain/enums/channel_type.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -11,7 +11,7 @@ void main() {
 
     for (final type in ChannelType.values) {
       await repository.createChannel(
-        CreateChannelRequest(
+        CreateChannelRequest.of(
           teamId: 1,
           name: type.name,
           type: type,
@@ -37,7 +37,7 @@ void main() {
 
   test('생성 응답의 채널을 앱 채널로 돌려준다', () async {
     final channel = await chatRepositoryOf(FakeChatServer()).createChannel(
-      const CreateChannelRequest(
+      CreateChannelRequest.of(
         teamId: 1,
         name: '회의',
         type: ChannelType.meetingNote,

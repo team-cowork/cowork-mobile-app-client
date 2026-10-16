@@ -4,10 +4,10 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/utils/async_state.dart';
 import '../../../../core/utils/command_bloc.dart';
-import '../../data/channel_request.dart';
-import '../../data/chat_repository.dart';
-import '../../data/team_request.dart';
-import '../../data/team_response.dart';
+import '../../data/model/requests/create_channel_request.dart';
+import '../../data/repositories/chat_repository.dart';
+import '../../data/model/requests/create_team_request.dart';
+import '../../data/model/responses/team_summary_response.dart';
 import '../../domain/channel.dart';
 import '../../domain/enums/channel_type.dart';
 
@@ -343,7 +343,7 @@ class _NewChannelSheetState extends State<NewChannelSheet> {
                 enabled: _canSubmit && !submitting,
                 onPressed: () => context.read<_CreateChannel>().add(
                   CommandEvent.run(
-                    CreateChannelRequest(
+                    CreateChannelRequest.of(
                       teamId: widget.teamId,
                       name: _name.trim(),
                       type: _type,
