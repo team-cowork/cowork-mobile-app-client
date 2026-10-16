@@ -1,4 +1,4 @@
-import '../domain/enums/channel_type.dart';
+import '../../domain/enums/channel_type.dart';
 
 /// 앱의 [ChannelType] 과 서버 채널 `viewType` 의 짝.
 ///

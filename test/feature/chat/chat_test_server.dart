@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
-import 'package:cowork_app/feature/chat/data/chat_repository.dart';
+import 'package:cowork_app/feature/chat/data/repositories/chat_repository.dart';
 import 'package:cowork_app/network/chat_socket.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';

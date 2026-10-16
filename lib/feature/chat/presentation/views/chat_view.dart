@@ -5,7 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/utils/bloc_scaffold.dart';
 import '../../../../network/chat_socket.dart';
-import '../../data/chat_repository.dart';
+import '../../data/repositories/chat_repository.dart';
 import '../../domain/channel.dart';
 import '../../domain/enums/channel_type.dart';
 import '../../domain/enums/workspace_avatar_color.dart';
