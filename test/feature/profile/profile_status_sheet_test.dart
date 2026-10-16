@@ -1,8 +1,8 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
-import 'package:cowork_app/feature/profile/data/profile_repository.dart';
-import 'package:cowork_app/feature/profile/data/user_response.dart';
+import 'package:cowork_app/feature/profile/data/repositories/profile_repository.dart';
+import 'package:cowork_app/feature/profile/data/model/responses/user_response.dart';
 import 'package:cowork_app/feature/profile/domain/profile.dart';
 import 'package:cowork_app/feature/profile/presentation/widgets/profile_status_sheet.dart';
 import 'package:cowork_design_system/design_system.dart';

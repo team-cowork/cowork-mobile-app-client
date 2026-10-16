@@ -6,8 +6,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/utils/bloc_scaffold.dart';
-import '../../data/github_repository.dart';
-import '../../data/profile_repository.dart';
+import '../../data/repositories/github_repository.dart';
+import '../../data/repositories/profile_repository.dart';
 import '../../domain/enums/user_status.dart';
 import '../../domain/profile.dart';
 import '../blocs/profile/profile_bloc.dart';

@@ -5,9 +5,9 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../../core/utils/async_state.dart';
 import '../../../../../core/utils/logger.dart';
 import '../../../../../network/http_error_message.dart';
-import '../../../data/profile_repository.dart';
+import '../../../data/repositories/profile_repository.dart';
 import '../../../data/profile_store.dart';
-import '../../../data/user_request.dart';
+import '../../../data/model/requests/update_me_request.dart';
 import '../../../domain/edit_profile.dart';
 
 part 'edit_profile_event.dart';

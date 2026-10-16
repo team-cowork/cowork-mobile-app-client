@@ -4,8 +4,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../../core/utils/logger.dart';
 import '../../../../../network/http_error_message.dart';
-import '../../../data/profile_repository.dart';
-import '../../../data/user_request.dart';
+import '../../../data/repositories/profile_repository.dart';
+import '../../../data/model/requests/update_status_request.dart';
 
 part 'profile_status_event.dart';
 part 'profile_status_state.dart';
