@@ -13,6 +13,8 @@ analyzer:
   errors:
     missing_return: error
     missing_required_param: error
+    # freezed 생성자에 @JsonSerializable/@JsonKey 를 붙이는 공식 사용법이 이 경고를 낸다.
+    invalid_annotation_target: ignore
   exclude:
     - "**/*.g.dart"
     - "**/*.freezed.dart"

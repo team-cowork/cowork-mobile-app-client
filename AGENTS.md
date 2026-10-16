@@ -7,7 +7,7 @@ Cowork 모바일 앱 클라이언트 저장소입니다.
 - Framework: Flutter
 - State Management: flutter_bloc (Bloc + `AsyncState`), 값 비교는 equatable
 - Network: 미도입 (현재 데이터는 인메모리 `*Store` 싱글턴)
-- Model Generation: 미도입 (freezed/json_serializable/build_runner 미설치)
+- Model Generation: API 요청·응답 모델만 freezed + json_serializable (build_runner)
 - Architecture: feature layer structure
 
 ## 작업 원칙
@@ -76,9 +76,14 @@ type(scope): 설명
 
 ## 모델 / 데이터 레이어 규칙
 
-- 현재 코드 생성 도구는 쓰지 않는다. domain 모델, Bloc 이벤트/상태 모두 `equatable`로 직접 작성한다.
+- 코드 생성은 API 요청·응답 모델에만 쓴다. domain 모델, Bloc 이벤트/상태는 `equatable`로 직접 작성한다.
+- API 연동 feature 의 `data/` 는 아래처럼 나눈다. 모델은 파일 하나에 클래스 하나다.
+  - `data/repositories/`: `*_repository.dart`
+  - `data/model/requests/`: `*_request.dart` (`@Freezed(fromJson: false, toJson: true)`)
+  - `data/model/responses/`: `*_response.dart` (`@freezed` + `fromJson`)
+  - 요청·응답과 앱 모델 사이 변환 도우미는 `data/model/` 에 둔다.
 - Bloc 이벤트/상태는 `sealed` 베이스 + `final class` 서브타입 + `Equatable` 패턴을 따른다. (`notes_event.dart`, `core/utils/async_state.dart` 참고)
-- API 연동으로 JSON 직렬화가 필요해지면 그때 `freezed`/`json_serializable` 도입을 별도 PR로 논의한다. 지금 있는 클래스를 미리 변환하지 않는다.
+- freezed 는 3.x 를 쓴다. 4.x 는 Dart 3.13 이상이 필요하다.
 - generated file은 수동 수정하지 않는다.
 - Flutter/codegen 산출물(`*.g.dart`, `*.freezed.dart` 등)은 원인 source 변경과 같은 커밋에 포함한다.
 - 원인 source 변경 없이 재생성/정리만 수행한 generated 변경은 별도 `chore` 또는 `refactor` 커밋으로 분리한다.
@@ -100,7 +105,13 @@ flutter analyze
 flutter test
 ```
 
-위젯북 유즈케이스를 추가/변경했을 때 (앱 본체에는 codegen이 없다):
+API 요청·응답 모델을 추가/변경했을 때 (생성 파일도 커밋한다):
+
+```bash
+dart run build_runner build --delete-conflicting-outputs
+```
+
+위젯북 유즈케이스를 추가/변경했을 때:
 
 ```bash
 cd widgetbook && flutter pub run build_runner build --delete-conflicting-outputs
