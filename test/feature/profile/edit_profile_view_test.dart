@@ -16,7 +16,8 @@ class _StubAdapter implements HttpClientAdapter {
     : body = jsonEncode({
         'id': 7,
         'name': '김준혁',
-        'status': 'ONLINE',
+        'status': 'online',
+        'custom_status': 'DO_NOT_DISTURB',
         'nickname': 'joon',
         'status_message': '',
         'description': '',
@@ -124,6 +125,26 @@ void main() {
       reason: '사진을 먼저 지우고 나머지 값을 저장한다',
     );
     expect(find.text('열기'), findsOneWidget, reason: '저장이 끝나야 화면이 닫힌다');
+  });
+
+  testWidgets('상태 메시지를 바꾸면 고른 상태를 그대로 실어 보낸다', (tester) async {
+    final adapter = await _openEditProfile(tester, profileImageUrl: null);
+
+    await tester.enterText(
+      find.descendant(
+        of: find.widgetWithText(CoworkTextField, '상태 메시지'),
+        matching: find.byType(EditableText),
+      ),
+      '집중 중',
+    );
+    await tester.tap(find.text('저장'));
+    await tester.pumpAndSettle();
+
+    final status = adapter.requests.singleWhere(
+      (r) => r.path == '/users/me/status',
+    );
+    expect(status.method, 'PATCH');
+    expect(status.data, {'custom_status': 'DO_NOT_DISTURB', 'message': '집중 중'});
   });
 
   testWidgets('저장이 실패하면 화면을 닫지 않고 서버 사유를 띄운다', (tester) async {

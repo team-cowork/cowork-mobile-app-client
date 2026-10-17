@@ -43,7 +43,7 @@ class Profile extends Equatable {
       name: _text(me.name) ?? '',
       avatarUrl: _text(me.profileImageUrl) ?? '',
       localAvatarPath: localAvatarPath,
-      status: UserStatus.from(me.status),
+      status: UserStatus.of(presence: me.status, custom: me.customStatus),
       subtitle: [
         if (nickname != null) '@$nickname',
         if (specialty != null) specialty,

@@ -12,6 +12,7 @@ class UserResponse {
     this.email,
     this.nickname,
     this.status,
+    this.customStatus,
     this.statusMessage,
     this.statusExpiresAt,
     this.description,
@@ -32,6 +33,7 @@ class UserResponse {
     email: json['email'] as String?,
     nickname: json['nickname'] as String?,
     status: json['status'] as String?,
+    customStatus: json['custom_status'] as String?,
     statusMessage: json['status_message'] as String?,
     statusExpiresAt: json['status_expires_at'] as String?,
     description: json['description'] as String?,
@@ -53,8 +55,11 @@ class UserResponse {
   final String? email;
   final String? nickname;
 
-  /// 접속 상태. 서버가 `offline` 처럼 소문자로 내려준다.
+  /// 접속 상태(`online` / `offline`). 서버가 접속 여부로 정하고, 앱이 바꿀 수 없다.
   final String? status;
+
+  /// 사용자가 고른 상태(예: `DO_NOT_DISTURB`). 고른 적 없으면 null 이다.
+  final String? customStatus;
 
   final String? statusMessage;
 
