@@ -24,7 +24,6 @@ class EditProfileView extends StatefulWidget {
 class _EditProfileViewState extends State<EditProfileView> {
   final _name = TextEditingController();
   final _username = TextEditingController();
-  final _statusMessage = TextEditingController();
   final _bio = TextEditingController();
 
   /// 로컬에서 새로 선택한 사진. 선택 전에는 프로필 아바타를 그대로 보여준다.
@@ -46,7 +45,6 @@ class _EditProfileViewState extends State<EditProfileView> {
   void dispose() {
     _name.dispose();
     _username.dispose();
-    _statusMessage.dispose();
     _bio.dispose();
     super.dispose();
   }
@@ -56,7 +54,6 @@ class _EditProfileViewState extends State<EditProfileView> {
     _seeded = true;
     _name.text = p.name;
     _username.text = p.username;
-    _statusMessage.text = p.statusMessage;
     _bio.text = p.bio;
     setState(() {
       _avatarUrl = p.avatarUrl;
@@ -108,7 +105,6 @@ class _EditProfileViewState extends State<EditProfileView> {
       EditProfileSubmitted(
         name: name,
         username: username,
-        statusMessage: _statusMessage.text.trim(),
         bio: _bio.text.trim(),
         localAvatarPath: _pickedImage?.path,
         removeAvatar: _removeAvatar,
@@ -205,11 +201,6 @@ class _EditProfileViewState extends State<EditProfileView> {
             hintText: '표시할 이름을 입력하세요',
           ),
           CoworkTextField(labelText: '사용자명', controller: _username),
-          CoworkTextField(
-            labelText: '상태 메시지',
-            controller: _statusMessage,
-            hintText: '예: PR 리뷰 환영 🙌',
-          ),
           CoworkTextArea(labelText: '자기소개', controller: _bio, minLines: 3),
         ],
       ),

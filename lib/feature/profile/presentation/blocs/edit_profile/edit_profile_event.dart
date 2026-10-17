@@ -10,7 +10,6 @@ sealed class EditProfileEvent extends Equatable {
   const factory EditProfileEvent.submitted({
     required String name,
     required String username,
-    required String statusMessage,
     required String bio,
     String? localAvatarPath,
     bool removeAvatar,
@@ -28,7 +27,6 @@ final class EditProfileSubmitted extends EditProfileEvent {
   const EditProfileSubmitted({
     required this.name,
     required this.username,
-    required this.statusMessage,
     required this.bio,
     this.localAvatarPath,
     this.removeAvatar = false,
@@ -36,7 +34,6 @@ final class EditProfileSubmitted extends EditProfileEvent {
 
   final String name;
   final String username;
-  final String statusMessage;
   final String bio;
   final String? localAvatarPath;
 
@@ -47,7 +44,6 @@ final class EditProfileSubmitted extends EditProfileEvent {
   List<Object?> get props => [
     name,
     username,
-    statusMessage,
     bio,
     localAvatarPath,
     removeAvatar,
