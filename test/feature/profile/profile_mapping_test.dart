@@ -10,7 +10,8 @@ import 'package:flutter_test/flutter_test.dart';
 const _me = {
   'id': 7,
   'name': '김준혁',
-  'status': 'ONLINE',
+  'status': 'online',
+  'custom_status': 'DO_NOT_DISTURB',
   'email': 'joon@gsm.hs.kr',
   'sex': 'MALE',
   'nickname': 'joon_hyeok0204',
@@ -32,6 +33,7 @@ void main() {
       'major': 'AI',
       'name': '이주언',
       'status': 'offline',
+      'custom_status': null,
       'description': null,
       'email': 's24068@gsm.hs.kr',
       'nickname': 'leejueon',
@@ -51,6 +53,7 @@ void main() {
     expect(user.name, '이주언');
     expect(user.studentNumber, '3413');
     expect(user.statusMessage, isNull);
+    expect(user.customStatus, isNull);
     expect(user.roles, isEmpty);
   });
 
@@ -78,9 +81,20 @@ void main() {
 
     expect(statusOf('ONLINE'), UserStatus.online);
     expect(statusOf('offline'), UserStatus.offline);
-    expect(statusOf('DO_NOT_DISTURB'), UserStatus.doNotDisturb);
     expect(statusOf('처음 보는 값'), UserStatus.offline);
     expect(statusOf(null), UserStatus.offline);
+  });
+
+  test('고른 상태가 있으면 그걸, 없으면 접속 상태를 따른다', () {
+    UserStatus statusOf(String presence, String? custom) => Profile.fromMe(
+      UserResponse.fromJson({'status': presence, 'custom_status': custom}),
+    ).status;
+
+    expect(statusOf('online', 'DO_NOT_DISTURB'), UserStatus.doNotDisturb);
+    expect(statusOf('offline', 'ONLINE'), UserStatus.online);
+    expect(statusOf('online', null), UserStatus.online);
+    expect(statusOf('offline', null), UserStatus.offline);
+    expect(statusOf('offline', ''), UserStatus.offline, reason: '빈 값도 고른 적 없음');
   });
 
   test('nullable 필드가 비어도 화면이 깨지지 않는다', () {
@@ -111,9 +125,23 @@ void main() {
     expect(edit.username, 'joon_hyeok0204', reason: '@ 없이 서버 값 그대로 보낸다');
     expect(edit.bio, '실서비스 트러블슈팅을 좋아합니다.');
     expect(edit.statusMessage, 'PR 리뷰 환영');
-    expect(edit.status, 'ONLINE', reason: '상태 메시지 변경 시 되돌려 보내야 한다');
+    expect(
+      edit.customStatus,
+      'DO_NOT_DISTURB',
+      reason: '상태 메시지 변경 시 되돌려 보내야 한다',
+    );
     expect(edit.avatarInitial, '김');
     expect(edit.localAvatarPath, '/tmp/a.jpg');
+  });
+
+  test('고른 상태가 없으면 접속 상태를 대신 되돌려 보낸다', () {
+    // 서버가 custom_status 를 필수로 받고 빈 값을 거부한다.
+    String customOf(Map<String, dynamic> json) =>
+        EditProfile.fromMe(UserResponse.fromJson(json)).customStatus;
+
+    expect(customOf({'status': 'offline', 'custom_status': null}), 'offline');
+    expect(customOf({'status': 'online', 'custom_status': ''}), 'online');
+    expect(customOf(const {}), 'online', reason: '둘 다 없으면 기본값');
   });
 
   test('이름이 비면 이니셜 폴백은 물음표다', () {

@@ -85,7 +85,7 @@ class EditProfileBloc extends Bloc<EditProfileEvent, EditProfileState> {
         profile = toProfile(
           await _repository.updateStatus(
             UpdateStatusRequest(
-              status: profile.status,
+              customStatus: profile.customStatus,
               message: event.statusMessage.isEmpty ? null : event.statusMessage,
             ),
           ),

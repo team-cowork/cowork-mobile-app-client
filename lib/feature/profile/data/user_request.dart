@@ -24,15 +24,22 @@ class UpdateMeRequest {
 
 /// `PATCH /users/me/status` 요청 본문.
 ///
-/// [status] 는 필수라, 상태 메시지만 바꿀 때도 서버가 들고 있던 값을 그대로
+/// [customStatus] 는 필수라, 상태 메시지만 바꿀 때도 서버가 들고 있던 값을 그대로
 /// 되돌려 보낸다. [message] 는 null 이면 상태 메시지를 지운다.
+///
+/// 서버는 보낸 키만 바꾼다. `expiresAt` 은 앱에서 정할 수단이 없어 보내지 않고,
+/// 그래서 웹에서 정해 둔 만료 시각도 그대로 남는다.
 class UpdateStatusRequest {
-  const UpdateStatusRequest({required this.status, this.message});
+  const UpdateStatusRequest({required this.customStatus, this.message});
 
-  final String status;
+  /// 사용자가 고른 상태(예: `DO_NOT_DISTURB`). 접속 상태(`status`)와 별개다.
+  final String customStatus;
   final String? message;
 
-  Map<String, dynamic> toJson() => {'status': status, 'message': message};
+  Map<String, dynamic> toJson() => {
+    'custom_status': customStatus,
+    'message': message,
+  };
 }
 
 /// `POST /users/me/profile-image/presigned` 요청 본문.

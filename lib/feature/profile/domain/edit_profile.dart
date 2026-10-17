@@ -13,13 +13,15 @@ class EditProfile extends Equatable {
     required this.bio,
     required this.avatarUrl,
     required this.avatarInitial,
-    required this.status,
+    required this.customStatus,
     this.localAvatarPath,
   });
 
   /// `GET /users/me` 응답을 편집 폼 초기값으로 바꾼다.
   factory EditProfile.fromMe(UserResponse me, {String? localAvatarPath}) {
     final name = me.name ?? '';
+    final custom = me.customStatus;
+    final presence = me.status;
     return EditProfile(
       name: name,
       username: me.nickname ?? '',
@@ -27,7 +29,11 @@ class EditProfile extends Equatable {
       bio: me.description ?? '',
       avatarUrl: me.profileImageUrl ?? '',
       avatarInitial: name.isEmpty ? '?' : name.substring(0, 1),
-      status: me.status ?? '',
+      customStatus: custom != null && custom.isNotEmpty
+          ? custom
+          : presence != null && presence.isNotEmpty
+          ? presence
+          : 'online',
       localAvatarPath: localAvatarPath,
     );
   }
@@ -53,9 +59,11 @@ class EditProfile extends Equatable {
   /// 로컬에서 선택한 아바타 사진 경로. 있으면 [avatarUrl]보다 우선한다.
   final String? localAvatarPath;
 
-  /// 현재 접속 상태(예: ONLINE). 화면에 보이진 않지만 상태 메시지를 바꿀 때
-  /// `PATCH /users/me/status` 가 status 를 필수로 받아 그대로 되돌려 보내야 한다.
-  final String status;
+  /// 사용자가 고른 상태(예: DO_NOT_DISTURB). 화면에 보이진 않지만 상태 메시지를
+  /// 바꿀 때 `PATCH /users/me/status` 가 custom_status 를 필수로 받아 그대로 되돌려
+  /// 보내야 한다. 서버는 빈 값을 거부하므로, 고른 적 없으면 접속 상태(`status`)를
+  /// 대신 보낸다. 그것도 없으면 `online` 이다.
+  final String customStatus;
 
   @override
   List<Object?> get props => [
@@ -65,7 +73,7 @@ class EditProfile extends Equatable {
     bio,
     avatarUrl,
     avatarInitial,
-    status,
+    customStatus,
     localAvatarPath,
   ];
 }
