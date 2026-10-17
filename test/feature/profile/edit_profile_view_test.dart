@@ -127,24 +127,18 @@ void main() {
     expect(find.text('열기'), findsOneWidget, reason: '저장이 끝나야 화면이 닫힌다');
   });
 
-  testWidgets('상태 메시지를 바꾸면 고른 상태를 그대로 실어 보낸다', (tester) async {
+  testWidgets('상태는 시트가 맡아 편집 화면은 상태를 건드리지 않는다', (tester) async {
     final adapter = await _openEditProfile(tester, profileImageUrl: null);
 
-    await tester.enterText(
-      find.descendant(
-        of: find.widgetWithText(CoworkTextField, '상태 메시지'),
-        matching: find.byType(EditableText),
-      ),
-      '집중 중',
-    );
+    expect(find.text('상태 메시지'), findsNothing);
+
     await tester.tap(find.text('저장'));
     await tester.pumpAndSettle();
 
-    final status = adapter.requests.singleWhere(
-      (r) => r.path == '/users/me/status',
+    expect(
+      adapter.requests.map((r) => r.path),
+      isNot(contains('/users/me/status')),
     );
-    expect(status.method, 'PATCH');
-    expect(status.data, {'custom_status': 'DO_NOT_DISTURB', 'message': '집중 중'});
   });
 
   testWidgets('저장이 실패하면 화면을 닫지 않고 서버 사유를 띄운다', (tester) async {
