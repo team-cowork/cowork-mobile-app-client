@@ -24,8 +24,8 @@ class UpdateMeRequest {
 
 /// `PATCH /users/me/status` 요청 본문.
 ///
-/// [customStatus] 는 필수라, 상태 메시지만 바꿀 때도 서버가 들고 있던 값을 그대로
-/// 되돌려 보낸다. [message] 는 null 이면 상태 메시지를 지운다.
+/// [customStatus] 는 서버가 필수로 받아, 상태 설정 시트에서 사용자가 고른 값을
+/// 보낸다. [message] 는 null 이면 상태 메시지를 지운다.
 ///
 /// 서버는 보낸 키만 바꾼다. `expiresAt` 은 앱에서 정할 수단이 없어 보내지 않고,
 /// 그래서 웹에서 정해 둔 만료 시각도 그대로 남는다.

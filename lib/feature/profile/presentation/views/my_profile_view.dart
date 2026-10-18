@@ -12,6 +12,7 @@ import '../../domain/enums/user_status.dart';
 import '../../domain/profile.dart';
 import '../blocs/profile/profile_bloc.dart';
 import '../widgets/github_streak_card.dart';
+import '../widgets/profile_status_sheet.dart';
 
 class MyProfileView extends StatelessWidget {
   const MyProfileView({super.key});
@@ -141,34 +142,53 @@ class _ProfileCard extends StatelessWidget {
               ),
             ],
           ),
-          // 커버 위에 겹쳐지는 아바타
+          // 커버 위에 겹쳐지는 아바타. 탭하면 상태 설정 시트가 열린다.
           Positioned(
             top: 55,
             left: 19,
-            child: Stack(
-              children: [
-                Container(
-                  width: 80,
-                  height: 80,
-                  decoration: BoxDecoration(
-                    color: AppColors.blue500,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: AppColors.neutral800, width: 4),
-                  ),
-                  child: ClipOval(child: _avatarImage()),
+            child: Semantics(
+              button: true,
+              label: '상태 설정',
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: () => _openStatusSheet(context),
+                child: Stack(
+                  children: [
+                    Container(
+                      width: 80,
+                      height: 80,
+                      decoration: BoxDecoration(
+                        color: AppColors.blue500,
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: AppColors.neutral800,
+                          width: 4,
+                        ),
+                      ),
+                      child: ClipOval(child: _avatarImage()),
+                    ),
+                    // 45도 방향 원 둘레에 점 중심이 놓이도록 모서리에 붙인다.
+                    Positioned(
+                      right: 0,
+                      bottom: 0,
+                      child: _StatusDot(status: profile.status),
+                    ),
+                  ],
                 ),
-                // 45도 방향 원 둘레에 점 중심이 놓이도록 모서리에 붙인다.
-                Positioned(
-                  right: 0,
-                  bottom: 0,
-                  child: _StatusDot(status: profile.status),
-                ),
-              ],
+              ),
             ),
           ),
         ],
       ),
     );
+  }
+
+  /// 상태 설정 시트를 열고, 저장했으면 프로필을 다시 읽어 점 색을 반영한다.
+  Future<void> _openStatusSheet(BuildContext context) async {
+    final saved = await ProfileStatusSheet.show(context, profile);
+    if (saved == true && context.mounted) {
+      context.read<ProfileBloc>().add(const ProfileRequested());
+    }
   }
 
   /// 아바타 이미지. 로컬 사진 > 네트워크 URL > 이니셜 폴백 순으로 표시한다.

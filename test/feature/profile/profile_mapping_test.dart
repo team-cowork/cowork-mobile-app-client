@@ -124,24 +124,29 @@ void main() {
     expect(edit.name, '김준혁');
     expect(edit.username, 'joon_hyeok0204', reason: '@ 없이 서버 값 그대로 보낸다');
     expect(edit.bio, '실서비스 트러블슈팅을 좋아합니다.');
-    expect(edit.statusMessage, 'PR 리뷰 환영');
-    expect(
-      edit.customStatus,
-      'DO_NOT_DISTURB',
-      reason: '상태 메시지 변경 시 되돌려 보내야 한다',
-    );
     expect(edit.avatarInitial, '김');
     expect(edit.localAvatarPath, '/tmp/a.jpg');
   });
 
-  test('고른 상태가 없으면 접속 상태를 대신 되돌려 보낸다', () {
-    // 서버가 custom_status 를 필수로 받고 빈 값을 거부한다.
-    String customOf(Map<String, dynamic> json) =>
-        EditProfile.fromMe(UserResponse.fromJson(json)).customStatus;
+  test('상태 설정 시트 초기값으로 고른 상태와 메시지를 옮긴다', () {
+    final profile = Profile.fromMe(UserResponse.fromJson(_me));
 
-    expect(customOf({'status': 'offline', 'custom_status': null}), 'offline');
-    expect(customOf({'status': 'online', 'custom_status': ''}), 'online');
-    expect(customOf(const {}), 'online', reason: '둘 다 없으면 기본값');
+    expect(profile.customStatus, UserStatus.doNotDisturb);
+    expect(profile.statusMessage, 'PR 리뷰 환영');
+  });
+
+  test('고른 상태가 없으면 시트에서 아무것도 선택되지 않는다', () {
+    // 고르지 않은 값을 서버에 보내지 않도록, 사용자가 먼저 고르게 한다.
+    final profile = Profile.fromMe(
+      UserResponse.fromJson(const {
+        'status': 'online',
+        'custom_status': null,
+        'status_message': null,
+      }),
+    );
+
+    expect(profile.customStatus, isNull);
+    expect(profile.statusMessage, isEmpty);
   });
 
   test('이름이 비면 이니셜 폴백은 물음표다', () {
