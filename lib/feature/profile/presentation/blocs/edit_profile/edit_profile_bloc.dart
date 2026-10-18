@@ -8,7 +8,6 @@ import '../../../../../network/http_error_message.dart';
 import '../../../data/profile_repository.dart';
 import '../../../data/profile_store.dart';
 import '../../../data/user_request.dart';
-import '../../../data/user_response.dart';
 import '../../../domain/edit_profile.dart';
 
 part 'edit_profile_event.dart';
@@ -45,9 +44,9 @@ class EditProfileBloc extends Bloc<EditProfileEvent, EditProfileState> {
     }
   }
 
-  /// 저장. 이름·사용자명·자기소개는 `PATCH /users/me`, 상태 메시지는 전용
-  /// 엔드포인트라 값이 바뀐 경우에만 한 번 더 부른다. 새로 고른 사진이 있으면
-  /// 먼저 올린다. 그래야 뒤따르는 수정 응답에 새 사진 URL 이 실려 온다.
+  /// 저장. 이름·사용자명·자기소개는 `PATCH /users/me` 로 보낸다. 상태와 상태
+  /// 메시지는 상태 설정 시트가 따로 맡는다. 새로 고른 사진이 있으면 먼저 올린다.
+  /// 그래야 뒤따르는 수정 응답에 새 사진 URL 이 실려 온다.
   ///
   /// 저장이 끝날 때까지 로딩을 내보낸다. 화면은 성공을 받고서야 닫히므로,
   /// 프로필 화면이 다시 읽는 시점엔 저장이 이미 서버에 반영돼 있다.
@@ -69,29 +68,18 @@ class EditProfileBloc extends Bloc<EditProfileEvent, EditProfileState> {
         await _repository.deleteProfileImage();
       }
 
-      EditProfile toProfile(UserResponse me) =>
-          EditProfile.fromMe(me, localAvatarPath: store.localAvatarPath);
-
-      var profile = toProfile(
-        await _repository.updateMe(
-          UpdateMeRequest(
-            name: event.name,
-            nickname: event.username,
-            description: event.bio,
-          ),
+      final me = await _repository.updateMe(
+        UpdateMeRequest(
+          name: event.name,
+          nickname: event.username,
+          description: event.bio,
         ),
       );
-      if (event.statusMessage != profile.statusMessage) {
-        profile = toProfile(
-          await _repository.updateStatus(
-            UpdateStatusRequest(
-              status: profile.status,
-              message: event.statusMessage.isEmpty ? null : event.statusMessage,
-            ),
-          ),
-        );
-      }
-      emit(EditProfileState.success(profile));
+      emit(
+        EditProfileState.success(
+          EditProfile.fromMe(me, localAvatarPath: store.localAvatarPath),
+        ),
+      );
     } catch (e, s) {
       // 어느 단계에서 엎어졌는지는 로그로만 남기고, 화면엔 사용자 문구만 준다.
       Logger.e('프로필 저장 실패', tag: 'Profile', error: e, stackTrace: s);
