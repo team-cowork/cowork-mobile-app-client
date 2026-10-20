@@ -1,6 +1,1 @@
-enum SettingsToggle {
-  pushNotification,
-  mentionOnly,
-  darkMode,
-  commitStreakPublic,
-}
+enum SettingsToggle { pushNotification, mentionOnly, commitStreakPublic }

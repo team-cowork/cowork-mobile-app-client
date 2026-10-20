@@ -6,6 +6,8 @@ import 'package:cowork_app/feature/auth/data/dgsm_oauth_config.dart';
 import 'package:cowork_app/feature/auth/presentation/blocs/auth/auth_bloc.dart';
 import 'package:cowork_app/feature/profile/data/github_repository.dart';
 import 'package:cowork_app/feature/profile/data/profile_repository.dart';
+import 'package:cowork_app/feature/setting/data/preference_repository.dart';
+import 'package:cowork_app/feature/setting/data/push_repository.dart';
 import 'package:cowork_design_system/design_system.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
@@ -21,7 +23,7 @@ Future<void> main() async {
 
 /// Firebase 설정 파일(`google-services.json`)은 커밋하지 않는다. 옵션 없이 부르면
 /// 네이티브 설정 파일을 읽는데, 파일 없이 빌드한 PC 에서는 실패한다. 그래도 앱은
-/// 띄우고 푸시만 못 쓰게 둔다.
+/// 띄우고 푸시만 못 쓰게 둔다([FirebasePushDevice]).
 Future<void> _initFirebase() async {
   try {
     await Firebase.initializeApp();
@@ -46,6 +48,13 @@ class CoworkApp extends StatelessWidget {
               ProfileRepository(context.read<AuthRepository>()),
         ),
         RepositoryProvider(create: (_) => GithubRepository()),
+        RepositoryProvider(
+          create: (context) =>
+              PreferenceRepository(context.read<AuthRepository>()),
+        ),
+        RepositoryProvider(
+          create: (context) => PushRepository(context.read<AuthRepository>()),
+        ),
       ],
       child: BlocProvider(
         create: (context) =>

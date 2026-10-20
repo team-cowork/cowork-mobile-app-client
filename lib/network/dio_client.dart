@@ -12,7 +12,7 @@ import 'auth_interceptor.dart';
 /// 게이트웨이는 `/api/<service>/...` 로 서비스를 가른다. Swagger 의 서비스별
 /// basePath(`/v3/api-docs/<service>`)와 같은 값이라, 저장소의 요청 경로를 스펙과
 /// 똑같이 적을 수 있다. 쓰는 서비스만 둔다.
-enum ApiService { authorization, user }
+enum ApiService { authorization, user, preference, notification }
 
 /// [service] 를 향하는 Cowork API 게이트웨이 dio 인스턴스를 만든다.
 ///
