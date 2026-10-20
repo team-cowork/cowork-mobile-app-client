@@ -1,9 +1,9 @@
-import 'package:cowork_app/feature/settings/domain/enums/setting_toggle_enum.dart';
+import 'package:cowork_app/feature/setting/domain/enums/setting_toggle_enum.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../../core/utils/async_state.dart';
-import '../../../domain/settings.dart';
+import '../../../domain/setting.dart';
 
 part 'settings_event.dart';
 part 'settings_state.dart';
