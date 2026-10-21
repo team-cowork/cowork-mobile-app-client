@@ -239,6 +239,23 @@ void main() {
     expect(data.saveError, isNotNull);
   });
 
+  test('켜다가 수준 저장이 실패하면 등록한 기기도 해제하고 되돌린다', () async {
+    final server = _FakeServer(notificationLevel: 'NONE')
+      ..failing = 'PUT /preferences/account/7';
+    final bloc = await _loaded(server);
+    addTearDown(bloc.close);
+
+    final data = await _toggle(bloc, SettingsToggle.pushNotification, true);
+
+    expect(server.calls, [
+      'POST /notifications/installations',
+      'PUT /preferences/account/7',
+      'DELETE /notifications/installations/fid-1',
+    ]);
+    expect(data.settings.pushNotification, isFalse);
+    expect(data.saveError, isNotNull);
+  });
+
   test('알림 권한을 거절하면 요청 없이 되돌린다', () async {
     final server = _FakeServer(notificationLevel: 'NONE');
     final bloc = await _loaded(server, _FakeDevice(granted: false));

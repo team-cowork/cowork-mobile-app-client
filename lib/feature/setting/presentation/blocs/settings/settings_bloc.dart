@@ -110,8 +110,10 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
 
   /// [level] 로 바꿔 보여 주고 저장한다. 실패하면 [current] 로 되돌린다.
   ///
-  /// 켤 때는 기기 등록 → 수준 저장, 끌 때는 수준 저장 → 기기 해제 순서다. 어느
-  /// 쪽이든 수준이 `NONE` 이 아닌데 기기만 빠지는 순간이 없게 하려는 것이다.
+  /// 켤 때는 기기 등록 → 수준 저장, 끌 때는 수준 저장 → 기기 해제 순서다.
+  /// 서버는 푸시를 보낼 때 계정 수준이 아니라 기기 등록 여부(와 채널 설정)를 본다.
+  /// 그래서 켜다가 수준 저장이 실패하면, 토글만 되돌리지 않고 이번에 등록한 기기도
+  /// 해제한다. 남겨 두면 토글은 꺼져 있는데 푸시가 온다.
   Future<void> _save(
     Settings current,
     NotificationLevel level,
@@ -129,9 +131,13 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
     void rollback(String message) =>
         emit(SettingsState.success(SettingsData(current, saveError: message)));
 
+    var registered = false;
     try {
-      if (turningOn && !await _push.enable()) {
-        return rollback('알림 권한이 꺼져 있어요. 기기 설정에서 허용해 주세요.');
+      if (turningOn) {
+        if (!await _push.enable()) {
+          return rollback('알림 권한이 꺼져 있어요. 기기 설정에서 허용해 주세요.');
+        }
+        registered = true;
       }
       _preference = await _preferences.updateAccount(
         _accountId,
@@ -147,6 +153,7 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
       );
     } catch (e, s) {
       Logger.e('알림 설정 저장 실패', tag: 'Settings', error: e, stackTrace: s);
+      if (registered) await _disablePush();
       rollback(switch (e) {
         PushUnavailableException() => '이 빌드에서는 푸시 알림을 쓸 수 없어요.',
         DioException() => dioErrorMessage(e),
@@ -155,7 +162,7 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
     }
   }
 
-  /// 수준은 이미 `NONE` 으로 저장됐으니 기기 해제가 실패해도 토글은 되돌리지 않는다.
+  /// 기기 해제. 실패해도 로그만 남기고 토글 결과는 바꾸지 않는다.
   Future<void> _disablePush() async {
     try {
       await _push.disable();
