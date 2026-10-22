@@ -13,7 +13,7 @@ import '../../feature/notes/presentation/views/note_edit_view.dart';
 import '../../feature/notifications/presentation/views/notifications_view.dart';
 import '../../feature/profile/presentation/views/edit_profile_view.dart';
 import '../../feature/search/presentation/views/search_view.dart';
-import '../../feature/settings/presentation/views/settings_view.dart';
+import '../../feature/setting/presentation/views/settings_view.dart';
 import 'auth_gate.dart';
 
 final GoRouter appRouter = GoRouter(

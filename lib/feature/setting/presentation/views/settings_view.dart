@@ -1,12 +1,15 @@
-import 'package:cowork_app/feature/settings/domain/enums/setting_toggle_enum.dart';
+import 'package:cowork_app/feature/setting/domain/enums/setting_toggle_enum.dart';
 import 'package:cowork_design_system/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/utils/async_state.dart';
 import '../../../../core/utils/bloc_scaffold.dart';
 import '../../../auth/presentation/blocs/auth/auth_bloc.dart';
-import '../../domain/settings.dart';
+import '../../../profile/data/profile_repository.dart';
+import '../../data/preference_repository.dart';
+import '../../data/push_repository.dart';
 import '../blocs/settings/settings_bloc.dart';
 import '../widgets/settings_section.dart';
 import '../widgets/settings_tile.dart';
@@ -17,8 +20,12 @@ class SettingsView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocScaffold<SettingsBloc, Settings>(
-      create: (_) => SettingsBloc()..add(const SettingsRequested()),
+    return BlocScaffold<SettingsBloc, SettingsData>(
+      create: (context) => SettingsBloc(
+        profile: context.read<ProfileRepository>(),
+        preference: context.read<PreferenceRepository>(),
+        push: context.read<PushRepository>(),
+      )..add(const SettingsRequested()),
       errorTitle: '설정을 불러오지 못했어요',
       onRetry: (context) =>
           context.read<SettingsBloc>().add(const SettingsRequested()),
@@ -26,19 +33,31 @@ class SettingsView extends StatelessWidget {
         title: '설정',
         onBack: () => Navigator.of(context).maybePop(),
       ),
-      builder: (context, settings) => _SettingsBody(settings: settings),
+      builder: (context, data) => BlocListener<SettingsBloc, SettingsState>(
+        listenWhen: (previous, current) =>
+            current is AsyncSuccess<SettingsData> &&
+            current.data.saveError != null,
+        listener: (context, state) {
+          final message = (state as AsyncSuccess<SettingsData>).data.saveError!;
+          ScaffoldMessenger.of(context)
+            ..hideCurrentSnackBar()
+            ..showSnackBar(SnackBar(content: Text(message)));
+        },
+        child: _SettingsBody(data: data),
+      ),
     );
   }
 }
 
 class _SettingsBody extends StatelessWidget {
-  const _SettingsBody({required this.settings});
+  const _SettingsBody({required this.data});
 
-  final Settings settings;
+  final SettingsData data;
 
   @override
   Widget build(BuildContext context) {
     final bloc = context.read<SettingsBloc>();
+    final settings = data.settings;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(
@@ -82,6 +101,7 @@ class _SettingsBody extends StatelessWidget {
                 label: '푸시 알림',
                 trailing: CoworkSwitch(
                   value: settings.pushNotification,
+                  enabled: !data.saving,
                   semanticLabel: '푸시 알림',
                   onChanged: (v) => bloc.add(
                     SettingsToggled(SettingsToggle.pushNotification, v),
@@ -93,6 +113,8 @@ class _SettingsBody extends StatelessWidget {
                 label: '멘션만 받기',
                 trailing: CoworkSwitch(
                   value: settings.mentionOnly,
+                  // 푸시가 꺼지면(NONE) 멘션 설정을 담을 자리가 없다.
+                  enabled: !data.saving && settings.pushNotification,
                   semanticLabel: '멘션만 받기',
                   onChanged: (v) =>
                       bloc.add(SettingsToggled(SettingsToggle.mentionOnly, v)),
@@ -103,14 +125,15 @@ class _SettingsBody extends StatelessWidget {
           SettingsSection(
             title: '표시',
             children: [
-              SettingsTile(
+              const SettingsTile(
                 icon: Icons.dark_mode_outlined,
                 label: '다크 모드',
+                // TODO: 다크 모드 개발 예정. 앱이 다크 테마로 고정돼 있고 화면 대부분이
+                // 테마를 따르지 않는 고정 색(AppColors)을 써서, 그때까지 토글을 막는다.
                 trailing: CoworkSwitch(
-                  value: settings.darkMode,
+                  value: true,
+                  enabled: false,
                   semanticLabel: '다크 모드',
-                  onChanged: (v) =>
-                      bloc.add(SettingsToggled(SettingsToggle.darkMode, v)),
                 ),
               ),
               SettingsTile(
