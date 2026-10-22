@@ -55,6 +55,9 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
   /// 소켓으로 구독 중인 팀 방.
   int? _followedTeamId;
 
+  /// 채널 목록을 읽는 동안 온 변경. 목록을 받은 뒤 순서대로 반영한다.
+  final _pending = <ChannelListChange>[];
+
   /// 단축 바 아바타 색. 같은 팀이 늘 같은 색이 되도록 id 로 고른다.
   static const _avatarColors = [
     WorkspaceAvatarColor.red,
@@ -115,6 +118,19 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     Emitter<ChatState> emit,
   ) async {
     switch (event.event) {
+      case final ChannelListChange change
+          when state is AsyncLoading<ChatHomeData>:
+        // 목록을 읽는 중이라 고칠 목록이 없다. 받은 뒤 [_loadChannels] 가 반영한다.
+        _pending.add(change);
+      case final ChannelListChange change:
+        _apply(change, emit);
+      case TeamAccessRevoked(:final teamId):
+        await _leaveTeam(teamId, emit);
+    }
+  }
+
+  void _apply(ChannelListChange change, Emitter<ChatState> emit) {
+    switch (change) {
       case ChannelUpserted(:final teamId, :final channel):
         if (teamId == _teamId) _upsert(channel, emit);
       case ChannelRemoved(:final channelId):
@@ -125,8 +141,6 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
               if (channel.id != channelId) channel,
           ],
         );
-      case TeamAccessRevoked(:final teamId):
-        await _leaveTeam(teamId, emit);
     }
   }
 
@@ -204,17 +218,31 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     Emitter<ChatState> emit,
   ) async {
     _teamId = team.id;
-    // 목록을 읽는 사이에 생긴 변경도 받도록 읽기 전에 구독한다.
+    // 목록을 읽는 사이에 생긴 변경도 받도록 읽기 전에 구독한다. 그 사이 온 변경은
+    // [_pending] 에 모인다. 이전 팀을 읽는 동안 모인 것은 이 팀과 관계없어 버린다.
+    _pending.clear();
     _follow(team.id);
+
+    final List<Channel> channels;
     try {
-      emit(
-        ChatState.success(
-          _homeOf(team, await _repository.fetchChannels(team.id)),
-        ),
-      );
+      channels = await _repository.fetchChannels(team.id);
     } catch (e, s) {
       Logger.e('채널 목록 조회 실패', tag: 'Chat', error: e, stackTrace: s);
-      emit(ChatState.failure(_reasonOf('채널 목록 조회 실패', e)));
+      if (team.id == _teamId) {
+        emit(ChatState.failure(_reasonOf('채널 목록 조회 실패', e)));
+      }
+      return;
+    }
+    // 기다리는 사이 다른 팀으로 옮겼다면(팀에서 빠져 다음 팀을 읽는 등) 늦게 온 이
+    // 응답이 지금 팀 화면을 덮지 않게 버린다.
+    if (team.id != _teamId) return;
+
+    emit(ChatState.success(_homeOf(team, channels)));
+    // 같은 변경이 목록에 이미 들어 있어도 upsert·삭제라 다시 반영해도 결과가 같다.
+    final pending = [..._pending];
+    _pending.clear();
+    for (final change in pending) {
+      _apply(change, emit);
     }
   }
 

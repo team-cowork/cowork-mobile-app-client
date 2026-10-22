@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cowork_app/feature/chat/presentation/views/chat_view.dart';
 import 'package:cowork_design_system/design_system.dart';
 import 'package:flutter/material.dart';
@@ -186,6 +188,45 @@ void main() {
 
       expect(find.text('아직 속한 팀이 없어요'), findsOneWidget);
       expect(socket.joined, isEmpty);
+    });
+
+    testWidgets('채널 목록을 읽는 동안 온 변경은 목록을 받은 뒤 반영한다', (tester) async {
+      final server = FakeChatServer();
+      final gate = Completer<void>();
+      server.channelGates[2] = gate.future;
+      await pumpChat(tester, server, socket: socket);
+
+      await tester.tap(find.text('디'));
+      await tester.pump();
+      socket.push('channel:created', channel(50, '읽는-중-생김', teamId: 2));
+      socket.push('channel:deleted', {'channelId': 20, 'teamId': 2});
+      await tester.pump();
+
+      gate.complete();
+      await tester.pumpAndSettle();
+
+      expect(find.text('읽는-중-생김'), findsOneWidget);
+      expect(find.text('시안'), findsNothing);
+    });
+
+    testWidgets('읽던 팀에서 빠져 다른 팀으로 옮기면, 늦게 온 응답은 버린다', (tester) async {
+      final server = FakeChatServer();
+      final gate = Completer<void>();
+      server.channelGates[2] = gate.future;
+      await pumpChat(tester, server, socket: socket);
+
+      await tester.tap(find.text('디'));
+      await tester.pump();
+      // 디자인팀을 읽는 중에 그 팀에서 빠져 코워크로 돌아간다.
+      socket.push('team:access:revoked', {'teamId': 2});
+      await tester.pumpAndSettle();
+      expect(find.text('일반'), findsOneWidget);
+
+      gate.complete();
+      await tester.pumpAndSettle();
+
+      expect(find.text('일반'), findsOneWidget);
+      expect(find.text('시안'), findsNothing);
     });
 
     testWidgets('홈을 떠나면 팀 방 구독을 끊는다', (tester) async {

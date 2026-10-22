@@ -52,6 +52,9 @@ class FakeChatServer implements HttpClientAdapter {
   /// 걸어 두면 채널 생성 응답을 이 Future 가 끝날 때까지 붙잡는다.
   Future<void>? createGate;
 
+  /// 팀 id 별로 걸어 두면 그 팀 채널 목록 응답을 이 Future 가 끝날 때까지 붙잡는다.
+  final channelGates = <int, Future<void>>{};
+
   /// 채널 생성 요청 본문.
   final created = <Map<String, dynamic>>[];
 
@@ -77,6 +80,7 @@ class FakeChatServer implements HttpClientAdapter {
     }
     if (path.startsWith('/channel/teams/')) {
       final teamId = int.parse(path.split('/')[3]);
+      await channelGates[teamId];
       return _respond(options, failChannels, () => channels[teamId] ?? []);
     }
     if (path == '/channel/channels' && options.method == 'POST') {
