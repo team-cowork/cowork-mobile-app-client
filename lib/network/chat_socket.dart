@@ -81,6 +81,8 @@ class ChatSocket {
       Logger.e('access token 없이 소켓을 열 수 없습니다', tag: 'Socket');
       return;
     }
+    // 앞 연결이 남아 있으면 버린다. 덮어쓰기만 하면 연결이 새고 이벤트가 두 번 온다.
+    _disconnect();
 
     final socket = io.io(
       '$_origin/chat',
@@ -128,6 +130,8 @@ class ChatSocket {
     _reauthTried = true;
 
     _disconnect();
+    // 갱신을 기다리는 사이 [joinTeam] 이 예전 토큰으로 먼저 연결했을 수 있다.
+    // [_connect] 가 그 연결을 버리고 새 토큰으로 다시 만든다.
     if (await _auth.restoreSession() && _teams.isNotEmpty) _connect();
   }
 
