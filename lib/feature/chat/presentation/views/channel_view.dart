@@ -4,7 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/utils/bloc_section_scaffold.dart';
-import '../viewModels/group_chat_bloc.dart';
+import '../blocs/group_chat/group_chat_bloc.dart';
 import '../widgets/chat_message_row.dart';
 
 class ChannelView extends StatelessWidget {

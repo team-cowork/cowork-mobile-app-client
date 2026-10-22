@@ -6,7 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/utils/bloc_section_scaffold.dart';
 import '../../domain/channel_member.dart';
 import '../../domain/enums/chat_avatar_color.dart';
-import '../viewModels/group_chat_bloc.dart';
+import '../blocs/group_chat/group_chat_bloc.dart';
 
 class MembersView extends StatelessWidget {
   const MembersView({super.key});
