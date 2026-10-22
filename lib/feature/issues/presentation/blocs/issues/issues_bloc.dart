@@ -1,13 +1,12 @@
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../../../core/utils/async_state.dart';
-import '../../data/issues_store.dart';
-import '../../domain/issue.dart';
+import '../../../../../core/utils/async_state.dart';
+import '../../../data/issues_store.dart';
+import '../../../domain/issue.dart';
 
 part 'issues_event.dart';
-
-typedef IssuesState = AsyncState<List<Issue>>;
+part 'issues_state.dart';
 
 class IssuesBloc extends Bloc<IssuesEvent, IssuesState> {
   IssuesBloc() : super(const IssuesState.initial()) {

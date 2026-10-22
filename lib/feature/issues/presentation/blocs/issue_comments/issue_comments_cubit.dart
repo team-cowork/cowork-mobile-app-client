@@ -1,9 +1,9 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../../profile/data/profile_store.dart';
-import '../../../profile/domain/profile_entity.dart';
-import '../../data/issue_comments_store.dart';
-import '../../domain/issue_comment.dart';
+import '../../../../profile/data/profile_store.dart';
+import '../../../../profile/domain/profile_entity.dart';
+import '../../../data/issue_comments_store.dart';
+import '../../../domain/issue_comment.dart';
 
 class IssueCommentsCubit extends Cubit<List<IssueComment>> {
   IssueCommentsCubit(this.issueNumber)

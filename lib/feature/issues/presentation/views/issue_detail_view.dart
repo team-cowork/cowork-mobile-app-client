@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../domain/issue.dart';
-import '../viewModels/issue_comments_cubit.dart';
+import '../blocs/issue_comments/issue_comments_cubit.dart';
 import '../widgets/issue_detail_body.dart';
 
 class IssueDetailView extends StatelessWidget {

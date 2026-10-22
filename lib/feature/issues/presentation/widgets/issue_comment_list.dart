@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../domain/issue_comment.dart';
-import '../viewModels/issue_comments_cubit.dart';
+import '../blocs/issue_comments/issue_comments_cubit.dart';
 import 'issue_comment_row.dart';
 
 class IssueCommentList extends StatelessWidget {

@@ -2,7 +2,7 @@ import 'package:cowork_design_system/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../viewModels/issue_comments_cubit.dart';
+import '../blocs/issue_comments/issue_comments_cubit.dart';
 
 class IssueCommentComposer extends StatefulWidget {
   const IssueCommentComposer({super.key});
