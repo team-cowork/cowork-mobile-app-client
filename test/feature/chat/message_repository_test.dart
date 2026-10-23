@@ -90,6 +90,14 @@ void main() {
     });
   });
 
+  test('삭제는 메시지 경로로 DELETE 를 보낸다', () async {
+    final server = _RecordingServer();
+
+    await _repository(server).deleteMessage(10, 'm1');
+
+    expect(server.calls, ['DELETE /chat/chat/channels/10/messages/m1']);
+  });
+
   test('목록은 before 가 있을 때만 커서를 붙인다', () async {
     final server = _RecordingServer();
     final repository = _repository(server);

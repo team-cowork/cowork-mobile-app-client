@@ -17,6 +17,10 @@ sealed class ChannelMessageEvent extends Equatable {
   const factory ChannelMessageEvent.edited(String messageId, String text) =
       ChannelMessageEdited;
 
+  /// 내 메시지를 지운다.
+  const factory ChannelMessageEvent.deleted(String messageId) =
+      ChannelMessageDeleted;
+
   @override
   List<Object?> get props => [];
 }
@@ -46,6 +50,15 @@ final class ChannelMessageEdited extends ChannelMessageEvent {
 
   @override
   List<Object?> get props => [messageId, text];
+}
+
+final class ChannelMessageDeleted extends ChannelMessageEvent {
+  const ChannelMessageDeleted(this.messageId);
+
+  final String messageId;
+
+  @override
+  List<Object?> get props => [messageId];
 }
 
 /// 소켓으로 대화에 반영할 이벤트가 왔다. 화면이 아니라 Bloc 이 스스로 넣는다.

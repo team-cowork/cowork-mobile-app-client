@@ -78,6 +78,41 @@ void main() {
     expect(messageText('내 메시지'), findsNothing);
   });
 
+  testWidgets('내 메시지를 길게 눌러 삭제를 확인하면 목록에서 빠진다', (tester) async {
+    final gateway = FakeMessageGateway(messages: [myMessage, otherMessage]);
+    await pumpChannel(tester, gateway);
+
+    await tester.longPress(messageText('내 메시지'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('메시지 삭제'));
+    await tester.pumpAndSettle();
+    expect(find.text('메시지를 삭제할까요?'), findsOneWidget);
+    await tester.tap(find.text('삭제'));
+    await tester.pumpAndSettle();
+
+    expect(
+      gateway.calls,
+      contains('DELETE /chat/chat/channels/10/messages/m2'),
+    );
+    expect(messageText('내 메시지'), findsNothing);
+    expect(messageText('남의 메시지'), findsOneWidget);
+  });
+
+  testWidgets('삭제 확인에서 취소하면 지우지 않는다', (tester) async {
+    final gateway = FakeMessageGateway(messages: [myMessage]);
+    await pumpChannel(tester, gateway);
+
+    await tester.longPress(messageText('내 메시지'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('메시지 삭제'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('취소'));
+    await tester.pumpAndSettle();
+
+    expect(gateway.calls, isNot(contains(startsWith('DELETE'))));
+    expect(messageText('내 메시지'), findsOneWidget);
+  });
+
   testWidgets('남의 메시지는 길게 눌러도 메뉴가 뜨지 않는다', (tester) async {
     await pumpChannel(
       tester,

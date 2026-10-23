@@ -63,6 +63,10 @@ class MessageRepository {
     data: request.toJson(),
   );
 
+  /// 메시지를 지운다. 지운 사실은 소켓 `message:deleted` 로도 온다.
+  Future<void> deleteMessage(int channelId, String messageId) =>
+      _chat.delete<String>('/chat/channels/$channelId/messages/$messageId');
+
   /// [userIds] 사용자의 표시 이름. 서버 상한에 맞춰 나눠 읽는다.
   Future<List<UserDisplayNameResponse>> fetchDisplayNames(
     Iterable<int> userIds,

@@ -139,15 +139,17 @@ void main() {
     expect(_texts(bloc), ['첫 번째', '두 번째']);
   });
 
-  test('수정 이벤트를 반영한다', () async {
+  test('수정·삭제 이벤트를 반영한다', () async {
     final socket = FakeChatSocket();
     final bloc = await _loaded(FakeMessageGateway(), socket);
     addTearDown(bloc.close);
 
-    socket.push('message:edited', {'messageId': 'm1', 'content': '고친 내용'});
+    socket
+      ..push('message:edited', {'messageId': 'm1', 'content': '고친 내용'})
+      ..push('message:deleted', {'messageId': 'm2'});
     await pumpEventQueue();
 
-    expect(_texts(bloc), ['고친 내용', '두 번째']);
+    expect(_texts(bloc), ['고친 내용']);
   });
 
   test('한 페이지가 꽉 차면 가장 오래된 메시지 이전을 이어 붙인다', () async {
@@ -336,6 +338,37 @@ void main() {
     expect(_data(bloc).errorMessage, isNotNull);
   });
 
+  test('내 메시지를 지우면 서버가 받아들인 뒤 뺀다', () async {
+    final gateway = FakeMessageGateway(
+      messages: [
+        messageJson('m2', 1, '지울 메시지'),
+        messageJson('m1', 2, '남길 메시지'),
+      ],
+    );
+    final bloc = await _loaded(gateway, FakeChatSocket());
+    addTearDown(bloc.close);
+
+    bloc.add(const ChannelMessageEvent.deleted('m2'));
+    await pumpEventQueue();
+
+    expect(gateway.calls, ['DELETE /chat/chat/channels/10/messages/m2']);
+    expect(_texts(bloc), ['남길 메시지']);
+  });
+
+  test('삭제가 실패하면 그대로 두고 사유를 싣는다', () async {
+    final gateway = FakeMessageGateway(
+      messages: [messageJson('m1', 1, '지울 메시지')],
+    )..failing = 'DELETE /chat/chat/channels/10/messages/m1';
+    final bloc = await _loaded(gateway, FakeChatSocket());
+    addTearDown(bloc.close);
+
+    bloc.add(const ChannelMessageEvent.deleted('m1'));
+    await pumpEventQueue();
+
+    expect(_texts(bloc), ['지울 메시지']);
+    expect(_data(bloc).errorMessage, isNotNull);
+  });
+
   test('파일 메시지는 첨부파일을 함께 싣는다', () async {
     final gateway = FakeMessageGateway(
       messages: [
@@ -359,5 +392,27 @@ void main() {
     expect(message.text, isEmpty);
     expect(message.attachments.single.name, '기획서.pdf');
     expect(message.attachments.single.size, 2048);
+  });
+
+  test('같은 사유로 연달아 실패해도 매번 알린다', () async {
+    final gateway = FakeMessageGateway(
+      messages: [messageJson('m1', 1, '지울 메시지')],
+    )..failing = 'DELETE /chat/chat/channels/10/messages/m1';
+    final bloc = await _loaded(gateway, FakeChatSocket());
+    addTearDown(bloc.close);
+    final errors = <String>[];
+    final subscription = bloc.stream.listen((state) {
+      if (state case AsyncSuccess(:final data) when data.errorMessage != null) {
+        errors.add(data.errorMessage!);
+      }
+    });
+    addTearDown(subscription.cancel);
+
+    bloc.add(const ChannelMessageEvent.deleted('m1'));
+    await pumpEventQueue();
+    bloc.add(const ChannelMessageEvent.deleted('m1'));
+    await pumpEventQueue();
+
+    expect(errors, hasLength(2));
   });
 }

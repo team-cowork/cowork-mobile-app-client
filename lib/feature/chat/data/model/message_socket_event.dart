@@ -18,6 +18,9 @@ sealed class MessageSocketEvent {
           messageId: data['messageId'] as String,
           content: data['content'] as String,
         ),
+      'message:deleted' when data['messageId'] is String => MessageDeleted(
+        data['messageId'] as String,
+      ),
       _ => null,
     };
   }
@@ -46,4 +49,11 @@ final class MessageEdited extends MessageSocketEvent {
 
   final String messageId;
   final String content;
+}
+
+/// 메시지가 지워졌다. (`message:deleted`)
+final class MessageDeleted extends MessageSocketEvent {
+  const MessageDeleted(this.messageId);
+
+  final String messageId;
 }

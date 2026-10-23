@@ -122,7 +122,7 @@ class _MessageList extends StatelessWidget {
             : null,
       );
 
-  /// 내 메시지를 길게 눌렀을 때. 고치게 한다.
+  /// 내 메시지를 길게 눌렀을 때. 고치거나 지울지 고르게 한다.
   static Future<void> _showMessageActions(
     BuildContext context,
     ChatMessage message,
@@ -137,11 +137,23 @@ class _MessageList extends StatelessWidget {
         if (text != null) {
           bloc.add(ChannelMessageEvent.edited(message.id, text));
         }
+      case _MessageAction.delete:
+        final confirmed = await CoworkDialog.show(
+          context,
+          title: '메시지를 삭제할까요?',
+          message: '삭제한 메시지는 되돌릴 수 없어요.',
+          confirmLabel: '삭제',
+          cancelLabel: '취소',
+          confirmColor: CoworkButtonColor.danger,
+        );
+        if (confirmed ?? false) {
+          bloc.add(ChannelMessageEvent.deleted(message.id));
+        }
     }
   }
 }
 
-enum _MessageAction { edit }
+enum _MessageAction { edit, delete }
 
 /// 내 메시지 메뉴. 고른 동작을 돌려주고, 그냥 닫으면 null.
 class _MessageActionSheet extends StatelessWidget {
@@ -182,6 +194,12 @@ class _MessageActionSheet extends StatelessWidget {
               label: '메시지 수정',
               action: _MessageAction.edit,
             ),
+            const _MessageActionRow(
+              icon: Icons.delete_outline,
+              label: '메시지 삭제',
+              action: _MessageAction.delete,
+              destructive: true,
+            ),
           ],
         ),
       ),
@@ -194,15 +212,17 @@ class _MessageActionRow extends StatelessWidget {
     required this.icon,
     required this.label,
     required this.action,
+    this.destructive = false,
   });
 
   final IconData icon;
   final String label;
   final _MessageAction action;
+  final bool destructive;
 
   @override
   Widget build(BuildContext context) {
-    const color = AppColors.darkOnSurface;
+    final color = destructive ? AppColors.red400 : AppColors.darkOnSurface;
 
     return InkWell(
       onTap: () => Navigator.of(context).pop(action),

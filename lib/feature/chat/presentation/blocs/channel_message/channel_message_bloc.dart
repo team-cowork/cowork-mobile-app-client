@@ -25,7 +25,7 @@ part 'channel_message_state.dart';
 
 /// 채널 대화 화면 상태를 관리하는 Bloc.
 ///
-/// 최근 메시지를 읽은 뒤에는 채널 방을 소켓으로 구독해 새 메시지·수정을
+/// 최근 메시지를 읽은 뒤에는 채널 방을 소켓으로 구독해 새 메시지·수정·삭제를
 /// 반영한다. 전송은 서버가 큐에 넣고 바로 돌아오므로, 보낸 메시지를 먼저 보여 주고
 /// 소켓으로 저장된 메시지가 오면 `clientMessageId` 로 짝지어 바꾼다. 그 메시지가
 /// [confirmTimeout] 안에 오지 않거나 소켓이 끊김 복구 없이 다시 붙으면, 최근 메시지를
@@ -48,6 +48,7 @@ class ChannelMessageBloc
     on<ChannelMessageOlderRequested>(_onLoadOlder);
     on<ChannelMessageSent>(_onSend);
     on<ChannelMessageEdited>(_onEdit);
+    on<ChannelMessageDeleted>(_onDelete);
     on<_ChannelMessageSocketEventReceived>(_onSocketEvent);
     on<_ChannelMessageAuthorsResolved>(_onAuthorsResolved);
     on<_ChannelMessageConfirmTimedOut>(_onConfirmTimedOut);
@@ -248,6 +249,21 @@ class ChannelMessageBloc
     }
   }
 
+  /// 내 메시지를 지운다. 서버가 받아들인 뒤에 뺀다.
+  Future<void> _onDelete(
+    ChannelMessageDeleted event,
+    Emitter<ChannelMessageState> emit,
+  ) async {
+    try {
+      await _messageRepository.deleteMessage(channelId, event.messageId);
+    } catch (e, s) {
+      Logger.e('메시지 삭제 실패', tag: 'Chat', error: e, stackTrace: s);
+      _emit(emit, error: _reasonOf('메시지를 지우지 못했어요.', e));
+      return;
+    }
+    if (_apply(MessageDeleted(event.messageId))) _emit(emit);
+  }
+
   void _onSocketEvent(
     _ChannelMessageSocketEventReceived event,
     Emitter<ChannelMessageState> emit,
@@ -333,6 +349,10 @@ class ChannelMessageBloc
         if (index == -1) return false;
         _messages[index] = _messages[index].copyWith(content: content);
         return true;
+      case MessageDeleted(:final messageId):
+        final before = _messages.length;
+        _messages.removeWhere((other) => other.id == messageId);
+        return _messages.length != before;
     }
   }
 
