@@ -18,16 +18,26 @@ sealed class ChannelSocketEvent {
       return null;
     }
 
-    final ChannelEventResponse(:channelId, :teamId) = payload;
+    final ChannelEventResponse(
+      :channelId,
+      :teamId,
+      name: channelName,
+      :viewType,
+    ) = payload;
     return switch (event.name) {
+      // 홈은 같은 id 의 채널을 통째로 바꾸므로, 이름이나 유형이 빠진 채 오면 기존 값을
+      // 기본값으로 덮는다. 서버는 늘 다 보내지만, 빠져 오면 덮지 않고 버린다.
       'channel:created' || 'channel:updated'
-          when channelId != null && teamId != null =>
+          when channelId != null &&
+              teamId != null &&
+              channelName != null &&
+              viewType != null =>
         ChannelUpserted(
           teamId: teamId,
           channel: Channel(
             id: '$channelId',
-            name: payload.name ?? '',
-            type: channelTypeOf(payload.viewType),
+            name: channelName,
+            type: channelTypeOf(viewType),
           ),
         ),
       'channel:deleted' || 'channel:access:revoked' when channelId != null =>

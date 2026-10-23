@@ -51,6 +51,25 @@ void main() {
     );
   });
 
+  test('이름이나 유형이 빠진 생성·수정은 기존 채널을 덮지 않게 무시한다', () {
+    for (final name in ['channel:created', 'channel:updated']) {
+      expect(
+        ChannelSocketEvent.from((
+          name: name,
+          data: {'channelId': 7, 'teamId': 1, 'viewType': 'FILE_SHARE'},
+        )),
+        isNull,
+      );
+      expect(
+        ChannelSocketEvent.from((
+          name: name,
+          data: {'channelId': 7, 'teamId': 1, 'name': '시안'},
+        )),
+        isNull,
+      );
+    }
+  });
+
   test('필드 타입이 다르면 예외 없이 무시한다', () {
     // 던지면 소켓 스트림이 오류로 끊긴다.
     expect(
