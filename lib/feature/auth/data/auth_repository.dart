@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 
@@ -15,9 +16,12 @@ import 'dgsm_oauth_config.dart';
 
 /// 사용자에게 그대로 보여줄 수 있는 로그인 실패 사유.
 class AuthException implements Exception {
-  const AuthException(this.message);
+  const AuthException(this.message, {this.statusCode});
 
   final String message;
+
+  /// 서버가 거절했을 때의 HTTP 상태 코드. 연결 자체가 안 됐으면 null.
+  final int? statusCode;
 
   @override
   String toString() => 'AuthException: $message';
@@ -40,8 +44,16 @@ class AuthRepository {
 
   String? _accessToken;
 
+  /// 진행 중인 갱신. 동시에 부른 쪽들이 갱신을 각자 보내지 않게 묶는다.
+  Future<bool>? _restoring;
+
+  final _sessionExpired = StreamController<void>.broadcast();
+
   /// 인증이 필요한 API 호출에 붙일 Bearer 토큰. 로그아웃 상태면 null.
   String? get accessToken => _accessToken;
+
+  /// 서버가 refresh token 을 거절해 세션이 끝났을 때 알린다.
+  Stream<void> get sessionExpired => _sessionExpired.stream;
 
   /// 브라우저를 열어 DataGSM 로그인을 수행하고 토큰까지 발급받는다.
   Future<void> signIn() async {
@@ -93,8 +105,18 @@ class AuthRepository {
     );
   }
 
-  /// 저장된 refresh token 으로 세션을 되살린다. 없거나 만료됐으면 false.
-  Future<bool> restoreSession() async {
+  /// 저장된 refresh token 으로 세션을 되살린다. 없거나 갱신에 실패하면 false.
+  ///
+  /// 앱 시작, API 401, 소켓 인증 실패가 모두 이걸 부르므로 동시에 불려도 갱신은 한
+  /// 번만 보낸다. 서버가 refresh token 을 rotation 하면 동시에 보낸 갱신 중 하나가
+  /// 이미 쓴 토큰으로 거절돼 세션이 지워질 수 있다.
+  ///
+  /// 서버가 refresh token 을 거절했을 때(400/401)만 토큰을 지우고 [sessionExpired] 로
+  /// 알린다. 네트워크나 서버 장애로 실패하면 토큰을 남겨 다음 갱신 때 다시 시도한다.
+  Future<bool> restoreSession() =>
+      _restoring ??= _refresh().whenComplete(() => _restoring = null);
+
+  Future<bool> _refresh() async {
     final refreshToken = await _storage.read(key: _refreshTokenKey);
     if (refreshToken == null) return false;
 
@@ -105,7 +127,10 @@ class AuthRepository {
       return true;
     } on AuthException catch (e) {
       Logger.e('세션 복원 실패', tag: 'Auth', error: e);
-      await _clear();
+      if (e.statusCode == 400 || e.statusCode == 401) {
+        await _clear();
+        _sessionExpired.add(null);
+      }
       return false;
     }
   }
@@ -171,7 +196,7 @@ class AuthRepository {
 /// dio 실패를 로그인 화면이 보여줄 예외로 바꾼다. 문구는 공통 규칙을 따른다.
 @visibleForTesting
 AuthException authExceptionOf(DioException e) =>
-    AuthException(dioErrorMessage(e));
+    AuthException(dioErrorMessage(e), statusCode: e.response?.statusCode);
 
 /// RFC 7636 code_verifier. [bytes] 32개면 43자로 규격(43~128자)에 들어맞는다.
 @visibleForTesting

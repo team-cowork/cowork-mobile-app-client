@@ -59,8 +59,9 @@ String serviceBaseUrl(String apiBaseUrl, ApiService service) {
 /// 인증이 필요한 API 용 dio. access token 을 붙이고 401 이면 갱신해 재시도한다.
 ///
 /// 갱신은 [AuthRepository.restoreSession] 이 그대로 맡는다. 저장된 refresh token 으로
-/// 새 토큰을 받아오고, 실패하면 로컬 토큰까지 지워 로그아웃 상태로 눕히는 동작이
-/// 앱 시작 시 복원과 똑같기 때문이다.
+/// 새 토큰을 받아오고, 거절되면 로컬 토큰까지 지워 로그아웃 상태로 눕히는 동작이
+/// 앱 시작 시 복원과 똑같기 때문이다. 로그인 화면으로 보내는 건
+/// [AuthRepository.sessionExpired] 를 듣는 `AuthBloc` 이 한다.
 Dio createAuthedDio(ApiService service, AuthRepository repository) {
   final dio = createDio(service);
   dio.interceptors.add(
