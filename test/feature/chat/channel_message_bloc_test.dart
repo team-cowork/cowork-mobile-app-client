@@ -139,6 +139,17 @@ void main() {
     expect(_texts(bloc), ['첫 번째', '두 번째']);
   });
 
+  test('수정 이벤트를 반영한다', () async {
+    final socket = FakeChatSocket();
+    final bloc = await _loaded(FakeMessageGateway(), socket);
+    addTearDown(bloc.close);
+
+    socket.push('message:edited', {'messageId': 'm1', 'content': '고친 내용'});
+    await pumpEventQueue();
+
+    expect(_texts(bloc), ['고친 내용', '두 번째']);
+  });
+
   test('한 페이지가 꽉 차면 가장 오래된 메시지 이전을 이어 붙인다', () async {
     final gateway = FakeMessageGateway(
       messages: [for (var i = 150; i > 0; i--) messageJson('m$i', 2, '메시지 $i')],
@@ -280,6 +291,49 @@ void main() {
     await pumpEventQueue();
 
     expect(_texts(bloc), ['첫 번째', '두 번째', '읽는 사이 온 메시지']);
+  });
+
+  test('내가 쓴 저장된 메시지만 고칠 수 있다', () async {
+    final gateway = FakeMessageGateway(
+      messages: [messageJson('m2', 1, '내 메시지'), messageJson('m1', 2, '남의 메시지')],
+    );
+    final bloc = await _loaded(gateway, FakeChatSocket());
+    addTearDown(bloc.close);
+
+    bloc.add(const ChannelMessageEvent.sent('보내는 중'));
+    await pumpEventQueue();
+
+    expect(
+      [for (final m in _data(bloc).messages) m.editable],
+      [false, true, false],
+    );
+  });
+
+  test('내 메시지를 고치면 서버가 받아들인 뒤 바꿔 보인다', () async {
+    final gateway = FakeMessageGateway(messages: [messageJson('m1', 1, '오타')]);
+    final bloc = await _loaded(gateway, FakeChatSocket());
+    addTearDown(bloc.close);
+
+    bloc.add(const ChannelMessageEvent.edited('m1', ' 고친 내용 '));
+    await pumpEventQueue();
+
+    expect(gateway.bodies['PATCH /chat/chat/channels/10/messages/m1'], {
+      'content': '고친 내용',
+    });
+    expect(_texts(bloc), ['고친 내용']);
+  });
+
+  test('수정이 실패하면 그대로 두고 사유를 싣는다', () async {
+    final gateway = FakeMessageGateway(messages: [messageJson('m1', 1, '오타')])
+      ..failing = 'PATCH /chat/chat/channels/10/messages/m1';
+    final bloc = await _loaded(gateway, FakeChatSocket());
+    addTearDown(bloc.close);
+
+    bloc.add(const ChannelMessageEvent.edited('m1', '고친 내용'));
+    await pumpEventQueue();
+
+    expect(_texts(bloc), ['오타']);
+    expect(_data(bloc).errorMessage, isNotNull);
   });
 
   test('파일 메시지는 첨부파일을 함께 싣는다', () async {

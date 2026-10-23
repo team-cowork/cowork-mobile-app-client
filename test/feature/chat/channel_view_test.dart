@@ -54,6 +54,42 @@ void main() {
     await tester.pumpAndSettle();
   }
 
+  Finder messageText(String text) => find.text(text, findRichText: true);
+
+  final myMessage = messageJson('m2', 1, '내 메시지');
+  final otherMessage = messageJson('m1', 2, '남의 메시지');
+
+  testWidgets('내 메시지를 길게 눌러 고치면 고친 내용으로 바뀐다', (tester) async {
+    final gateway = FakeMessageGateway(messages: [myMessage, otherMessage]);
+    await pumpChannel(tester, gateway);
+
+    await tester.longPress(messageText('내 메시지'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('메시지 수정'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField).last, '고친 내용');
+    await tester.tap(find.text('저장'));
+    await tester.pumpAndSettle();
+
+    expect(gateway.bodies['PATCH /chat/chat/channels/10/messages/m2'], {
+      'content': '고친 내용',
+    });
+    expect(messageText('고친 내용'), findsOneWidget);
+    expect(messageText('내 메시지'), findsNothing);
+  });
+
+  testWidgets('남의 메시지는 길게 눌러도 메뉴가 뜨지 않는다', (tester) async {
+    await pumpChannel(
+      tester,
+      FakeMessageGateway(messages: [myMessage, otherMessage]),
+    );
+
+    await tester.longPress(messageText('남의 메시지'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('메시지 수정'), findsNothing);
+  });
+
   testWidgets('파일 메시지는 첨부파일 이름과 크기를 보여 준다', (tester) async {
     await pumpChannel(
       tester,

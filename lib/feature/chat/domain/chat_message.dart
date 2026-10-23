@@ -12,6 +12,7 @@ class ChatMessage extends Equatable {
     required this.timestamp,
     required this.text,
     this.attachments = const [],
+    this.editable = false,
   });
 
   final String id;
@@ -23,6 +24,9 @@ class ChatMessage extends Equatable {
   /// 붙은 파일. 파일만 보낸 메시지는 [text] 가 비어 있을 수 있다.
   final List<ChatAttachment> attachments;
 
+  /// 내가 써서 서버에 저장된 메시지라 고치거나 지울 수 있다.
+  final bool editable;
+
   @override
   List<Object?> get props => [
     id,
@@ -31,5 +35,6 @@ class ChatMessage extends Equatable {
     timestamp,
     text,
     attachments,
+    editable,
   ];
 }

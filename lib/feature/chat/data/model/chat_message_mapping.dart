@@ -27,10 +27,13 @@ ProfileEntity systemChatAuthor(int id) =>
     ProfileEntity(id: id, name: '시스템', avatarInitial: '시');
 
 /// 서버 메시지를 화면 메시지로. 시각은 기기 시간대로 [now] 기준 상대 표기한다.
+///
+/// [editable] 은 내가 써서 저장된 메시지인지로, 부르는 쪽이 정한다.
 ChatMessage chatMessageOf(
   MessageResponse message,
   ProfileEntity author, {
   DateTime? now,
+  bool editable = false,
 }) => ChatMessage(
   id: message.id,
   author: author,
@@ -45,6 +48,7 @@ ChatMessage chatMessageOf(
         mimeType: attachment.mimeType,
       ),
   ],
+  editable: editable,
 );
 
 ChatAvatarColor chatAvatarColorOf(int authorId) =>

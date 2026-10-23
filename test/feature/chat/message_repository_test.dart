@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:cowork_app/feature/chat/data/model/requests/edit_message_request.dart';
 import 'package:cowork_app/feature/chat/data/model/requests/send_message_request.dart';
 import 'package:cowork_app/feature/chat/data/repositories/message_repository.dart';
 import 'package:dio/dio.dart';
@@ -74,6 +75,18 @@ void main() {
     expect(server.bodies['POST /chat/chat/channels/10/messages'], {
       'content': '안녕',
       'clientMessageId': 'c-1',
+    });
+  });
+
+  test('수정은 PATCH 로 바꿀 내용을 보낸다', () async {
+    final server = _RecordingServer();
+
+    await _repository(
+      server,
+    ).editMessage(10, 'm1', const EditMessageRequest(content: '고친 내용'));
+
+    expect(server.bodies['PATCH /chat/chat/channels/10/messages/m1'], {
+      'content': '고친 내용',
     });
   });
 

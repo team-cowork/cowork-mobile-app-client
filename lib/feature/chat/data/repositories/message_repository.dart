@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 
 import '../../../../network/dio_client.dart';
 import '../../../auth/data/auth_repository.dart';
+import '../model/requests/edit_message_request.dart';
 import '../model/requests/send_message_request.dart';
 import '../model/responses/message_response.dart';
 import '../model/responses/user_display_name_response.dart';
@@ -51,6 +52,16 @@ class MessageRepository {
         '/chat/channels/$channelId/messages',
         data: request.toJson(),
       );
+
+  /// 메시지 내용을 고친다. 바뀐 내용은 소켓 `message:edited` 로도 온다.
+  Future<void> editMessage(
+    int channelId,
+    String messageId,
+    EditMessageRequest request,
+  ) => _chat.patch<String>(
+    '/chat/channels/$channelId/messages/$messageId',
+    data: request.toJson(),
+  );
 
   /// [userIds] 사용자의 표시 이름. 서버 상한에 맞춰 나눠 읽는다.
   Future<List<UserDisplayNameResponse>> fetchDisplayNames(

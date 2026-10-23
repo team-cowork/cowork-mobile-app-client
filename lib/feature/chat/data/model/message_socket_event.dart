@@ -12,6 +12,12 @@ sealed class MessageSocketEvent {
     final data = event.data;
     return switch (event.name) {
       'message' => _received(data),
+      'message:edited'
+          when data['messageId'] is String && data['content'] is String =>
+        MessageEdited(
+          messageId: data['messageId'] as String,
+          content: data['content'] as String,
+        ),
       _ => null,
     };
   }
@@ -30,4 +36,14 @@ final class MessageReceived extends MessageSocketEvent {
   const MessageReceived(this.message);
 
   final MessageResponse message;
+}
+
+/// 메시지 내용이 바뀌었다. (`message:edited`)
+///
+/// payload 에 채널 id 가 없다. 채널 방에 들어가 있을 때만 오므로 id 로만 찾는다.
+final class MessageEdited extends MessageSocketEvent {
+  const MessageEdited({required this.messageId, required this.content});
+
+  final String messageId;
+  final String content;
 }

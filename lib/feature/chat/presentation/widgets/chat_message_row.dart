@@ -10,12 +10,14 @@ class ChatMessageRow extends StatelessWidget {
     required this.message,
     this.avatarSize = AppSize.componentMedium,
     this.onTap,
+    this.onLongPress,
     super.key,
   });
 
   final ChatMessage message;
   final double avatarSize;
   final VoidCallback? onTap;
+  final VoidCallback? onLongPress;
 
   @override
   Widget build(BuildContext context) {
@@ -59,8 +61,8 @@ class ChatMessageRow extends StatelessWidget {
       );
     }
 
-    if (onTap == null) return item;
-    return InkWell(onTap: onTap, child: item);
+    if (onTap == null && onLongPress == null) return item;
+    return InkWell(onTap: onTap, onLongPress: onLongPress, child: item);
   }
 
   static IconData _iconFor(ChatAttachment attachment) =>

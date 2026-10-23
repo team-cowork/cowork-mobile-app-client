@@ -9,6 +9,7 @@ import '../../../../network/chat_socket.dart';
 import '../../../profile/data/repositories/profile_repository.dart';
 import '../../data/repositories/channel_repository.dart';
 import '../../data/repositories/message_repository.dart';
+import '../../domain/chat_message.dart';
 import '../blocs/channel_message/channel_message_bloc.dart';
 import '../widgets/chat_message_row.dart';
 
@@ -106,10 +107,180 @@ class _MessageList extends StatelessWidget {
         separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.s18),
         itemBuilder: (context, index) => Padding(
           padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s4),
-          child: ChatMessageRow(
-            message: messages[messages.length - 1 - index],
-            onTap: () => context.push('/chat/channel/thread'),
-          ),
+          child: _messageRow(context, messages[messages.length - 1 - index]),
+        ),
+      ),
+    );
+  }
+
+  Widget _messageRow(BuildContext context, ChatMessage message) =>
+      ChatMessageRow(
+        message: message,
+        onTap: () => context.push('/chat/channel/thread'),
+        onLongPress: message.editable
+            ? () => _showMessageActions(context, message)
+            : null,
+      );
+
+  /// 내 메시지를 길게 눌렀을 때. 고치게 한다.
+  static Future<void> _showMessageActions(
+    BuildContext context,
+    ChatMessage message,
+  ) async {
+    final bloc = context.read<ChannelMessageBloc>();
+    final action = await _MessageActionSheet.show(context);
+    if (!context.mounted || action == null) return;
+
+    switch (action) {
+      case _MessageAction.edit:
+        final text = await _EditMessageSheet.show(context, message.text);
+        if (text != null) {
+          bloc.add(ChannelMessageEvent.edited(message.id, text));
+        }
+    }
+  }
+}
+
+enum _MessageAction { edit }
+
+/// 내 메시지 메뉴. 고른 동작을 돌려주고, 그냥 닫으면 null.
+class _MessageActionSheet extends StatelessWidget {
+  const _MessageActionSheet();
+
+  static Future<_MessageAction?> show(BuildContext context) =>
+      showModalBottomSheet<_MessageAction>(
+        context: context,
+        backgroundColor: AppColors.neutral800,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        builder: (_) => const _MessageActionSheet(),
+      );
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.only(
+          top: AppSpacing.s8,
+          bottom: AppSpacing.s24,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40,
+              height: 4,
+              margin: const EdgeInsets.symmetric(vertical: AppSpacing.s8),
+              decoration: BoxDecoration(
+                color: AppColors.neutral400,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const _MessageActionRow(
+              icon: Icons.edit_outlined,
+              label: '메시지 수정',
+              action: _MessageAction.edit,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _MessageActionRow extends StatelessWidget {
+  const _MessageActionRow({
+    required this.icon,
+    required this.label,
+    required this.action,
+  });
+
+  final IconData icon;
+  final String label;
+  final _MessageAction action;
+
+  @override
+  Widget build(BuildContext context) {
+    const color = AppColors.darkOnSurface;
+
+    return InkWell(
+      onTap: () => Navigator.of(context).pop(action),
+      child: Container(
+        height: 52,
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s20),
+        child: Row(
+          spacing: AppSpacing.s14,
+          children: [
+            Icon(icon, size: 20, color: color),
+            Text(label, style: AppFont.labelS.copyWith(color: color)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// 메시지 수정 시트. 고친 내용을 돌려주고, 취소하면 null.
+class _EditMessageSheet extends StatefulWidget {
+  const _EditMessageSheet({required this.initialText});
+
+  final String initialText;
+
+  static Future<String?> show(BuildContext context, String initialText) =>
+      showModalBottomSheet<String>(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: AppColors.neutral800,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        builder: (_) => _EditMessageSheet(initialText: initialText),
+      );
+
+  @override
+  State<_EditMessageSheet> createState() => _EditMessageSheetState();
+}
+
+class _EditMessageSheetState extends State<_EditMessageSheet> {
+  late final _controller = TextEditingController(text: widget.initialText);
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(
+          AppSpacing.s20,
+          AppSpacing.s16,
+          AppSpacing.s20,
+          AppSpacing.s24 + MediaQuery.viewInsetsOf(context).bottom,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          spacing: AppSpacing.s16,
+          children: [
+            Text(
+              '메시지 수정',
+              style: AppFont.labelM.copyWith(color: AppColors.darkOnSurface),
+            ),
+            CoworkTextArea(controller: _controller, minLines: 3),
+            ValueListenableBuilder(
+              valueListenable: _controller,
+              builder: (context, value, _) => CoworkButton(
+                label: '저장',
+                size: CoworkButtonSize.large,
+                enabled: value.text.trim().isNotEmpty,
+                onPressed: () => Navigator.of(context).pop(_controller.text),
+              ),
+            ),
+          ],
         ),
       ),
     );
