@@ -1,7 +1,7 @@
 import 'package:cowork_design_system/design_system.dart';
 import 'package:flutter/material.dart';
 
-import '../../feature/chat/presentation/views/chat_view.dart';
+import '../../feature/channel/presentation/views/chat_view.dart';
 import '../../feature/issues/presentation/views/issues_view.dart';
 import '../../feature/notes/presentation/views/notes_view.dart';
 import '../../feature/profile/presentation/views/my_profile_view.dart';

@@ -1,6 +1,6 @@
+import '../../../core/domain/enums/chat_avatar_color.dart';
 import '../../profile/domain/profile_entity.dart';
 import '../domain/chat_message.dart';
-import '../domain/enums/chat_avatar_color.dart';
 
 class ChannelConversationStore {
   ChannelConversationStore._();
