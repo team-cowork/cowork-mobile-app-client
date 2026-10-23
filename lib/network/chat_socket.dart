@@ -17,7 +17,9 @@ typedef SocketEvent = ({String name, Map<String, dynamic> data});
 ///
 /// 인증은 handshake 의 `Authorization` 헤더(게이트웨이가 검증)와 socket.io
 /// `auth.token`(게이트웨이를 거치지 않을 때 채팅 서버가 직접 검증)에 같은 access
-/// token 을 싣는다. 토큰이 만료돼 `인증 실패` 로 끊기면 한 번 갱신해 다시 붙는다.
+/// token 을 싣는다. 서버는 handshake 에서 인증하므로 `connect` 는 인증에 성공했다는
+/// 뜻이고, 실패하면 `connect` 없이 `connect_error` 만 온다. 토큰이 만료돼 `인증 실패`
+/// 로 거절되면 한 번 갱신해 다시 붙는다.
 ///
 /// ponytail: 끊긴 동안(백그라운드 등) 놓친 이벤트는 다시 받지 않는다. 서버의 끊김
 /// 복구는 2분까지만 된다.
@@ -107,8 +109,8 @@ class ChatSocket {
         }
       })
       ..onDisconnect((reason) => Logger.d('소켓 끊김: $reason', tag: 'Socket'))
-      ..onConnectError((e) => Logger.e('소켓 연결 실패', tag: 'Socket', error: e))
-      ..on('exception', _onException)
+      ..onConnectError(_onConnectError)
+      ..on('exception', (e) => Logger.e('소켓 예외', tag: 'Socket', error: e))
       ..on('error', (e) => Logger.e('소켓 오류', tag: 'Socket', error: e));
     for (final name in _listened) {
       socket.on(name, (data) {
@@ -122,10 +124,13 @@ class ChatSocket {
     _socket = socket..connect();
   }
 
-  /// 서버가 handshake 를 거절했다. 인증 실패면 토큰을 갱신해 한 번만 다시 붙는다.
-  Future<void> _onException(dynamic data) async {
+  /// 연결하지 못했다. 서버가 인증 실패로 거절했으면 토큰을 갱신해 한 번만 다시 붙는다.
+  ///
+  /// 서버가 거절한 연결은 라이브러리가 다시 붙지 않는다. 네트워크 문제로 실패한 것은
+  /// `인증 실패` 가 아니라 건드리지 않고, 라이브러리가 스스로 다시 붙는다.
+  Future<void> _onConnectError(dynamic data) async {
     final message = data is Map ? '${data['message']}' : '$data';
-    Logger.e('소켓 거절: $message', tag: 'Socket');
+    Logger.e('소켓 연결 실패: $message', tag: 'Socket');
     if (!message.startsWith('인증 실패') || _reauthTried) return;
     _reauthTried = true;
 
