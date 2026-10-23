@@ -62,7 +62,7 @@ class ChannelView extends StatelessWidget {
                       AppSpacing.s12,
                       AppSpacing.s24,
                     ),
-                    child: CoworkMessageComposer(hintText: '메시지를 입력하세요'),
+                    child: _MessageComposer(),
                   ),
                 ],
               ),
@@ -112,6 +112,41 @@ class _MessageList extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// 입력창. 보내면 비운다.
+class _MessageComposer extends StatefulWidget {
+  const _MessageComposer();
+
+  @override
+  State<_MessageComposer> createState() => _MessageComposerState();
+}
+
+class _MessageComposerState extends State<_MessageComposer> {
+  final _controller = TextEditingController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _send() {
+    final text = _controller.text;
+    if (text.trim().isEmpty) return;
+    context.read<ChannelMessageBloc>().add(ChannelMessageEvent.sent(text));
+    _controller.clear();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return CoworkMessageComposer(
+      hintText: '메시지를 입력하세요',
+      controller: _controller,
+      onSubmitted: (_) => _send(),
+      onSend: _send,
     );
   }
 }

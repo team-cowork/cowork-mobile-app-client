@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:cowork_app/feature/chat/data/model/requests/send_message_request.dart';
 import 'package:cowork_app/feature/chat/data/repositories/message_repository.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -62,6 +63,20 @@ MessageRepository _repository(_RecordingServer server) {
 }
 
 void main() {
+  test('전송은 내용과 clientMessageId 를 보낸다', () async {
+    final server = _RecordingServer();
+
+    await _repository(server).sendMessage(
+      10,
+      const SendMessageRequest(content: '안녕', clientMessageId: 'c-1'),
+    );
+
+    expect(server.bodies['POST /chat/chat/channels/10/messages'], {
+      'content': '안녕',
+      'clientMessageId': 'c-1',
+    });
+  });
+
   test('목록은 before 가 있을 때만 커서를 붙인다', () async {
     final server = _RecordingServer();
     final repository = _repository(server);

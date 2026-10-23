@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 
 import '../../../../network/dio_client.dart';
 import '../../../auth/data/auth_repository.dart';
+import '../model/requests/send_message_request.dart';
 import '../model/responses/message_response.dart';
 import '../model/responses/user_display_name_response.dart';
 
@@ -43,6 +44,13 @@ class MessageRepository {
     ))
       MessageResponse.fromJson(json),
   ];
+
+  /// 메시지를 보낸다. 서버는 큐에 넣고 바로 돌아오고, 저장된 메시지는 소켓으로 온다.
+  Future<void> sendMessage(int channelId, SendMessageRequest request) =>
+      _chat.post<String>(
+        '/chat/channels/$channelId/messages',
+        data: request.toJson(),
+      );
 
   /// [userIds] 사용자의 표시 이름. 서버 상한에 맞춰 나눠 읽는다.
   Future<List<UserDisplayNameResponse>> fetchDisplayNames(
