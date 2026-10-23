@@ -1,6 +1,7 @@
 import 'package:cowork_design_system/design_system.dart';
 import 'package:flutter/material.dart';
 
+import '../../../../core/utils/chat_avatar_color_mapping.dart';
 import '../../domain/dm_presence_entry.dart';
 import 'chat_color_mapping.dart';
 

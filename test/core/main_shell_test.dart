@@ -2,7 +2,7 @@ import 'package:cowork_app/core/presentation/main_shell.dart';
 import 'package:cowork_design_system/design_system.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import '../feature/chat/chat_test_server.dart';
+import '../feature/channel/chat_test_server.dart';
 
 void main() {
   testWidgets('탭을 누르면 해당 화면으로 전환된다', (tester) async {
