@@ -7,7 +7,7 @@ import 'chat_test_server.dart';
 void main() {
   test('채널 유형을 서버 type/viewType 짝으로 바꿔 보낸다', () async {
     final server = FakeChatServer();
-    final repository = chatRepositoryOf(server);
+    final repository = channelRepositoryOf(server);
 
     for (final type in ChannelType.values) {
       await repository.createChannel(
@@ -36,7 +36,7 @@ void main() {
   });
 
   test('생성 응답의 채널을 앱 채널로 돌려준다', () async {
-    final channel = await chatRepositoryOf(FakeChatServer()).createChannel(
+    final channel = await channelRepositoryOf(FakeChatServer()).createChannel(
       CreateChannelRequest.of(
         teamId: 1,
         name: '회의',
@@ -61,20 +61,11 @@ void main() {
       },
     );
 
-    final channels = await chatRepositoryOf(server).fetchChannels(1);
+    final channels = await channelRepositoryOf(server).fetchChannels(1);
 
     expect(
       [for (final channel in channels) channel.type],
       [ChannelType.file, ChannelType.voice, ChannelType.chat],
-    );
-  });
-
-  test('팀 목록을 읽는다', () async {
-    final teams = await chatRepositoryOf(FakeChatServer()).fetchMyTeams();
-
-    expect(
-      [for (final team in teams) (team.id, team.name)],
-      [(1, '코워크'), (2, '디자인팀')],
     );
   });
 }

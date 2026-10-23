@@ -5,12 +5,13 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/utils/bloc_scaffold.dart';
 import '../../../../network/chat_socket.dart';
-import '../../data/repositories/chat_repository.dart';
+import '../../data/repositories/channel_repository.dart';
+import '../../data/repositories/team_repository.dart';
 import '../../domain/channel.dart';
 import '../../domain/enums/channel_type.dart';
 import '../../domain/enums/workspace_avatar_color.dart';
 import '../../domain/workspace_shortcut.dart';
-import '../blocs/chat/chat_bloc.dart';
+import '../blocs/channel_list/channel_list_bloc.dart';
 import '../widgets/create_sheets.dart';
 import '../widgets/team_menu_sheet.dart';
 
@@ -19,13 +20,16 @@ class ChatView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocScaffold<ChatBloc, ChatHomeData>(
-      create: (context) =>
-          ChatBloc(context.read<ChatRepository>(), context.read<ChatSocket>())
-            ..add(const ChatRequested()),
+    return BlocScaffold<ChannelListBloc, ChannelListData>(
+      create: (context) => ChannelListBloc(
+        context.read<TeamRepository>(),
+        context.read<ChannelRepository>(),
+        context.read<ChatSocket>(),
+      )..add(const ChannelListRequested()),
       // 어느 단계(팀/채널)가 실패했는지는 설명 문구에 실려 온다. (#94)
       errorTitle: '홈을 불러오지 못했어요',
-      onRetry: (context) => context.read<ChatBloc>().add(const ChatRequested()),
+      onRetry: (context) =>
+          context.read<ChannelListBloc>().add(const ChannelListRequested()),
       builder: (context, data) => switch (data.teamId) {
         // 팀이 없어도 단축 바는 둔다. 팀 생성 진입점을 `+` 하나로 맞추려는 것이다.
         null => SafeArea(
@@ -70,8 +74,9 @@ class ChatView extends StatelessWidget {
               _ChatShortcutBar(
                 shortcuts: data.workspaceShortcuts,
                 onDmHomeTap: () => context.push('/dm'),
-                onTeamTap: (id) =>
-                    context.read<ChatBloc>().add(ChatEvent.teamSelected(id)),
+                onTeamTap: (id) => context.read<ChannelListBloc>().add(
+                  ChannelListEvent.teamSelected(id),
+                ),
                 onCreateTeam: () => _createTeam(context),
               ),
               Expanded(child: _ChannelList(channelGroups: data.channelGroups)),
@@ -84,21 +89,21 @@ class ChatView extends StatelessWidget {
 
   /// 팀 생성 시트를 띄우고, 만들어지면 그 팀으로 옮기고 알린다.
   static Future<void> _createTeam(BuildContext context) async {
-    final bloc = context.read<ChatBloc>();
+    final bloc = context.read<ChannelListBloc>();
     final messenger = ScaffoldMessenger.of(context);
     final team = await NewTeamSheet.show(context);
     if (team == null) return;
-    bloc.add(ChatEvent.teamCreated(team));
+    bloc.add(ChannelListEvent.teamCreated(team));
     messenger.showSnackBar(SnackBar(content: Text('${team.name} 팀을 만들었어요.')));
   }
 
   /// 채널 생성 시트를 띄우고, 만들어지면 목록 끝에 붙이고 알린다.
   static Future<void> _createChannel(BuildContext context, int teamId) async {
-    final bloc = context.read<ChatBloc>();
+    final bloc = context.read<ChannelListBloc>();
     final messenger = ScaffoldMessenger.of(context);
     final channel = await NewChannelSheet.show(context, teamId: teamId);
     if (channel == null) return;
-    bloc.add(ChatEvent.channelAdded(channel));
+    bloc.add(ChannelListEvent.channelAdded(channel));
     messenger.showSnackBar(
       SnackBar(content: Text('#${channel.name} 채널을 만들었어요.')),
     );

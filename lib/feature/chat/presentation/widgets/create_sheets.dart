@@ -5,9 +5,10 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/utils/async_state.dart';
 import '../../../../core/utils/command_bloc.dart';
 import '../../data/model/requests/create_channel_request.dart';
-import '../../data/repositories/chat_repository.dart';
 import '../../data/model/requests/create_team_request.dart';
 import '../../data/model/responses/team_summary_response.dart';
+import '../../data/repositories/channel_repository.dart';
+import '../../data/repositories/team_repository.dart';
 import '../../domain/channel.dart';
 import '../../domain/enums/channel_type.dart';
 
@@ -199,7 +200,7 @@ class NewChannelSheet extends StatefulWidget {
 
   /// 시트를 띄우고 만든 채널을 돌려준다. 만들지 않고 닫으면 null.
   static Future<Channel?> show(BuildContext context, {required int teamId}) {
-    final repository = context.read<ChatRepository>();
+    final repository = context.read<ChannelRepository>();
     return _CreateSheet.show<Channel>(
       context,
       (_) => BlocProvider(
@@ -445,7 +446,7 @@ class NewTeamSheet extends StatefulWidget {
 
   /// 시트를 띄우고 만든 팀을 돌려준다. 만들지 않고 닫으면 null.
   static Future<TeamSummaryResponse?> show(BuildContext context) {
-    final repository = context.read<ChatRepository>();
+    final repository = context.read<TeamRepository>();
     return _CreateSheet.show<TeamSummaryResponse>(
       context,
       (_) => BlocProvider(

@@ -10,40 +10,44 @@ import '../../../../../core/utils/logger.dart';
 import '../../../../../network/chat_socket.dart';
 import '../../../../../network/http_error_message.dart';
 import '../../../data/model/channel_socket_event.dart';
-import '../../../data/repositories/chat_repository.dart';
 import '../../../data/model/responses/team_summary_response.dart';
+import '../../../data/repositories/channel_repository.dart';
+import '../../../data/repositories/team_repository.dart';
 import '../../../domain/channel.dart';
 import '../../../domain/enums/workspace_avatar_color.dart';
 import '../../../domain/workspace_shortcut.dart';
 
-part 'chat_event.dart';
-part 'chat_state.dart';
+part 'channel_list_event.dart';
+part 'channel_list_state.dart';
 
-/// 홈(채팅 목록) 화면 상태를 관리하는 Bloc.
+/// 홈 화면에 보일, 고른 팀의 채널 목록을 관리하는 Bloc.
 ///
-/// 팀 목록 → 고른 팀의 채널 목록 순서로 읽는다. 두 단계 중 어디서 실패했는지를
-/// 실패 사유 앞에 붙여, 팀 조회가 실패했는데 채널 문제로 보이지 않게 한다.
+/// 팀 목록([TeamRepository]) → 고른 팀의 채널 목록([ChannelRepository]) 순서로
+/// 읽는다. 두 단계 중 어디서 실패했는지를 실패 사유 앞에 붙여, 팀 조회가 실패했는데
+/// 채널 문제로 보이지 않게 한다.
 ///
 /// 읽은 뒤에는 다시 조회하지 않고, 보고 있는 팀 방을 소켓으로 구독해 다른 기기·
 /// 사람이 만들고 바꾸고 지운 채널을 목록에 반영한다.
 ///
 /// ponytail: 실패 단계를 문자열로 붙이는 건 임시다. 화면 제목까지 단계별로 나누는
 /// 작업은 #94 에서 한다.
-class ChatBloc extends Bloc<ChatEvent, ChatState> {
-  ChatBloc(this._repository, this._socket) : super(const ChatState.initial()) {
-    on<ChatRequested>(_onLoad);
-    on<ChatTeamSelected>(_onTeamSelected);
-    on<ChatTeamCreated>(_onTeamCreated);
-    on<ChatChannelAdded>(_onChannelAdded);
-    on<_ChatSocketEventReceived>(_onSocketEvent);
+class ChannelListBloc extends Bloc<ChannelListEvent, ChannelListState> {
+  ChannelListBloc(this._teamRepository, this._channelRepository, this._socket)
+    : super(const ChannelListState.initial()) {
+    on<ChannelListRequested>(_onLoad);
+    on<ChannelListTeamSelected>(_onTeamSelected);
+    on<ChannelListTeamCreated>(_onTeamCreated);
+    on<ChannelListChannelAdded>(_onChannelAdded);
+    on<_ChannelListSocketEventReceived>(_onSocketEvent);
 
     _socketEvents = _socket.events
         .map(ChannelSocketEvent.from)
         .where((event) => event != null)
-        .listen((event) => add(_ChatSocketEventReceived(event!)));
+        .listen((event) => add(_ChannelListSocketEventReceived(event!)));
   }
 
-  final ChatRepository _repository;
+  final TeamRepository _teamRepository;
+  final ChannelRepository _channelRepository;
   final ChatSocket _socket;
   late final StreamSubscription<ChannelSocketEvent?> _socketEvents;
 
@@ -66,13 +70,16 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     WorkspaceAvatarColor.green,
   ];
 
-  Future<void> _onLoad(ChatRequested event, Emitter<ChatState> emit) async {
-    emit(const ChatState.loading());
+  Future<void> _onLoad(
+    ChannelListRequested event,
+    Emitter<ChannelListState> emit,
+  ) async {
+    emit(const ChannelListState.loading());
     try {
-      _teams = await _repository.fetchMyTeams();
+      _teams = await _teamRepository.fetchMyTeams();
     } catch (e, s) {
       Logger.e('팀 목록 조회 실패', tag: 'Chat', error: e, stackTrace: s);
-      emit(ChatState.failure(_reasonOf('팀 목록 조회 실패', e)));
+      emit(ChannelListState.failure(_reasonOf('팀 목록 조회 실패', e)));
       return;
     }
 
@@ -85,12 +92,12 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
   }
 
   Future<void> _onTeamSelected(
-    ChatTeamSelected event,
-    Emitter<ChatState> emit,
+    ChannelListTeamSelected event,
+    Emitter<ChannelListState> emit,
   ) async {
     final team = _teams.where((team) => team.id == event.teamId).firstOrNull;
     if (team == null || team.id == _teamId) return;
-    emit(const ChatState.loading());
+    emit(const ChannelListState.loading());
     await _loadChannels(team, emit);
   }
 
@@ -99,28 +106,33 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
   /// 서버는 팀을 만들 때 채널을 만들지 않으므로 채널 목록을 읽지 않고 빈 목록으로
   /// 보여준다. 만든 직후엔 채널 서비스가 아직 새 팀 멤버십을 모를 수 있어(이벤트로
   /// 전파된다) 바로 읽으면 403 이 날 수 있다는 점도 있다.
-  void _onTeamCreated(ChatTeamCreated event, Emitter<ChatState> emit) {
+  void _onTeamCreated(
+    ChannelListTeamCreated event,
+    Emitter<ChannelListState> emit,
+  ) {
     final team = event.team;
     _teams = [..._teams.where((other) => other.id != team.id), team];
     _teamId = team.id;
     _follow(team.id);
-    emit(ChatState.success(_homeOf(team, const [])));
+    emit(ChannelListState.success(_homeOf(team, const [])));
   }
 
   /// 새 채널을 목록 끝에 붙인다.
   ///
   /// 서버는 새 채널을 팀의 마지막 순서로 저장하므로, 목록을 다시 읽지 않고 붙여도
   /// 서버 순서와 같다. 다시 읽으면 홈 전체가 로딩 화면으로 깜빡인다.
-  void _onChannelAdded(ChatChannelAdded event, Emitter<ChatState> emit) =>
-      _upsert(event.channel, emit);
+  void _onChannelAdded(
+    ChannelListChannelAdded event,
+    Emitter<ChannelListState> emit,
+  ) => _upsert(event.channel, emit);
 
   Future<void> _onSocketEvent(
-    _ChatSocketEventReceived event,
-    Emitter<ChatState> emit,
+    _ChannelListSocketEventReceived event,
+    Emitter<ChannelListState> emit,
   ) async {
     switch (event.event) {
       case final ChannelListChange change
-          when state is AsyncLoading<ChatHomeData>:
+          when state is AsyncLoading<ChannelListData>:
         // 목록을 읽는 중이라 고칠 목록이 없다. 받은 뒤 [_loadChannels] 가 반영한다.
         _pending.add(change);
       case final ChannelListChange change:
@@ -130,7 +142,7 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     }
   }
 
-  void _apply(ChannelListChange change, Emitter<ChatState> emit) {
+  void _apply(ChannelListChange change, Emitter<ChannelListState> emit) {
     switch (change) {
       case ChannelUpserted(:final teamId, :final channel):
         if (teamId == _teamId) _upsert(channel, emit);
@@ -149,18 +161,19 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
   ///
   /// 내가 만든 채널은 시트 결과와 `channel:created` 이벤트로 두 번 오므로 id 로
   /// 하나만 남긴다.
-  void _upsert(Channel channel, Emitter<ChatState> emit) => _editChannels(
-    emit,
-    (channels) => channels.any((other) => other.id == channel.id)
-        ? [
-            for (final other in channels)
-              other.id == channel.id ? channel : other,
-          ]
-        : [...channels, channel],
-  );
+  void _upsert(Channel channel, Emitter<ChannelListState> emit) =>
+      _editChannels(
+        emit,
+        (channels) => channels.any((other) => other.id == channel.id)
+            ? [
+                for (final other in channels)
+                  other.id == channel.id ? channel : other,
+              ]
+            : [...channels, channel],
+      );
 
   /// 내가 [teamId] 팀에서 빠졌다. 보던 팀이면 다른 팀으로 옮긴다.
-  Future<void> _leaveTeam(int teamId, Emitter<ChatState> emit) async {
+  Future<void> _leaveTeam(int teamId, Emitter<ChannelListState> emit) async {
     _teams = [
       for (final team in _teams)
         if (team.id != teamId) team,
@@ -176,23 +189,23 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
       _showNoTeam(emit);
       return;
     }
-    emit(const ChatState.loading());
+    emit(const ChannelListState.loading());
     await _loadChannels(next, emit);
   }
 
   /// 보이는 채널 목록을 [edit] 결과로 바꾼다. 보이는 목록이 없으면 하지 않는다.
   void _editChannels(
-    Emitter<ChatState> emit,
+    Emitter<ChannelListState> emit,
     List<Channel> Function(List<Channel> channels) edit,
   ) {
     final current = state;
-    if (current is! AsyncSuccess<ChatHomeData>) return;
+    if (current is! AsyncSuccess<ChannelListData>) return;
     final team = _currentTeam();
     if (team == null) return;
     final channels = [
       for (final group in current.data.channelGroups) ...group.channels,
     ];
-    emit(ChatState.success(_homeOf(team, edit(channels))));
+    emit(ChannelListState.success(_homeOf(team, edit(channels))));
   }
 
   /// 보고 있던 팀. 그 팀에서 나갔으면 첫 팀, 팀이 없으면 null.
@@ -201,22 +214,22 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
       _teams.firstOrNull;
 
   /// 속한 팀이 하나도 없을 때의 홈.
-  static const ChatHomeData _noTeam = (
+  static const ChannelListData _noTeam = (
     teamId: null,
     workspaceName: '',
     workspaceShortcuts: [],
     channelGroups: [],
   );
 
-  void _showNoTeam(Emitter<ChatState> emit) {
+  void _showNoTeam(Emitter<ChannelListState> emit) {
     _teamId = null;
     _follow(null);
-    emit(const ChatState.success(_noTeam));
+    emit(const ChannelListState.success(_noTeam));
   }
 
   Future<void> _loadChannels(
     TeamSummaryResponse team,
-    Emitter<ChatState> emit,
+    Emitter<ChannelListState> emit,
   ) async {
     _teamId = team.id;
     // 목록을 읽는 사이에 생긴 변경도 받도록 읽기 전에 구독한다. 그 사이 온 변경은
@@ -226,11 +239,11 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
 
     final List<Channel> channels;
     try {
-      channels = await _repository.fetchChannels(team.id);
+      channels = await _channelRepository.fetchChannels(team.id);
     } catch (e, s) {
       Logger.e('채널 목록 조회 실패', tag: 'Chat', error: e, stackTrace: s);
       if (team.id == _teamId) {
-        emit(ChatState.failure(_reasonOf('채널 목록 조회 실패', e)));
+        emit(ChannelListState.failure(_reasonOf('채널 목록 조회 실패', e)));
       }
       return;
     }
@@ -238,7 +251,7 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     // 응답이 지금 팀 화면을 덮지 않게 버린다.
     if (team.id != _teamId) return;
 
-    emit(ChatState.success(_homeOf(team, channels)));
+    emit(ChannelListState.success(_homeOf(team, channels)));
     // 같은 변경이 목록에 이미 들어 있어도 upsert·삭제라 다시 반영해도 결과가 같다.
     final pending = [..._pending];
     _pending.clear();
@@ -265,7 +278,7 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
   }
 
   /// ponytail: 서버 카테고리(프로젝트) 연동 전이라 채널을 한 그룹에 담는다.
-  ChatHomeData _homeOf(TeamSummaryResponse team, List<Channel> channels) => (
+  ChannelListData _homeOf(TeamSummaryResponse team, List<Channel> channels) => (
     teamId: team.id,
     workspaceName: team.name,
     workspaceShortcuts: [

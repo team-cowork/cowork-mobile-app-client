@@ -2,7 +2,8 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
-import 'package:cowork_app/feature/chat/data/repositories/chat_repository.dart';
+import 'package:cowork_app/feature/chat/data/repositories/channel_repository.dart';
+import 'package:cowork_app/feature/chat/data/repositories/team_repository.dart';
 import 'package:cowork_app/network/chat_socket.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
@@ -171,20 +172,23 @@ class ServerFailure {
   final String? message;
 }
 
-/// [server] 로 요청을 보내는 저장소. 실제와 같은 서비스별 baseUrl 을 쓴다.
-ChatRepository chatRepositoryOf(FakeChatServer server) {
-  Dio dio(String service) => Dio(
-    BaseOptions(
-      baseUrl: 'https://example.test/api/$service',
-      contentType: Headers.jsonContentType,
-      responseType: ResponseType.plain,
-    ),
-  )..httpClientAdapter = server;
+/// [server] 로 [service] 요청을 보내는 dio. 실제와 같은 서비스별 baseUrl 을 쓴다.
+Dio _dioOf(FakeChatServer server, String service) => Dio(
+  BaseOptions(
+    baseUrl: 'https://example.test/api/$service',
+    contentType: Headers.jsonContentType,
+    responseType: ResponseType.plain,
+  ),
+)..httpClientAdapter = server;
 
-  return ChatRepository.withDio(team: dio('team'), channel: dio('channel'));
-}
+/// [server] 로 요청을 보내는 팀 저장소.
+TeamRepository teamRepositoryOf(FakeChatServer server) =>
+    TeamRepository.withDio(_dioOf(server, 'team'));
 
-/// [home] 을 [server] 에 붙은 [ChatRepository] 와 함께 띄우는 앱.
+/// [server] 로 요청을 보내는 채널 저장소.
+ChannelRepository channelRepositoryOf(FakeChatServer server) =>
+    ChannelRepository.withDio(_dioOf(server, 'channel'));
+
 /// 가짜 채팅 소켓. 구독한 팀 방을 기록하고, 테스트가 서버 이벤트를 [push] 한다.
 class FakeChatSocket implements ChatSocket {
   final _events = StreamController<SocketEvent>.broadcast();
@@ -209,7 +213,7 @@ class FakeChatSocket implements ChatSocket {
   void dispose() => _events.close();
 }
 
-/// [home] 을 [server] 에 붙은 [ChatRepository] 와 [socket] 과 함께 띄우는 앱.
+/// [home] 을 [server] 에 붙은 팀·채널 저장소와 [socket] 과 함께 띄우는 앱.
 Widget chatTestApp(
   FakeChatServer server, {
   required Widget home,
@@ -217,7 +221,8 @@ Widget chatTestApp(
   ThemeData? theme,
 }) => MultiRepositoryProvider(
   providers: [
-    RepositoryProvider.value(value: chatRepositoryOf(server)),
+    RepositoryProvider.value(value: teamRepositoryOf(server)),
+    RepositoryProvider.value(value: channelRepositoryOf(server)),
     RepositoryProvider<ChatSocket>.value(value: socket ?? FakeChatSocket()),
   ],
   child: MaterialApp(theme: theme, home: home),
