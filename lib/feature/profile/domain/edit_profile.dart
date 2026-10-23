@@ -1,5 +1,6 @@
 import 'package:equatable/equatable.dart';
 
+import '../../../core/utils/initial.dart';
 import '../data/model/responses/user_response.dart';
 
 /// 프로필 편집 화면에서 사용하는 도메인 모델.
@@ -24,7 +25,7 @@ class EditProfile extends Equatable {
       username: me.nickname ?? '',
       bio: me.description ?? '',
       avatarUrl: me.profileImageUrl ?? '',
-      avatarInitial: name.isEmpty ? '?' : name.substring(0, 1),
+      avatarInitial: initialOf(name),
       localAvatarPath: localAvatarPath,
     );
   }

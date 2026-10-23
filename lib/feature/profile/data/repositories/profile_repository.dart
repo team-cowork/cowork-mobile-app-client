@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:dio/dio.dart';
 
+import '../../../../core/utils/initial.dart';
 import '../../../../network/dio_client.dart';
 import '../../../auth/data/auth_repository.dart';
 import '../model/requests/confirm_profile_image_request.dart';
@@ -114,7 +115,7 @@ class ProfileRepository {
     if (name != null && name.isNotEmpty) {
       final store = ProfileStore.instance
         ..name = name
-        ..avatarInitial = name.substring(0, 1)
+        ..avatarInitial = initialOf(name)
         ..avatarUrl = me.profileImageUrl ?? '';
       final id = me.id;
       if (id != null) store.currentUserId = id;

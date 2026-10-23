@@ -5,6 +5,7 @@ import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../../core/utils/async_state.dart';
+import '../../../../../core/utils/initial.dart';
 import '../../../../../core/utils/logger.dart';
 import '../../../../../network/chat_socket.dart';
 import '../../../../../network/http_error_message.dart';
@@ -271,7 +272,7 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
       for (final other in _teams)
         WorkspaceShortcut(
           id: other.id,
-          initial: other.name.isEmpty ? '?' : other.name.substring(0, 1),
+          initial: initialOf(other.name),
           color: _avatarColors[other.id % _avatarColors.length],
           isSelected: other.id == team.id,
         ),

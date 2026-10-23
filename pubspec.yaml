@@ -66,6 +66,9 @@ dependencies:
   # 채팅 서버(cowork-chat) socket.io 실시간 이벤트
   socket_io_client: ^3.1.6
 
+  # 이름 첫 글자를 이모지가 깨지지 않게 문자(grapheme) 단위로 자른다
+  characters: ^1.4.1
+
   # API 요청·응답 모델 코드 생성 (build_runner 로 *.freezed.dart / *.g.dart 생성)
   freezed_annotation: ^3.1.0
   json_annotation: ^4.11.0
