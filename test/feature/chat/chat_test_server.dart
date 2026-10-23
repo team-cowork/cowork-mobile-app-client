@@ -218,6 +218,9 @@ class FakeChatSocket implements ChatSocket {
   @override
   void leaveChannel(int channelId) => joinedChannels.remove(channelId);
 
+  @override
+  Iterable<int> get joinedChannelIds => joinedChannels;
+
   final _reconnected = StreamController<void>.broadcast();
 
   /// 끊김 복구 없이 다시 연결된 것처럼 알린다.

@@ -51,8 +51,9 @@ class ChatSocket {
   /// 구독 중인 팀 방. 다시 연결될 때마다 다시 들어간다.
   final _teams = <int>{};
 
-  /// 구독 중인 채널 방. 팀 방과 같이 다시 연결될 때마다 다시 들어간다.
-  final _channels = <int>{};
+  /// 구독 중인 채널 방과 그 방을 쓰는 화면 수. 팀 방과 같이 다시 연결될 때마다 다시
+  /// 들어간다. 같은 채널 화면이 두 번 열려도 하나를 닫았다고 방에서 나가지 않게 센다.
+  final _channels = <int, int>{};
 
   io.Socket? _socket;
 
@@ -81,16 +82,30 @@ class ChatSocket {
   }
 
   /// [channelId] 채널 방의 메시지 이벤트를 받는다. 연결돼 있지 않으면 연결부터 한다.
+  ///
+  /// 부른 만큼 [leaveChannel] 을 불러야 방에서 나간다.
   void joinChannel(int channelId) {
-    if (!_channels.add(channelId)) return;
-    _join('join', {'channelId': channelId});
+    final count = _channels[channelId] ?? 0;
+    _channels[channelId] = count + 1;
+    if (count == 0) _join('join', {'channelId': channelId});
   }
 
-  /// [channelId] 채널 방에서 나간다. 남은 방이 없으면 연결을 끊는다.
+  /// [channelId] 채널 방을 쓰던 화면 하나가 떠났다. 마지막이면 방에서 나가고, 남은 방이
+  /// 없으면 연결을 끊는다.
   void leaveChannel(int channelId) {
-    if (!_channels.remove(channelId)) return;
+    final count = _channels[channelId];
+    if (count == null) return;
+    if (count > 1) {
+      _channels[channelId] = count - 1;
+      return;
+    }
+    _channels.remove(channelId);
     _leave('leave', {'channelId': channelId});
   }
+
+  /// 지금 들어가 있는 채널 방.
+  @visibleForTesting
+  Iterable<int> get joinedChannelIds => _channels.keys;
 
   void dispose() {
     _teams.clear();
@@ -125,7 +140,7 @@ class ChatSocket {
     for (final teamId in _teams) {
       socket.emit('join:team', {'teamId': teamId});
     }
-    for (final channelId in _channels) {
+    for (final channelId in _channels.keys) {
       socket.emit('join', {'channelId': channelId});
     }
   }
