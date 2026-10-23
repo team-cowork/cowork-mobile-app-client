@@ -189,7 +189,7 @@ TeamRepository teamRepositoryOf(FakeChatServer server) =>
 ChannelRepository channelRepositoryOf(FakeChatServer server) =>
     ChannelRepository.withDio(_dioOf(server, 'channel'));
 
-/// 가짜 채팅 소켓. 구독한 팀 방을 기록하고, 테스트가 서버 이벤트를 [push] 한다.
+/// 가짜 채팅 소켓. 구독한 팀·채널 방을 기록하고, 테스트가 서버 이벤트를 [push] 한다.
 class FakeChatSocket implements ChatSocket {
   final _events = StreamController<SocketEvent>.broadcast();
 
@@ -209,8 +209,28 @@ class FakeChatSocket implements ChatSocket {
   @override
   void leaveTeam(int teamId) => joined.remove(teamId);
 
+  /// 지금 구독 중인 채널 방.
+  final joinedChannels = <int>{};
+
   @override
-  void dispose() => _events.close();
+  void joinChannel(int channelId) => joinedChannels.add(channelId);
+
+  @override
+  void leaveChannel(int channelId) => joinedChannels.remove(channelId);
+
+  final _reconnected = StreamController<void>.broadcast();
+
+  /// 끊김 복구 없이 다시 연결된 것처럼 알린다.
+  void reconnect() => _reconnected.add(null);
+
+  @override
+  Stream<void> get reconnected => _reconnected.stream;
+
+  @override
+  void dispose() {
+    _events.close();
+    _reconnected.close();
+  }
 }
 
 /// [home] 을 [server] 에 붙은 팀·채널 저장소와 [socket] 과 함께 띄우는 앱.
