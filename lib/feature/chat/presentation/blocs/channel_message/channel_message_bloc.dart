@@ -3,6 +3,7 @@ import 'dart:math';
 
 import 'package:dio/dio.dart';
 import 'package:equatable/equatable.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../../core/utils/async_state.dart';
@@ -30,6 +31,8 @@ part 'channel_message_state.dart';
 /// 소켓으로 저장된 메시지가 오면 `clientMessageId` 로 짝지어 바꾼다. 그 메시지가
 /// [confirmTimeout] 안에 오지 않거나 소켓이 끊김 복구 없이 다시 붙으면, 최근 메시지를
 /// 다시 읽어 맞춘다.
+///
+/// 읽음은 앱이 포그라운드일 때만 알린다. 백그라운드에서 받은 메시지는 돌아왔을 때 알린다.
 class ChannelMessageBloc
     extends Bloc<ChannelMessageEvent, ChannelMessageState> {
   ChannelMessageBloc({
@@ -38,6 +41,7 @@ class ChannelMessageBloc
     required MessageRepository messageRepository,
     required ProfileRepository profileRepository,
     required ChatSocket socket,
+    Stream<AppLifecycleState>? lifecycle,
     this.confirmTimeout = const Duration(seconds: 10),
   }) : _channelRepository = channelRepository,
        _messageRepository = messageRepository,
@@ -53,6 +57,7 @@ class ChannelMessageBloc
     on<_ChannelMessageAuthorsResolved>(_onAuthorsResolved);
     on<_ChannelMessageConfirmTimedOut>(_onConfirmTimedOut);
     on<_ChannelMessageResynced>(_onResynced);
+    on<_ChannelMessageForegroundChanged>(_onForegroundChanged);
 
     _socketEvents = _socket.events
         .map(MessageSocketEvent.from)
@@ -60,6 +65,11 @@ class ChannelMessageBloc
         .listen((event) => add(_ChannelMessageSocketEventReceived(event!)));
     _reconnects = _socket.reconnected.listen(
       (_) => add(const _ChannelMessageResynced()),
+    );
+    _lifecycle = lifecycle?.listen(
+      (state) => add(
+        _ChannelMessageForegroundChanged(state == AppLifecycleState.resumed),
+      ),
     );
     // 메시지를 읽는 사이에 온 것도 받도록 읽기 전에 들어간다.
     _socket.joinChannel(channelId);
@@ -76,6 +86,7 @@ class ChannelMessageBloc
   final ChatSocket _socket;
   late final StreamSubscription<MessageSocketEvent?> _socketEvents;
   late final StreamSubscription<void> _reconnects;
+  StreamSubscription<AppLifecycleState>? _lifecycle;
 
   /// 채널 머리. 불러오기에 성공하면 채워진다.
   ({String name, String description})? _header;
@@ -96,6 +107,12 @@ class ChannelMessageBloc
   int? _myId;
   bool _hasOlder = false;
   bool _loadingOlder = false;
+
+  /// 마지막으로 서버에 알린 읽음 위치.
+  String? _lastReadId;
+
+  /// 앱이 포그라운드인지. 생명주기를 받지 않으면 늘 포그라운드로 본다.
+  bool _foreground = true;
 
   /// 보낸 메시지(`clientMessageId`)별 저장 확인 타이머.
   final _confirmTimers = <String, Timer>{};
@@ -147,6 +164,7 @@ class ChannelMessageBloc
     }
     _pending.clear();
     _emit(emit);
+    _markRead();
   }
 
   Future<void> _onLoadOlder(
@@ -272,7 +290,10 @@ class ChannelMessageBloc
       _pending.add(event.event);
       return;
     }
-    if (_apply(event.event)) _emit(emit);
+    if (_apply(event.event)) {
+      _emit(emit);
+      _markRead();
+    }
   }
 
   /// 보낸 메시지가 소켓으로 오지 않았다. 최근 메시지를 다시 읽어 보고, 그래도 없으면
@@ -290,6 +311,7 @@ class ChannelMessageBloc
     }
     if (!_isPending(event.clientMessageId)) {
       _emit(emit);
+      _markRead();
       return;
     }
     _messages.removeWhere((message) => message.id == event.clientMessageId);
@@ -309,6 +331,15 @@ class ChannelMessageBloc
       return;
     }
     _emit(emit);
+    _markRead();
+  }
+
+  void _onForegroundChanged(
+    _ChannelMessageForegroundChanged event,
+    Emitter<ChannelMessageState> emit,
+  ) {
+    _foreground = event.foreground;
+    if (_foreground && _header != null) _markRead();
   }
 
   void _onAuthorsResolved(
@@ -447,6 +478,20 @@ class ChannelMessageBloc
         .whenComplete(() => _resolving.removeAll(ids));
   }
 
+  /// 가장 최근에 저장된 메시지까지 읽었다고 알린다. 실패해도 화면엔 영향이 없다.
+  void _markRead() {
+    if (!_foreground) return;
+    final latest = _messages.reversed.where(_isSaved).firstOrNull;
+    if (latest == null || latest.id == _lastReadId) return;
+    _lastReadId = latest.id;
+    _messageRepository.markRead(channelId, latest.id).catchError((
+      Object e,
+      StackTrace s,
+    ) {
+      Logger.e('읽음 처리 실패', tag: 'Chat', error: e, stackTrace: s);
+    });
+  }
+
   void _emit(Emitter<ChannelMessageState> emit, {String? error}) {
     final header = _header;
     if (header == null) return;
@@ -501,6 +546,7 @@ class ChannelMessageBloc
     _confirmTimers.clear();
     await _socketEvents.cancel();
     await _reconnects.cancel();
+    await _lifecycle?.cancel();
     return super.close();
   }
 

@@ -3,6 +3,7 @@ import 'package:dio/dio.dart';
 import '../../../../network/dio_client.dart';
 import '../../../auth/data/auth_repository.dart';
 import '../model/requests/edit_message_request.dart';
+import '../model/requests/read_channel_request.dart';
 import '../model/requests/send_message_request.dart';
 import '../model/responses/message_response.dart';
 import '../model/responses/user_display_name_response.dart';
@@ -66,6 +67,13 @@ class MessageRepository {
   /// 메시지를 지운다. 지운 사실은 소켓 `message:deleted` 로도 온다.
   Future<void> deleteMessage(int channelId, String messageId) =>
       _chat.delete<String>('/chat/channels/$channelId/messages/$messageId');
+
+  /// [lastReadMessageId] 까지 읽었다고 알린다.
+  Future<void> markRead(int channelId, String lastReadMessageId) =>
+      _chat.post<String>(
+        '/chat/channels/$channelId/read',
+        data: ReadChannelRequest(lastReadMessageId: lastReadMessageId).toJson(),
+      );
 
   /// [userIds] 사용자의 표시 이름. 서버 상한에 맞춰 나눠 읽는다.
   Future<List<UserDisplayNameResponse>> fetchDisplayNames(

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/utils/app_lifecycle.dart';
 import '../../../../core/utils/async_state.dart';
 import '../../../../core/utils/bloc_scaffold.dart';
 import '../../../../network/chat_socket.dart';
@@ -27,6 +28,7 @@ class ChannelView extends StatelessWidget {
         messageRepository: context.read<MessageRepository>(),
         profileRepository: context.read<ProfileRepository>(),
         socket: context.read<ChatSocket>(),
+        lifecycle: appLifecycleStates(),
       )..add(const ChannelMessageEvent.requested()),
       errorTitle: '채널을 불러오지 못했어요',
       onRetry: (context) => context.read<ChannelMessageBloc>().add(

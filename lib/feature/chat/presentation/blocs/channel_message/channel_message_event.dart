@@ -95,3 +95,13 @@ final class _ChannelMessageConfirmTimedOut extends ChannelMessageEvent {
 final class _ChannelMessageResynced extends ChannelMessageEvent {
   const _ChannelMessageResynced();
 }
+
+/// 앱이 포그라운드로 오거나 떠났다. Bloc 이 스스로 넣는다.
+final class _ChannelMessageForegroundChanged extends ChannelMessageEvent {
+  const _ChannelMessageForegroundChanged(this.foreground);
+
+  final bool foreground;
+
+  @override
+  List<Object?> get props => [foreground];
+}

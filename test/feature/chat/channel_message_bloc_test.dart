@@ -5,6 +5,7 @@ import 'package:cowork_app/feature/chat/data/repositories/channel_repository.dar
 import 'package:cowork_app/feature/chat/data/repositories/message_repository.dart';
 import 'package:cowork_app/feature/chat/presentation/blocs/channel_message/channel_message_bloc.dart';
 import 'package:cowork_app/feature/profile/data/repositories/profile_repository.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'channel_message_test_server.dart';
@@ -13,6 +14,7 @@ import 'chat_test_server.dart';
 ChannelMessageBloc _bloc(
   FakeMessageGateway gateway,
   FakeChatSocket socket, {
+  Stream<AppLifecycleState>? lifecycle,
   Duration confirmTimeout = const Duration(seconds: 10),
 }) => ChannelMessageBloc(
   channelId: 10,
@@ -23,6 +25,7 @@ ChannelMessageBloc _bloc(
   ),
   profileRepository: ProfileRepository.withDio(messageDio(gateway, 'user')),
   socket: socket,
+  lifecycle: lifecycle,
   confirmTimeout: confirmTimeout,
 );
 
@@ -30,10 +33,15 @@ ChannelMessageBloc _bloc(
 Future<ChannelMessageBloc> _loaded(
   FakeMessageGateway gateway,
   FakeChatSocket socket, {
+  Stream<AppLifecycleState>? lifecycle,
   Duration confirmTimeout = const Duration(seconds: 10),
 }) async {
-  final bloc = _bloc(gateway, socket, confirmTimeout: confirmTimeout)
-    ..add(const ChannelMessageEvent.requested());
+  final bloc = _bloc(
+    gateway,
+    socket,
+    lifecycle: lifecycle,
+    confirmTimeout: confirmTimeout,
+  )..add(const ChannelMessageEvent.requested());
   await bloc.stream.firstWhere((s) => s is AsyncSuccess<ChannelConversation>);
   await pumpEventQueue();
   gateway.calls.clear();
@@ -65,6 +73,9 @@ void main() {
     expect(data.hasOlder, isFalse);
     expect(socket.joinedChannels, {10});
     expect(gateway.calls, contains('GET /user/users/batch?ids=2%2C3'));
+    expect(gateway.bodies['POST /chat/chat/channels/10/read'], {
+      'lastReadMessageId': 'm2',
+    });
   });
 
   test('보낸 메시지를 먼저 보여 주고 소켓으로 저장되면 한 번만 남긴다', () async {
@@ -254,6 +265,30 @@ void main() {
     await pumpEventQueue();
 
     expect(_texts(bloc), ['두 번째', '끊긴 동안 온 메시지']);
+    expect(gateway.bodies['POST /chat/chat/channels/10/read'], {
+      'lastReadMessageId': 'm3',
+    });
+  });
+
+  test('백그라운드에서 받은 메시지는 돌아왔을 때 읽음으로 알린다', () async {
+    final gateway = FakeMessageGateway();
+    final socket = FakeChatSocket();
+    final lifecycle = StreamController<AppLifecycleState>();
+    addTearDown(lifecycle.close);
+    final bloc = await _loaded(gateway, socket, lifecycle: lifecycle.stream);
+    addTearDown(bloc.close);
+
+    lifecycle.add(AppLifecycleState.paused);
+    await pumpEventQueue();
+    socket.push('message', messageJson('m3', 2, '자리 비운 사이'));
+    await pumpEventQueue();
+    expect(gateway.calls, isNot(contains('POST /chat/chat/channels/10/read')));
+
+    lifecycle.add(AppLifecycleState.resumed);
+    await pumpEventQueue();
+    expect(gateway.bodies['POST /chat/chat/channels/10/read'], {
+      'lastReadMessageId': 'm3',
+    });
   });
 
   test('시스템 메시지는 이름을 찾지 않고 시스템으로 보인다', () async {

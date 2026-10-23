@@ -98,6 +98,16 @@ void main() {
     expect(server.calls, ['DELETE /chat/chat/channels/10/messages/m1']);
   });
 
+  test('읽음은 마지막으로 읽은 메시지 id 를 보낸다', () async {
+    final server = _RecordingServer();
+
+    await _repository(server).markRead(10, 'm2');
+
+    expect(server.bodies['POST /chat/chat/channels/10/read'], {
+      'lastReadMessageId': 'm2',
+    });
+  });
+
   test('목록은 before 가 있을 때만 커서를 붙인다', () async {
     final server = _RecordingServer();
     final repository = _repository(server);
