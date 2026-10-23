@@ -66,6 +66,9 @@ app.*.map.json
 # Firebase
 google-services.json
 GoogleService-Info.plist
+# flutterfire configure 산출물. 위 파일들과 같은 프로젝트 값이라 같이 뺀다.
+firebase.json
+lib/firebase_options.dart
 
 # FVM (Flutter Version Management)
 .fvm/

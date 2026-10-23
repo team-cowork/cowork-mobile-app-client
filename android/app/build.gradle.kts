@@ -5,6 +5,13 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+// google-services.json 은 커밋하지 않는다(.gitignore). 파일이 없는 PC·CI 에서도 빌드가
+// 되도록 있을 때만 플러그인을 건다. 없으면 Firebase 초기화가 실패하고 푸시만 꺼진다.
+// flutterfire configure 를 다시 돌리면 위 plugins 에 id 를 또 넣으니 지워야 한다.
+if (file("google-services.json").exists()) {
+    apply(plugin = "com.google.gms.google-services")
+}
+
 android {
     namespace = "com.cowork.mobile"
     compileSdk = flutter.compileSdkVersion

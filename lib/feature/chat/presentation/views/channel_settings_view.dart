@@ -4,8 +4,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/utils/bloc_section_scaffold.dart';
-import '../../../settings/presentation/widgets/settings_section.dart';
-import '../../../settings/presentation/widgets/settings_tile.dart';
+import '../../../setting/presentation/widgets/settings_section.dart';
+import '../../../setting/presentation/widgets/settings_tile.dart';
 import '../../domain/channel_member.dart';
 import '../../domain/channel_settings.dart';
 import '../../domain/enums/channel_settings_toggle.dart';
