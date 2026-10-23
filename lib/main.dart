@@ -5,6 +5,7 @@ import 'package:cowork_app/feature/auth/data/auth_repository.dart';
 import 'package:cowork_app/feature/auth/data/dgsm_oauth_config.dart';
 import 'package:cowork_app/feature/auth/presentation/blocs/auth/auth_bloc.dart';
 import 'package:cowork_app/feature/chat/data/repositories/channel_repository.dart';
+import 'package:cowork_app/feature/chat/data/repositories/message_repository.dart';
 import 'package:cowork_app/feature/chat/data/repositories/team_repository.dart';
 import 'package:cowork_app/feature/profile/data/repositories/github_repository.dart';
 import 'package:cowork_app/feature/profile/data/repositories/profile_repository.dart';
@@ -57,6 +58,10 @@ class CoworkApp extends StatelessWidget {
         RepositoryProvider(
           create: (context) =>
               ChannelRepository(context.read<AuthRepository>()),
+        ),
+        RepositoryProvider(
+          create: (context) =>
+              MessageRepository(context.read<AuthRepository>()),
         ),
         // 채팅 서버 소켓 연결은 앱에 하나만 두고 화면들이 나눠 쓴다.
         RepositoryProvider(

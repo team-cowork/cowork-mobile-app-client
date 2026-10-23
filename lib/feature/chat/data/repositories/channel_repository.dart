@@ -23,6 +23,18 @@ class ChannelRepository {
       ChannelResponse.fromJson(json).toChannel(),
   ];
 
+  /// 채널 하나의 이름과 설명. 채널 화면 머리에 쓴다.
+  Future<({String name, String description})> fetchChannelHeader(
+    int channelId,
+  ) async {
+    final channel = ChannelResponse.fromJson(
+      unwrapPayload(
+        (await _dio.get<String>('/channels/$channelId')).data ?? '',
+      ),
+    );
+    return (name: channel.name, description: channel.description ?? '');
+  }
+
   /// 채널을 만들고 서버가 저장한 채널을 돌려준다.
   Future<Channel> createChannel(CreateChannelRequest request) async =>
       ChannelResponse.fromJson(
