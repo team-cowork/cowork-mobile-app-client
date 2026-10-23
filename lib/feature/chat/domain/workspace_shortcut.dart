@@ -10,7 +10,8 @@ class WorkspaceShortcut extends Equatable {
     this.isSelected = false,
   });
 
-  final String id;
+  /// 팀 id. 누르면 이 팀으로 홈을 바꾼다.
+  final int id;
   final String initial;
   final WorkspaceAvatarColor color;
   final bool isSelected;

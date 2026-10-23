@@ -9,7 +9,7 @@ import '../../../setting/presentation/widgets/settings_tile.dart';
 import '../../domain/channel_member.dart';
 import '../../domain/channel_settings.dart';
 import '../../domain/enums/channel_settings_toggle.dart';
-import '../viewModels/group_chat_bloc.dart';
+import '../blocs/group_chat/group_chat_bloc.dart';
 import '../widgets/channel_settings_header.dart';
 import '../widgets/chat_color_mapping.dart';
 

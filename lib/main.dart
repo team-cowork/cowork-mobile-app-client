@@ -4,10 +4,13 @@ import 'package:cowork_app/network/dev_http_overrides.dart';
 import 'package:cowork_app/feature/auth/data/auth_repository.dart';
 import 'package:cowork_app/feature/auth/data/dgsm_oauth_config.dart';
 import 'package:cowork_app/feature/auth/presentation/blocs/auth/auth_bloc.dart';
-import 'package:cowork_app/feature/profile/data/github_repository.dart';
-import 'package:cowork_app/feature/profile/data/profile_repository.dart';
+import 'package:cowork_app/feature/chat/data/repositories/channel_repository.dart';
+import 'package:cowork_app/feature/chat/data/repositories/team_repository.dart';
+import 'package:cowork_app/feature/profile/data/repositories/github_repository.dart';
+import 'package:cowork_app/feature/profile/data/repositories/profile_repository.dart';
 import 'package:cowork_app/feature/setting/data/preference_repository.dart';
 import 'package:cowork_app/feature/setting/data/push_repository.dart';
+import 'package:cowork_app/network/chat_socket.dart';
 import 'package:cowork_design_system/design_system.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
@@ -48,6 +51,18 @@ class CoworkApp extends StatelessWidget {
               ProfileRepository(context.read<AuthRepository>()),
         ),
         RepositoryProvider(create: (_) => GithubRepository()),
+        RepositoryProvider(
+          create: (context) => TeamRepository(context.read<AuthRepository>()),
+        ),
+        RepositoryProvider(
+          create: (context) =>
+              ChannelRepository(context.read<AuthRepository>()),
+        ),
+        // 채팅 서버 소켓 연결은 앱에 하나만 두고 화면들이 나눠 쓴다.
+        RepositoryProvider(
+          create: (context) => ChatSocket(context.read<AuthRepository>()),
+          dispose: (socket) => socket.dispose(),
+        ),
         RepositoryProvider(
           create: (context) =>
               PreferenceRepository(context.read<AuthRepository>()),

@@ -7,7 +7,7 @@ import '../../../../core/utils/bloc_scaffold.dart';
 import '../../data/issues_store.dart';
 import '../../domain/enums/issue_status.dart';
 import '../../domain/issue.dart';
-import '../viewModels/issues_bloc.dart';
+import '../blocs/issues/issues_bloc.dart';
 import '../widgets/issue_card.dart';
 import '../widgets/issue_color_mapping.dart';
 import '../widgets/issues_header.dart';

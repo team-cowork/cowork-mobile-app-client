@@ -5,7 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/utils/bloc_section_scaffold.dart';
 import '../../domain/message_thread.dart';
-import '../viewModels/group_chat_bloc.dart';
+import '../blocs/group_chat/group_chat_bloc.dart';
 import '../widgets/chat_message_row.dart';
 
 class ThreadView extends StatelessWidget {

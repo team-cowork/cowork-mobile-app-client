@@ -7,7 +7,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/utils/async_state.dart';
 import '../../../../core/utils/bloc_scaffold.dart';
 import '../../../auth/presentation/blocs/auth/auth_bloc.dart';
-import '../../../profile/data/profile_repository.dart';
+import '../../../profile/data/repositories/profile_repository.dart';
 import '../../data/preference_repository.dart';
 import '../../data/push_repository.dart';
 import '../blocs/settings/settings_bloc.dart';
