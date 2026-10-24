@@ -43,7 +43,7 @@ final GoRouter appRouter = GoRouter(
     ),
     GoRoute(
       path: '/chat/channel',
-      builder: (context, state) => const ChannelView(),
+      builder: (context, state) => ChannelView(channelId: state.extra! as int),
     ),
     GoRoute(
       path: '/chat/channel/thread',

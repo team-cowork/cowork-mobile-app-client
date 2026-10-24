@@ -17,7 +17,8 @@ mixin _$ChannelResponse {
 
 /// 없으면 fromJson 이 던진다.
  int get id; String get name;/// 화면 종류. (예: TEXT, WEBHOOK, MEETING_NOTE)
- String? get viewType;
+ String? get viewType;/// 채널 설명. 채널 화면 머리에 보인다.
+ String? get description;
 /// Create a copy of ChannelResponse
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -30,16 +31,16 @@ $ChannelResponseCopyWith<ChannelResponse> get copyWith => _$ChannelResponseCopyW
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ChannelResponse&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.viewType, viewType) || other.viewType == viewType));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ChannelResponse&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.viewType, viewType) || other.viewType == viewType)&&(identical(other.description, description) || other.description == description));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,name,viewType);
+int get hashCode => Object.hash(runtimeType,id,name,viewType,description);
 
 @override
 String toString() {
-  return 'ChannelResponse(id: $id, name: $name, viewType: $viewType)';
+  return 'ChannelResponse(id: $id, name: $name, viewType: $viewType, description: $description)';
 }
 
 
@@ -50,7 +51,7 @@ abstract mixin class $ChannelResponseCopyWith<$Res>  {
   factory $ChannelResponseCopyWith(ChannelResponse value, $Res Function(ChannelResponse) _then) = _$ChannelResponseCopyWithImpl;
 @useResult
 $Res call({
- int id, String name, String? viewType
+ int id, String name, String? viewType, String? description
 });
 
 
@@ -67,11 +68,12 @@ class _$ChannelResponseCopyWithImpl<$Res>
 
 /// Create a copy of ChannelResponse
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? name = null,Object? viewType = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? name = null,Object? viewType = freezed,Object? description = freezed,}) {
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as int,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String,viewType: freezed == viewType ? _self.viewType : viewType // ignore: cast_nullable_to_non_nullable
+as String?,description: freezed == description ? _self.description : description // ignore: cast_nullable_to_non_nullable
 as String?,
   ));
 }
@@ -157,10 +159,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( int id,  String name,  String? viewType)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( int id,  String name,  String? viewType,  String? description)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _ChannelResponse() when $default != null:
-return $default(_that.id,_that.name,_that.viewType);case _:
+return $default(_that.id,_that.name,_that.viewType,_that.description);case _:
   return orElse();
 
 }
@@ -178,10 +180,10 @@ return $default(_that.id,_that.name,_that.viewType);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( int id,  String name,  String? viewType)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( int id,  String name,  String? viewType,  String? description)  $default,) {final _that = this;
 switch (_that) {
 case _ChannelResponse():
-return $default(_that.id,_that.name,_that.viewType);case _:
+return $default(_that.id,_that.name,_that.viewType,_that.description);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -198,10 +200,10 @@ return $default(_that.id,_that.name,_that.viewType);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( int id,  String name,  String? viewType)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( int id,  String name,  String? viewType,  String? description)?  $default,) {final _that = this;
 switch (_that) {
 case _ChannelResponse() when $default != null:
-return $default(_that.id,_that.name,_that.viewType);case _:
+return $default(_that.id,_that.name,_that.viewType,_that.description);case _:
   return null;
 
 }
@@ -213,7 +215,7 @@ return $default(_that.id,_that.name,_that.viewType);case _:
 @JsonSerializable()
 
 class _ChannelResponse extends ChannelResponse {
-  const _ChannelResponse({required this.id, this.name = '', this.viewType}): super._();
+  const _ChannelResponse({required this.id, this.name = '', this.viewType, this.description}): super._();
   factory _ChannelResponse.fromJson(Map<String, dynamic> json) => _$ChannelResponseFromJson(json);
 
 /// 없으면 fromJson 이 던진다.
@@ -221,6 +223,8 @@ class _ChannelResponse extends ChannelResponse {
 @override@JsonKey() final  String name;
 /// 화면 종류. (예: TEXT, WEBHOOK, MEETING_NOTE)
 @override final  String? viewType;
+/// 채널 설명. 채널 화면 머리에 보인다.
+@override final  String? description;
 
 /// Create a copy of ChannelResponse
 /// with the given fields replaced by the non-null parameter values.
@@ -235,16 +239,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ChannelResponse&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.viewType, viewType) || other.viewType == viewType));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ChannelResponse&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.viewType, viewType) || other.viewType == viewType)&&(identical(other.description, description) || other.description == description));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,name,viewType);
+int get hashCode => Object.hash(runtimeType,id,name,viewType,description);
 
 @override
 String toString() {
-  return 'ChannelResponse(id: $id, name: $name, viewType: $viewType)';
+  return 'ChannelResponse(id: $id, name: $name, viewType: $viewType, description: $description)';
 }
 
 
@@ -255,7 +259,7 @@ abstract mixin class _$ChannelResponseCopyWith<$Res> implements $ChannelResponse
   factory _$ChannelResponseCopyWith(_ChannelResponse value, $Res Function(_ChannelResponse) _then) = __$ChannelResponseCopyWithImpl;
 @override @useResult
 $Res call({
- int id, String name, String? viewType
+ int id, String name, String? viewType, String? description
 });
 
 
@@ -272,11 +276,12 @@ class __$ChannelResponseCopyWithImpl<$Res>
 
 /// Create a copy of ChannelResponse
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? name = null,Object? viewType = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? name = null,Object? viewType = freezed,Object? description = freezed,}) {
   return _then(_ChannelResponse(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as int,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String,viewType: freezed == viewType ? _self.viewType : viewType // ignore: cast_nullable_to_non_nullable
+as String?,description: freezed == description ? _self.description : description // ignore: cast_nullable_to_non_nullable
 as String?,
   ));
 }

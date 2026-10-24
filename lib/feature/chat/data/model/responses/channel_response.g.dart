@@ -11,6 +11,7 @@ _ChannelResponse _$ChannelResponseFromJson(Map<String, dynamic> json) =>
       id: (json['id'] as num).toInt(),
       name: json['name'] as String? ?? '',
       viewType: json['viewType'] as String?,
+      description: json['description'] as String?,
     );
 
 Map<String, dynamic> _$ChannelResponseToJson(_ChannelResponse instance) =>
@@ -18,4 +19,5 @@ Map<String, dynamic> _$ChannelResponseToJson(_ChannelResponse instance) =>
       'id': instance.id,
       'name': instance.name,
       'viewType': instance.viewType,
+      'description': instance.description,
     };

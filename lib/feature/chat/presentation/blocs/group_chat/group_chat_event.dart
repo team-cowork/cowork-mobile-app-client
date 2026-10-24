@@ -3,8 +3,6 @@ part of 'group_chat_bloc.dart';
 sealed class GroupChatEvent extends Equatable {
   const GroupChatEvent();
 
-  const factory GroupChatEvent.conversationRequested() = ConversationRequested;
-
   const factory GroupChatEvent.threadRequested() = ThreadRequested;
 
   const factory GroupChatEvent.membersRequested() = MembersRequested;
@@ -18,10 +16,6 @@ sealed class GroupChatEvent extends Equatable {
 
   @override
   List<Object?> get props => [];
-}
-
-final class ConversationRequested extends GroupChatEvent {
-  const ConversationRequested();
 }
 
 final class ThreadRequested extends GroupChatEvent {

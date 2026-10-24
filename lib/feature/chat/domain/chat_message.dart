@@ -1,6 +1,7 @@
 import 'package:equatable/equatable.dart';
 
 import '../../profile/domain/profile_entity.dart';
+import 'chat_attachment.dart';
 import 'enums/chat_avatar_color.dart';
 
 class ChatMessage extends Equatable {
@@ -10,6 +11,8 @@ class ChatMessage extends Equatable {
     required this.avatarColor,
     required this.timestamp,
     required this.text,
+    this.attachments = const [],
+    this.editable = false,
   });
 
   final String id;
@@ -18,6 +21,20 @@ class ChatMessage extends Equatable {
   final String timestamp;
   final String text;
 
+  /// 붙은 파일. 파일만 보낸 메시지는 [text] 가 비어 있을 수 있다.
+  final List<ChatAttachment> attachments;
+
+  /// 수정·삭제할 수 있는 메시지인지.
+  final bool editable;
+
   @override
-  List<Object?> get props => [id, author, avatarColor, timestamp, text];
+  List<Object?> get props => [
+    id,
+    author,
+    avatarColor,
+    timestamp,
+    text,
+    attachments,
+    editable,
+  ];
 }

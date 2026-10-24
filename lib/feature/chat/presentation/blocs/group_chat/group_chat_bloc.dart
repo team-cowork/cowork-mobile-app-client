@@ -2,13 +2,11 @@ import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../../core/utils/async_state.dart';
-import '../../../data/channel_conversation_store.dart';
 import '../../../data/channel_members_store.dart';
 import '../../../data/channel_settings_store.dart';
 import '../../../data/thread_store.dart';
 import '../../../domain/channel_member.dart';
 import '../../../domain/channel_settings.dart';
-import '../../../domain/chat_message.dart';
 import '../../../domain/enums/channel_settings_toggle.dart';
 import '../../../domain/message_thread.dart';
 
@@ -17,32 +15,10 @@ part 'group_chat_state.dart';
 
 class GroupChatBloc extends Bloc<GroupChatEvent, GroupChatState> {
   GroupChatBloc() : super(const GroupChatState()) {
-    on<ConversationRequested>(_onLoadConversation);
     on<ThreadRequested>(_onLoadThread);
     on<MembersRequested>(_onLoadMembers);
     on<GroupChatSettingsRequested>(_onLoadSettings);
     on<GroupChatSettingsToggled>(_onToggleSettings);
-  }
-
-  void _onLoadConversation(
-    ConversationRequested event,
-    Emitter<GroupChatState> emit,
-  ) {
-    emit(state.copyWith(conversation: const AsyncState.loading()));
-    try {
-      final store = ChannelConversationStore.instance;
-      emit(
-        state.copyWith(
-          conversation: AsyncState.success((
-            name: store.channelName,
-            description: store.channelDescription,
-            messages: store.messages,
-          )),
-        ),
-      );
-    } catch (_) {
-      emit(state.copyWith(conversation: const AsyncState.failure()));
-    }
   }
 
   void _onLoadThread(ThreadRequested event, Emitter<GroupChatState> emit) {
