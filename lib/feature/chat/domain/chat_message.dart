@@ -24,7 +24,7 @@ class ChatMessage extends Equatable {
   /// 붙은 파일. 파일만 보낸 메시지는 [text] 가 비어 있을 수 있다.
   final List<ChatAttachment> attachments;
 
-  /// 내가 써서 서버에 저장된 메시지라 고치거나 지울 수 있다.
+  /// 수정·삭제할 수 있는 메시지인지.
   final bool editable;
 
   @override

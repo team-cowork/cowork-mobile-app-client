@@ -28,7 +28,7 @@ ProfileEntity systemChatAuthor(int id) =>
 
 /// 서버 메시지를 화면 메시지로. 시각은 기기 시간대로 [now] 기준 상대 표기한다.
 ///
-/// [editable] 은 내가 써서 저장된 메시지인지로, 부르는 쪽이 정한다.
+/// [editable] 은 수정·삭제할 수 있는 메시지인지로, 부르는 쪽이 정한다.
 ChatMessage chatMessageOf(
   MessageResponse message,
   ProfileEntity author, {
