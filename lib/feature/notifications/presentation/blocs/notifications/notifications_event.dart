@@ -31,3 +31,8 @@ final class NotificationsReadRequested extends NotificationsEvent {
   @override
   List<Object?> get props => [id];
 }
+
+/// 저장소의 알림 목록이 바뀌었다. 화면이 아니라 Bloc 이 스스로 넣는다.
+final class _NotificationsChanged extends NotificationsEvent {
+  const _NotificationsChanged();
+}
