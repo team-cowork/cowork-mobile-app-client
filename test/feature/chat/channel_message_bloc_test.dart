@@ -450,4 +450,32 @@ void main() {
 
     expect(errors, hasLength(2));
   });
+
+  test('내 정보 조회가 실패해도 대화는 보여 주고, 보낼 때 다시 읽는다', () async {
+    final gateway = FakeMessageGateway(
+      messages: [messageJson('m2', 1, '내 메시지'), messageJson('m1', 2, '남의 메시지')],
+    )..failing = 'GET /user/users/me';
+    final bloc = await _loaded(gateway, FakeChatSocket());
+    addTearDown(bloc.close);
+
+    expect(_texts(bloc), ['남의 메시지', '내 메시지']);
+    expect(_data(bloc).messages.last.author.name, '나');
+    expect([for (final m in _data(bloc).messages) m.editable], [false, false]);
+
+    bloc.add(const ChannelMessageEvent.sent('아직 못 보냄'));
+    await pumpEventQueue();
+    expect(gateway.calls, contains('GET /user/users/me'));
+    expect(_data(bloc).errorMessage, isNotNull);
+    expect(_texts(bloc), ['남의 메시지', '내 메시지']);
+
+    gateway.failing = null;
+    bloc.add(const ChannelMessageEvent.sent('이제 보냄'));
+    await pumpEventQueue();
+    expect(
+      gateway.bodies['POST /chat/chat/channels/10/messages']?['content'],
+      '이제 보냄',
+    );
+    expect(_texts(bloc), ['남의 메시지', '내 메시지', '이제 보냄']);
+    expect(_data(bloc).messages[1].editable, isTrue);
+  });
 }

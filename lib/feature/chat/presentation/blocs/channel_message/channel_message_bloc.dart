@@ -127,21 +127,13 @@ class ChannelMessageBloc
     try {
       final headerRequest = _channelRepository.fetchChannelHeader(channelId);
       final messagesRequest = _messageRepository.fetchMessages(channelId);
-      final meRequest = _profileRepository.fetchMe();
-      // 셋을 같이 보내고, 하나라도 실패하면 그 예외를 그대로 받는다.
-      await Future.wait([
-        headerRequest,
-        messagesRequest,
-        meRequest,
-      ], eagerError: true);
+      // 내 정보는 보낼 때와 수정·삭제 표시에만 쓴다. 실패해도 대화는 보여 준다.
+      final meRequest = _loadMe();
+      // 채널과 메시지는 같이 보내고, 하나라도 실패하면 그 예외를 그대로 받는다.
+      await Future.wait([headerRequest, messagesRequest], eagerError: true);
       final header = await headerRequest;
       final messages = await messagesRequest;
-      final me = await meRequest;
-      final myId = me.id;
-      if (myId != null) {
-        _myId = myId;
-        _authors[myId] = chatAuthorOf(myId, me.name ?? '');
-      }
+      await meRequest;
       await _fetchAuthors(messages);
 
       _header = header;
@@ -204,10 +196,12 @@ class ChannelMessageBloc
   ) async {
     final text = event.text.trim();
     if (_header == null || text.isEmpty) return;
+    // 들어올 때 내 정보를 못 읽었으면 보내기 전에 한 번 더 읽는다.
+    if (_myId == null) await _loadMe();
     final myId = _myId;
     if (myId == null) {
       // 입력창은 이미 비워졌으니 조용히 버리지 않고 알린다.
-      _emit(emit, error: '내 정보를 불러오지 못해 보낼 수 없어요. 다시 들어와 주세요.');
+      _emit(emit, error: '내 정보를 불러오지 못해 보낼 수 없어요. 잠시 후 다시 시도해 주세요.');
       return;
     }
 
@@ -442,6 +436,19 @@ class ChannelMessageBloc
       ..addAll(page.reversed)
       ..addAll(newer)
       ..addAll(pending);
+  }
+
+  /// 내 id 와 이름을 읽어 [_myId]·[_authors] 에 넣는다. 실패하면 로그만 남긴다.
+  Future<void> _loadMe() async {
+    try {
+      final me = await _profileRepository.fetchMe();
+      final myId = me.id;
+      if (myId == null) return;
+      _myId = myId;
+      _authors[myId] = chatAuthorOf(myId, me.name ?? '');
+    } catch (e, s) {
+      Logger.e('내 정보 조회 실패', tag: 'Chat', error: e, stackTrace: s);
+    }
   }
 
   /// [messages] 작성자 중 이름을 모르는 사람을 한꺼번에 받아 [_authors] 에 넣는다.
