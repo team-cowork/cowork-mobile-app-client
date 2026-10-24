@@ -7,11 +7,13 @@ import 'package:cowork_app/feature/auth/presentation/blocs/auth/auth_bloc.dart';
 import 'package:cowork_app/feature/chat/data/repositories/channel_repository.dart';
 import 'package:cowork_app/feature/chat/data/repositories/message_repository.dart';
 import 'package:cowork_app/feature/chat/data/repositories/team_repository.dart';
+import 'package:cowork_app/feature/notifications/data/repositories/notification_repository.dart';
 import 'package:cowork_app/feature/profile/data/repositories/github_repository.dart';
 import 'package:cowork_app/feature/profile/data/repositories/profile_repository.dart';
 import 'package:cowork_app/feature/setting/data/preference_repository.dart';
 import 'package:cowork_app/feature/setting/data/push_repository.dart';
 import 'package:cowork_app/network/chat_socket.dart';
+import 'package:cowork_app/network/notification_stream.dart';
 import 'package:cowork_design_system/design_system.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
@@ -75,17 +77,36 @@ class CoworkApp extends StatelessWidget {
         RepositoryProvider(
           create: (context) => PushRepository(context.read<AuthRepository>()),
         ),
+        // 알림 SSE 는 로그인한 동안 앱 전체에서 하나를 열어 두고 받은 알림을 쌓는다.
+        RepositoryProvider(
+          create: (context) => NotificationRepository(
+            NotificationStream(context.read<AuthRepository>()),
+          ),
+          dispose: (repository) => repository.dispose(),
+        ),
       ],
       child: BlocProvider(
         create: (context) =>
             AuthBloc(repository: context.read<AuthRepository>())
               ..add(const AuthEvent.sessionRestored()),
-        child: MaterialApp.router(
-          title: 'cowork',
-          debugShowCheckedModeBanner: false,
-          // 디자인이 다크 전용이라 시스템 설정과 무관하게 다크로 고정한다.
-          theme: AppTheme.dark(),
-          routerConfig: appRouter,
+        child: BlocListener<AuthBloc, AuthState>(
+          listenWhen: (previous, current) =>
+              (previous is Authenticated) != (current is Authenticated),
+          listener: (context, state) {
+            final notifications = context.read<NotificationRepository>();
+            if (state is Authenticated) {
+              notifications.start();
+            } else {
+              notifications.stop();
+            }
+          },
+          child: MaterialApp.router(
+            title: 'cowork',
+            debugShowCheckedModeBanner: false,
+            // 디자인이 다크 전용이라 시스템 설정과 무관하게 다크로 고정한다.
+            theme: AppTheme.dark(),
+            routerConfig: appRouter,
+          ),
         ),
       ),
     );
