@@ -13,11 +13,20 @@ class AuthGate extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocConsumer<AuthBloc, AuthState>(
-      listenWhen: (_, state) =>
-          state is Unauthenticated && state.message != null,
-      listener: (context, state) => ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text((state as Unauthenticated).message!)),
-      ),
+      listenWhen: (previous, state) =>
+          state is Unauthenticated &&
+          (previous is Authenticated || state.message != null),
+      listener: (context, state) {
+        // 로그아웃·세션 만료 때 이 화면 위에 쌓인 채팅·설정 화면과 바텀시트를 걷어야
+        // 로그인 화면이 보인다. `go('/')` 는 시트처럼 page 가 아닌 route 를 남긴다.
+        Navigator.of(context).popUntil((route) => route.isFirst);
+        final message = (state as Unauthenticated).message;
+        if (message != null) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(message)));
+        }
+      },
       builder: (context, state) => switch (state) {
         Authenticated() => const MainShell(),
         AuthUnknown() => const BaseScaffold(

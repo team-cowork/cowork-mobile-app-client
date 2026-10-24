@@ -16,7 +16,8 @@ sealed class AuthState extends Equatable {
   /// 로그인됨.
   const factory AuthState.authenticated() = Authenticated;
 
-  /// 로그아웃 상태. [message] 가 있으면 직전 로그인 시도가 실패한 것이다.
+  /// 로그아웃 상태. [message] 가 있으면 직전 로그인 시도가 실패했거나 세션이
+  /// 만료된 것이다.
   const factory AuthState.unauthenticated({String? message}) = Unauthenticated;
 
   @override
