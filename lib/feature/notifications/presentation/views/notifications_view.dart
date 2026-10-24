@@ -80,13 +80,19 @@ class _NotificationsBody extends StatelessWidget {
   }
 }
 
-/// 읽음으로 바꾸고, 채널 알림이면 그 채널로 간다.
+/// 읽음으로 바꾸고, 채널 알림이면 그 채널로 간다. 채널 없이 팀만 있는 알림이면
+/// 팀 id 를 돌려주며 닫아, 알림 화면을 연 채팅 홈이 그 팀으로 바꾸게 한다.
 void _open(BuildContext context, NotificationItem item) {
   context.read<NotificationsBloc>().add(
     NotificationsReadRequested(id: item.id),
   );
   final channelId = item.channelId;
-  if (channelId != null) context.push('/chat/channel', extra: channelId);
+  final teamId = item.teamId;
+  if (channelId != null) {
+    context.push('/chat/channel', extra: channelId);
+  } else if (teamId != null && context.canPop()) {
+    context.pop(teamId);
+  }
 }
 
 class _NotificationsHeader extends StatelessWidget {

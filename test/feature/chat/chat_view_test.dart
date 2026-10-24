@@ -1,10 +1,16 @@
 import 'dart:async';
 
 import 'package:cowork_app/feature/chat/presentation/views/chat_view.dart';
+import 'package:cowork_app/feature/notifications/data/repositories/notification_repository.dart';
+import 'package:cowork_app/feature/notifications/presentation/views/notifications_view.dart';
+import 'package:cowork_app/network/chat_socket.dart';
 import 'package:cowork_design_system/design_system.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 
+import '../notifications/notification_test_stream.dart';
 import 'chat_test_server.dart';
 
 void main() {
@@ -245,5 +251,59 @@ void main() {
 
     expect(find.text('아직 속한 팀이 없어요'), findsOneWidget);
     expect(find.text('홈을 불러오지 못했어요'), findsNothing);
+  });
+
+  testWidgets('팀이 없어도 초대 알림을 누르면 그 팀으로 들어간다', (tester) async {
+    final server = FakeChatServer(teams: []);
+    final stream = FakeNotificationStream();
+    final notifications = NotificationRepository(stream)..start();
+    addTearDown(notifications.dispose);
+    await tester.pumpWidget(
+      MultiRepositoryProvider(
+        providers: [
+          RepositoryProvider.value(value: teamRepositoryOf(server)),
+          RepositoryProvider.value(value: channelRepositoryOf(server)),
+          RepositoryProvider<ChatSocket>.value(value: FakeChatSocket()),
+          RepositoryProvider.value(value: notifications),
+        ],
+        child: MaterialApp.router(
+          theme: AppTheme.dark(),
+          routerConfig: GoRouter(
+            routes: [
+              GoRoute(
+                path: '/',
+                builder: (_, _) => const ChatView(),
+                routes: [
+                  GoRoute(
+                    path: 'notifications',
+                    builder: (_, _) => const NotificationsView(),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('아직 속한 팀이 없어요'), findsOneWidget);
+
+    // 홈을 연 뒤에 초대받았다.
+    server.teams.add({
+      'id': 5,
+      'name': '초대받은 팀',
+      'iconUrl': null,
+      'myRole': 'MEMBER',
+    });
+    stream.push({'type': 'MEMBER_INVITED', 'title': '팀 초대', 'teamId': 5});
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.bySemanticsLabel('알림'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('팀 초대'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('초대받은 팀'), findsOneWidget);
+    expect(find.text('아직 속한 팀이 없어요'), findsNothing);
   });
 }

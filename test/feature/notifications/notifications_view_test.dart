@@ -19,15 +19,28 @@ void main() {
     addTearDown(repository.dispose);
   }
 
-  Future<void> pumpNotifications(WidgetTester tester) async {
+  Future<void> pumpNotifications(
+    WidgetTester tester, {
+    String initialLocation = '/notifications',
+  }) async {
     await tester.pumpWidget(
       RepositoryProvider.value(
         value: repository,
         child: MaterialApp.router(
           theme: AppTheme.dark(),
           routerConfig: GoRouter(
+            initialLocation: initialLocation,
             routes: [
-              GoRoute(path: '/', builder: (_, _) => const NotificationsView()),
+              GoRoute(
+                path: '/',
+                builder: (_, _) => const _Home(),
+                routes: [
+                  GoRoute(
+                    path: 'notifications',
+                    builder: (_, _) => const NotificationsView(),
+                  ),
+                ],
+              ),
               GoRoute(
                 path: '/chat/channel',
                 builder: (_, state) => Text('채널 ${state.extra}'),
@@ -77,6 +90,20 @@ void main() {
     expect(repository.items.single.read, isTrue);
   });
 
+  testWidgets('팀 알림을 누르면 읽음으로 바꾸고 팀 id 를 돌려주며 닫힌다', (tester) async {
+    startRepository();
+    stream.push({'type': 'MEMBER_INVITED', 'title': '팀 초대', 'teamId': 3});
+    await pumpNotifications(tester, initialLocation: '/');
+    await tester.tap(find.text('알림 열기'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('팀 초대'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('돌려받은 팀 3'), findsOneWidget);
+    expect(repository.items.single.read, isTrue);
+  });
+
   testWidgets('채널도 팀도 없는 알림은 읽음으로만 바꾼다', (tester) async {
     startRepository();
     stream.push({'type': 'PROJECT_TASK_ASSIGNED', 'title': '태스크 할당'});
@@ -101,4 +128,32 @@ void main() {
 
     expect([for (final n in repository.items) n.read], [true, true]);
   });
+}
+
+/// 알림 화면을 열고, 닫히며 돌려받은 팀 id 를 보여 주는 홈.
+class _Home extends StatefulWidget {
+  const _Home();
+
+  @override
+  State<_Home> createState() => _HomeState();
+}
+
+class _HomeState extends State<_Home> {
+  int? _teamId;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        TextButton(
+          onPressed: () async {
+            final teamId = await context.push<int>('/notifications');
+            setState(() => _teamId = teamId);
+          },
+          child: const Text('알림 열기'),
+        ),
+        Text('돌려받은 팀 $_teamId'),
+      ],
+    );
+  }
 }
