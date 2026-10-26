@@ -36,6 +36,13 @@ Dio createDio(ApiService service) {
       // 본문을 문자열 그대로 받는다. 응답을 벗겨내는 쪽이 raw JSON 을 파싱하는 구조라
       // dio 의 자동 디코딩을 끄는 편이 분기가 하나 줄어든다.
       responseType: ResponseType.plain,
+      // 응답 없는 요청을 끝없이 기다리지 않는다. 토큰 갱신이 걸려 있으면 그 사이
+      // 로그아웃·재로그인이 끼어들 틈도 길어진다. 시간이 지나면 응답 없는 실패라
+      // 네트워크 오류와 똑같이 다뤄진다.
+      // ponytail: sendTimeout 은 두지 않는다. 느린 망에서 사진 업로드가 끊긴다.
+      // 스트림 응답(SSE 등)을 받을 때는 receiveTimeout 을 그 요청에서 꺼야 한다.
+      connectTimeout: const Duration(seconds: 10),
+      receiveTimeout: const Duration(seconds: 20),
     ),
   );
   // ponytail: 본문과 헤더는 일부러 뺐다. 요청 본문엔 code_verifier / refresh_token 이,
