@@ -4,7 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/utils/async_state.dart';
 import '../../../../core/utils/command_bloc.dart';
-import '../../../../core/utils/create_sheet.dart';
+import '../../../../shared/widgets/create_sheet.dart';
 import '../../data/model/requests/create_channel_request.dart';
 import '../../data/repositories/channel_repository.dart';
 import '../../domain/channel.dart';

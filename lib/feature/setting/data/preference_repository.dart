@@ -1,6 +1,6 @@
 import 'package:dio/dio.dart';
 
-import '../../../network/dio_client.dart';
+import '../../../core/network/dio_client.dart';
 import '../../auth/data/auth_repository.dart';
 import 'account_preference.dart';
 

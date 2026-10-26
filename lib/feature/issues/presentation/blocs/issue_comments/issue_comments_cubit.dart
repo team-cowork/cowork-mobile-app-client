@@ -1,7 +1,7 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../../../shared/domain/profile_entity.dart';
 import '../../../../profile/data/profile_store.dart';
-import '../../../../profile/domain/profile_entity.dart';
 import '../../../data/issue_comments_store.dart';
 import '../../../domain/issue_comment.dart';
 

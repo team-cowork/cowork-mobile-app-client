@@ -1,7 +1,7 @@
 import 'package:equatable/equatable.dart';
 
-import '../../../core/domain/enums/chat_avatar_color.dart';
-import '../../profile/domain/profile_entity.dart';
+import '../../../shared/domain/enums/chat_avatar_color.dart';
+import '../../../shared/domain/profile_entity.dart';
 import 'chat_attachment.dart';
 
 class ChatMessage extends Equatable {

@@ -2,7 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../network/http_error_message.dart';
+import '../network/http_error_message.dart';
 import 'async_state.dart';
 import 'logger.dart';
 

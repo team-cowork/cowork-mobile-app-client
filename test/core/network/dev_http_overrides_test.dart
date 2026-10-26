@@ -1,4 +1,4 @@
-import 'package:cowork_app/network/dev_http_overrides.dart';
+import 'package:cowork_app/core/network/dev_http_overrides.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

@@ -2,7 +2,7 @@ import 'package:cowork_design_system/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../../profile/domain/profile_entity.dart';
+import '../../../../shared/domain/profile_entity.dart';
 import '../../data/issues_store.dart';
 import '../../domain/enums/issue_priority.dart';
 import '../../domain/enums/issue_status.dart';

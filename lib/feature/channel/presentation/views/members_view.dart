@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../../core/domain/enums/chat_avatar_color.dart';
-import '../../../../core/utils/bloc_scaffold.dart';
+import '../../../../shared/domain/enums/chat_avatar_color.dart';
+import '../../../../shared/widgets/bloc_scaffold.dart';
 import '../../domain/channel_member.dart';
 import '../blocs/channel_members/channel_members_bloc.dart';
 

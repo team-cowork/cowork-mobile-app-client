@@ -1,4 +1,4 @@
-import '../../profile/domain/profile_entity.dart';
+import '../../../shared/domain/profile_entity.dart';
 import '../domain/issue_comment.dart';
 
 class IssueCommentsStore {

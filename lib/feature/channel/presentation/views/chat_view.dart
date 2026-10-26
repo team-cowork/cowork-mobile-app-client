@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../../core/utils/bloc_scaffold.dart';
-import '../../../../network/chat_socket.dart';
+import '../../../../core/network/chat_socket.dart';
+import '../../../../shared/widgets/bloc_scaffold.dart';
 import '../../../team/data/repositories/team_repository.dart';
 import '../../../team/presentation/widgets/new_team_sheet.dart';
 import '../../../team/presentation/widgets/team_menu_sheet.dart';

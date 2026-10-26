@@ -3,10 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/network/chat_socket.dart';
 import '../../../../core/utils/app_lifecycle.dart';
 import '../../../../core/utils/async_state.dart';
-import '../../../../core/utils/bloc_scaffold.dart';
-import '../../../../network/chat_socket.dart';
+import '../../../../shared/widgets/bloc_scaffold.dart';
 import '../../../channel/data/repositories/channel_repository.dart';
 import '../../../profile/data/repositories/profile_repository.dart';
 import '../../data/repositories/message_repository.dart';

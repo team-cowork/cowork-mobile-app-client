@@ -1,7 +1,7 @@
 import 'package:cowork_design_system/design_system.dart';
 import 'package:flutter/material.dart';
 
-import '../../../profile/domain/profile_entity.dart';
+import '../../../../shared/domain/profile_entity.dart';
 
 class IssueAssigneeAvatar extends StatelessWidget {
   const IssueAssigneeAvatar({

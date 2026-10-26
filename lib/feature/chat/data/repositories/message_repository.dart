@@ -1,6 +1,6 @@
 import 'package:dio/dio.dart';
 
-import '../../../../network/dio_client.dart';
+import '../../../../core/network/dio_client.dart';
 import '../../../auth/data/auth_repository.dart';
 import '../model/requests/edit_message_request.dart';
 import '../model/requests/read_channel_request.dart';

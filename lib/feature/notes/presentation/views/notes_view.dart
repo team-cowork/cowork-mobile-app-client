@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../../core/utils/bloc_scaffold.dart';
+import '../../../../shared/widgets/bloc_scaffold.dart';
 import '../../domain/note.dart';
 import '../blocs/notes/notes_bloc.dart';
 

@@ -1,6 +1,6 @@
 import 'package:json_annotation/json_annotation.dart';
 
-import '../../../../network/chat_socket.dart';
+import '../../../../core/network/chat_socket.dart';
 import '../../domain/channel.dart';
 import 'channel_view_type.dart';
 import 'responses/channel_event_response.dart';

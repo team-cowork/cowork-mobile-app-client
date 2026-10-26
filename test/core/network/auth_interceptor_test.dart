@@ -1,6 +1,6 @@
 import 'dart:typed_data';
 
-import 'package:cowork_app/network/auth_interceptor.dart';
+import 'package:cowork_app/core/network/auth_interceptor.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 

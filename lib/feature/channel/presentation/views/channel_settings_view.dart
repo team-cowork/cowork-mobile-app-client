@@ -3,10 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../../core/utils/bloc_scaffold.dart';
-import '../../../../core/utils/chat_avatar_color_mapping.dart';
-import '../../../setting/presentation/widgets/settings_section.dart';
-import '../../../setting/presentation/widgets/settings_tile.dart';
+import '../../../../shared/extensions/chat_avatar_color_mapping.dart';
+import '../../../../shared/widgets/bloc_scaffold.dart';
+import '../../../../shared/widgets/settings_section.dart';
+import '../../../../shared/widgets/settings_tile.dart';
 import '../../domain/channel_member.dart';
 import '../../domain/channel_settings.dart';
 import '../../domain/enums/channel_settings_toggle.dart';

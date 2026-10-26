@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../../core/utils/bloc_scaffold.dart';
+import '../../../../shared/widgets/bloc_scaffold.dart';
 import '../../domain/message_thread.dart';
 import '../blocs/thread/thread_bloc.dart';
 import '../widgets/chat_message_row.dart';

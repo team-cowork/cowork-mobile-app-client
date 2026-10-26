@@ -4,11 +4,11 @@ import 'package:dio/dio.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../../../core/network/chat_socket.dart';
+import '../../../../../core/network/http_error_message.dart';
 import '../../../../../core/utils/async_state.dart';
-import '../../../../../core/utils/initial.dart';
 import '../../../../../core/utils/logger.dart';
-import '../../../../../network/chat_socket.dart';
-import '../../../../../network/http_error_message.dart';
+import '../../../../../shared/utils/initial.dart';
 import '../../../../team/data/model/responses/team_summary_response.dart';
 import '../../../../team/data/repositories/team_repository.dart';
 import '../../../data/model/channel_socket_event.dart';

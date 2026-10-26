@@ -1,5 +1,5 @@
+import 'package:cowork_app/core/network/chat_socket.dart';
 import 'package:cowork_app/feature/auth/data/auth_repository.dart';
-import 'package:cowork_app/network/chat_socket.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 

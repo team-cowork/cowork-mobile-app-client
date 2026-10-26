@@ -3,8 +3,8 @@ import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 
-import '../feature/auth/data/auth_repository.dart';
-import '../feature/auth/data/dgsm_oauth_config.dart';
+import '../../feature/auth/data/auth_repository.dart';
+import '../../feature/auth/data/dgsm_oauth_config.dart';
 import 'auth_interceptor.dart';
 
 /// 게이트웨이가 라우팅하는 백엔드 서비스. [name] 이 게이트웨이 경로 prefix 다.

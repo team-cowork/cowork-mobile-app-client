@@ -1,19 +1,19 @@
 import 'package:go_router/go_router.dart';
 
-import '../../feature/channel/presentation/views/channel_settings_view.dart';
-import '../../feature/channel/presentation/views/members_view.dart';
-import '../../feature/chat/presentation/views/channel_view.dart';
-import '../../feature/chat/presentation/views/dm_list_view.dart';
-import '../../feature/chat/presentation/views/thread_view.dart';
-import '../../feature/issues/domain/issue.dart';
-import '../../feature/issues/presentation/views/issue_detail_view.dart';
-import '../../feature/notes/domain/note.dart';
-import '../../feature/notes/presentation/views/note_detail_view.dart';
-import '../../feature/notes/presentation/views/note_edit_view.dart';
-import '../../feature/notifications/presentation/views/notifications_view.dart';
-import '../../feature/profile/presentation/views/edit_profile_view.dart';
-import '../../feature/search/presentation/views/search_view.dart';
-import '../../feature/setting/presentation/views/settings_view.dart';
+import '../feature/channel/presentation/views/channel_settings_view.dart';
+import '../feature/channel/presentation/views/members_view.dart';
+import '../feature/chat/presentation/views/channel_view.dart';
+import '../feature/chat/presentation/views/dm_list_view.dart';
+import '../feature/chat/presentation/views/thread_view.dart';
+import '../feature/issues/domain/issue.dart';
+import '../feature/issues/presentation/views/issue_detail_view.dart';
+import '../feature/notes/domain/note.dart';
+import '../feature/notes/presentation/views/note_detail_view.dart';
+import '../feature/notes/presentation/views/note_edit_view.dart';
+import '../feature/notifications/presentation/views/notifications_view.dart';
+import '../feature/profile/presentation/views/edit_profile_view.dart';
+import '../feature/search/presentation/views/search_view.dart';
+import '../feature/setting/presentation/views/settings_view.dart';
 import 'auth_gate.dart';
 
 final GoRouter appRouter = GoRouter(

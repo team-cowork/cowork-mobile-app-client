@@ -1,6 +1,6 @@
 import 'package:dio/dio.dart';
 
-import '../../../../network/dio_client.dart';
+import '../../../../core/network/dio_client.dart';
 import '../../../auth/data/auth_repository.dart';
 import '../model/requests/create_team_request.dart';
 import '../model/responses/team_summary_response.dart';

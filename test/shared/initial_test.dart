@@ -1,4 +1,4 @@
-import 'package:cowork_app/core/utils/initial.dart';
+import 'package:cowork_app/shared/utils/initial.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

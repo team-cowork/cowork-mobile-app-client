@@ -1,6 +1,6 @@
 import 'package:json_annotation/json_annotation.dart';
 
-import '../../../../network/chat_socket.dart';
+import '../../../../core/network/chat_socket.dart';
 import 'responses/message_response.dart';
 
 /// 채널 대화 화면이 반영할 소켓 이벤트.

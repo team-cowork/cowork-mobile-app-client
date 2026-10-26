@@ -2,7 +2,7 @@ import 'package:cowork_design_system/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../../../core/utils/bloc_scaffold.dart';
+import '../../../../shared/widgets/bloc_scaffold.dart';
 import '../blocs/personal_chat/personal_chat_bloc.dart';
 import '../widgets/dm_list_header.dart';
 import '../widgets/dm_list_tile.dart';

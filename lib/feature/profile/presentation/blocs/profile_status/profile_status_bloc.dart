@@ -2,10 +2,10 @@ import 'package:dio/dio.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../../../core/network/http_error_message.dart';
 import '../../../../../core/utils/logger.dart';
-import '../../../../../network/http_error_message.dart';
-import '../../../data/repositories/profile_repository.dart';
 import '../../../data/model/requests/update_status_request.dart';
+import '../../../data/repositories/profile_repository.dart';
 
 part 'profile_status_event.dart';
 part 'profile_status_state.dart';

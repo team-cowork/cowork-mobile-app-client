@@ -5,8 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../../core/utils/bloc_scaffold.dart';
-import '../../../../core/utils/initial.dart';
+import '../../../../shared/utils/initial.dart';
+import '../../../../shared/widgets/bloc_scaffold.dart';
 import '../../data/repositories/github_repository.dart';
 import '../../data/repositories/profile_repository.dart';
 import '../../domain/enums/user_status.dart';

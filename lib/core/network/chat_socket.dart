@@ -3,9 +3,9 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:socket_io_client/socket_io_client.dart' as io;
 
-import '../core/utils/logger.dart';
-import '../feature/auth/data/auth_repository.dart';
-import '../feature/auth/data/dgsm_oauth_config.dart';
+import '../../feature/auth/data/auth_repository.dart';
+import '../../feature/auth/data/dgsm_oauth_config.dart';
+import '../utils/logger.dart';
 
 /// 서버가 소켓으로 보낸 이벤트 하나. [data] 는 이벤트 payload(JSON 객체)다.
 typedef SocketEvent = ({String name, Map<String, dynamic> data});

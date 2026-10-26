@@ -1,5 +1,5 @@
-import '../../../core/domain/enums/chat_avatar_color.dart';
-import '../../profile/domain/profile_entity.dart';
+import '../../../shared/domain/enums/chat_avatar_color.dart';
+import '../../../shared/domain/profile_entity.dart';
 import '../domain/chat_message.dart';
 import '../domain/message_thread.dart';
 

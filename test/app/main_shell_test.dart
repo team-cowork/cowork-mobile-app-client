@@ -1,4 +1,4 @@
-import 'package:cowork_app/core/presentation/main_shell.dart';
+import 'package:cowork_app/app/main_shell.dart';
 import 'package:cowork_design_system/design_system.dart';
 import 'package:flutter_test/flutter_test.dart';
 

@@ -1,4 +1,4 @@
-import 'package:cowork_app/network/dio_client.dart';
+import 'package:cowork_app/core/network/dio_client.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

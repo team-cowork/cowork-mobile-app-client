@@ -2,7 +2,7 @@ import 'package:cowork_design_system/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import 'async_state.dart';
+import '../../core/utils/async_state.dart';
 import 'base_scaffold.dart';
 
 /// [AsyncState]를 쓰는 Bloc 화면의 공통 셸.
