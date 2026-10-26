@@ -1,46 +1,85 @@
+import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:cowork_app/core/network/dio_client.dart';
 import 'package:cowork_app/feature/auth/data/auth_repository.dart';
 import 'package:dio/dio.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 /// 실제 dio 를 거쳐 나온 DioException 으로 검증한다. 손으로 만든 DioException 은
 /// validateStatus / responseType 이 바뀌어도 통과해버려서 회귀를 못 잡는다.
 class _StubAdapter implements HttpClientAdapter {
-  _StubAdapter(this.statusCode, this.body);
+  _StubAdapter(this.statusCode, this.body, {this.hold});
 
   final int statusCode;
   final String body;
+
+  /// 주면 이게 끝날 때까지 응답을 붙잡아 둔다. 응답이 늦게 오는 상황을 만든다.
+  final Future<void>? hold;
+  int calls = 0;
 
   @override
   Future<ResponseBody> fetch(
     RequestOptions options,
     Stream<Uint8List>? requestStream,
     Future<void>? cancelFuture,
-  ) async => ResponseBody.fromString(
-    body,
-    statusCode,
-    headers: {
-      Headers.contentTypeHeader: [Headers.jsonContentType],
-    },
-  );
+  ) async {
+    calls++;
+    await hold;
+    return ResponseBody.fromString(
+      body,
+      statusCode,
+      headers: {
+        Headers.contentTypeHeader: [Headers.jsonContentType],
+      },
+    );
+  }
 
   @override
   void close({bool force = false}) {}
 }
 
-/// `createDio()` 와 같은 BaseOptions 로 POST 한 뒤 예외를 돌려준다. baseUrl 은
-/// dart-define 없이 비어 있어 여기서만 더미 값을 쓴다.
+/// 연결 자체가 안 되는 상황. dio 가 응답 없는 DioException 으로 바꿔 던진다.
+class _OfflineAdapter implements HttpClientAdapter {
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<Uint8List>? requestStream,
+    Future<void>? cancelFuture,
+  ) => throw const SocketException('no route to host');
+
+  @override
+  void close({bool force = false}) {}
+}
+
+/// `createDio()` 와 같은 BaseOptions 의 dio. baseUrl 은 dart-define 없이 비어 있어
+/// 여기서만 더미 값을 쓴다.
+Dio _dio(HttpClientAdapter adapter) => Dio(
+  BaseOptions(
+    baseUrl: 'https://example.test/api',
+    contentType: Headers.jsonContentType,
+    responseType: ResponseType.plain,
+  ),
+)..httpClientAdapter = adapter;
+
+/// refresh token 이 저장된 상태의 저장소.
+AuthRepository _signedIn(HttpClientAdapter adapter) {
+  FlutterSecureStorage.setMockInitialValues({'cowork.refresh_token': 'r'});
+  return AuthRepository(
+    dio: _dio(adapter),
+    storage: const FlutterSecureStorage(),
+  );
+}
+
+Future<String?> _storedRefreshToken() =>
+    const FlutterSecureStorage().read(key: 'cowork.refresh_token');
+
+/// `createDio()` 와 같은 BaseOptions 로 POST 한 뒤 예외를 돌려준다.
 Future<DioException> _postFailure(int status, String body) async {
-  final dio = Dio(
-    BaseOptions(
-      baseUrl: 'https://example.test/api',
-      contentType: Headers.jsonContentType,
-      responseType: ResponseType.plain,
-    ),
-  )..httpClientAdapter = _StubAdapter(status, body);
+  final dio = _dio(_StubAdapter(status, body));
   try {
     await dio.post<String>('/auth/refresh', data: {'refresh_token': 'r'});
     fail('$status 는 throw 했어야 한다');
@@ -95,5 +134,100 @@ void main() {
     );
     expect(e.response, isNull);
     expect(authExceptionOf(e).message, '네트워크에 연결할 수 없습니다.');
+  });
+
+  group('restoreSession', () {
+    test('서버가 refresh token 을 거절하면 토큰을 지우고 세션 만료를 알린다', () async {
+      final repository = _signedIn(_StubAdapter(401, '{"message":"expired"}'));
+      final expired = <void>[];
+      repository.sessionExpired.listen(expired.add);
+
+      expect(await repository.restoreSession(), isFalse);
+      await pumpEventQueue();
+
+      expect(await _storedRefreshToken(), isNull);
+      expect(expired, hasLength(1));
+    });
+
+    test('연결이 안 돼 실패하면 토큰을 남기고 만료를 알리지 않는다', () async {
+      final repository = _signedIn(_OfflineAdapter());
+      final expired = <void>[];
+      repository.sessionExpired.listen(expired.add);
+
+      expect(await repository.restoreSession(), isFalse);
+      await pumpEventQueue();
+
+      expect(await _storedRefreshToken(), 'r');
+      expect(expired, isEmpty);
+    });
+
+    test('서버 장애(5xx)로 실패해도 토큰을 남긴다', () async {
+      final repository = _signedIn(_StubAdapter(503, ''));
+
+      expect(await repository.restoreSession(), isFalse);
+      expect(await _storedRefreshToken(), 'r');
+    });
+
+    test('동시에 불러도 갱신 요청은 한 번만 보낸다', () async {
+      final adapter = _StubAdapter(
+        200,
+        jsonEncode({'access_token': 'a', 'refresh_token': 'r2'}),
+      );
+      final repository = _signedIn(adapter);
+
+      final results = await Future.wait([
+        repository.restoreSession(),
+        repository.restoreSession(),
+      ]);
+
+      expect(results, [true, true]);
+      expect(adapter.calls, 1);
+      expect(repository.accessToken, 'a');
+      expect(await _storedRefreshToken(), 'r2');
+    });
+
+    test('갱신 중에 로그아웃하면 늦게 온 성공 응답이 토큰을 되살리지 않는다', () async {
+      final response = Completer<void>();
+      final repository = _signedIn(
+        _StubAdapter(
+          200,
+          jsonEncode({'access_token': 'a', 'refresh_token': 'r2'}),
+          hold: response.future,
+        ),
+      );
+
+      final restoring = repository.restoreSession();
+      await pumpEventQueue();
+      await repository.signOut();
+      response.complete();
+
+      expect(await restoring, isFalse);
+      expect(repository.accessToken, isNull);
+      expect(await _storedRefreshToken(), isNull);
+    });
+
+    test('갱신 중에 로그아웃하고 다시 로그인하면 늦게 온 401 이 새 토큰을 지우지 않는다', () async {
+      final response = Completer<void>();
+      final repository = _signedIn(
+        _StubAdapter(401, '{"message":"expired"}', hold: response.future),
+      );
+      final expired = <void>[];
+      repository.sessionExpired.listen(expired.add);
+
+      final restoring = repository.restoreSession();
+      await pumpEventQueue();
+      await repository.signOut();
+      // signIn 은 브라우저를 열어서 테스트에서 부를 수 없다. 로그인 결과만 흉내 낸다.
+      await const FlutterSecureStorage().write(
+        key: 'cowork.refresh_token',
+        value: 'new',
+      );
+      response.complete();
+
+      expect(await restoring, isFalse);
+      await pumpEventQueue();
+      expect(await _storedRefreshToken(), 'new');
+      expect(expired, isEmpty);
+    });
   });
 }

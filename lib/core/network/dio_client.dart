@@ -36,6 +36,13 @@ Dio createDio(ApiService service) {
       // 본문을 문자열 그대로 받는다. 응답을 벗겨내는 쪽이 raw JSON 을 파싱하는 구조라
       // dio 의 자동 디코딩을 끄는 편이 분기가 하나 줄어든다.
       responseType: ResponseType.plain,
+      // 응답 없는 요청을 끝없이 기다리지 않는다. 토큰 갱신이 걸려 있으면 그 사이
+      // 로그아웃·재로그인이 끼어들 틈도 길어진다. 시간이 지나면 응답 없는 실패라
+      // 네트워크 오류와 똑같이 다뤄진다.
+      // ponytail: sendTimeout 은 두지 않는다. 느린 망에서 사진 업로드가 끊긴다.
+      // 스트림 응답(SSE 등)을 받을 때는 receiveTimeout 을 그 요청에서 꺼야 한다.
+      connectTimeout: const Duration(seconds: 10),
+      receiveTimeout: const Duration(seconds: 20),
     ),
   );
   // ponytail: 본문과 헤더는 일부러 뺐다. 요청 본문엔 code_verifier / refresh_token 이,
@@ -67,8 +74,9 @@ String serviceBaseUrl(String apiBaseUrl, ApiService service) {
 /// 인증이 필요한 API 용 dio. access token 을 붙이고 401 이면 갱신해 재시도한다.
 ///
 /// 갱신은 [AuthRepository.restoreSession] 이 그대로 맡는다. 저장된 refresh token 으로
-/// 새 토큰을 받아오고, 실패하면 로컬 토큰까지 지워 로그아웃 상태로 눕히는 동작이
-/// 앱 시작 시 복원과 똑같기 때문이다.
+/// 새 토큰을 받아오고, 거절되면 로컬 토큰까지 지워 로그아웃 상태로 눕히는 동작이
+/// 앱 시작 시 복원과 똑같기 때문이다. 로그인 화면으로 보내는 건
+/// [AuthRepository.sessionExpired] 를 듣는 `AuthBloc` 이 한다.
 Dio createAuthedDio(ApiService service, AuthRepository repository) {
   final dio = createDio(service);
   dio.interceptors.add(
