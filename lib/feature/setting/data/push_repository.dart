@@ -4,7 +4,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 
-import '../../../network/dio_client.dart';
+import '../../../core/network/dio_client.dart';
 import '../../auth/data/auth_repository.dart';
 
 /// 이 기기의 푸시 수신을 notification 서비스에 등록·해제한다.

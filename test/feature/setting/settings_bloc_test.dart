@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:cowork_app/core/utils/async_state.dart';
-import 'package:cowork_app/feature/profile/data/profile_repository.dart';
+import 'package:cowork_app/feature/profile/data/repositories/profile_repository.dart';
 import 'package:cowork_app/feature/setting/data/preference_repository.dart';
 import 'package:cowork_app/feature/setting/data/push_repository.dart';
 import 'package:cowork_app/feature/setting/domain/enums/notification_level.dart';

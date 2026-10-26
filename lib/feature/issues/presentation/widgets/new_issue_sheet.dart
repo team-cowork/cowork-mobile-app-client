@@ -2,15 +2,15 @@ import 'package:cowork_design_system/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../../profile/domain/profile_entity.dart';
+import '../../../../shared/domain/profile_entity.dart';
 import '../../data/issues_store.dart';
 import '../../domain/enums/issue_priority.dart';
 import '../../domain/enums/issue_status.dart';
 import '../../domain/enums/issue_tag_color.dart';
 import '../../domain/issue.dart';
 import '../../domain/issue_label.dart';
-import '../viewModels/issues_bloc.dart';
-import '../viewModels/new_issue_bloc.dart';
+import '../blocs/issues/issues_bloc.dart';
+import '../blocs/new_issue/new_issue_bloc.dart';
 import 'add_assignee_button.dart';
 import 'issue_assignee_avatar.dart';
 import 'issue_color_mapping.dart';

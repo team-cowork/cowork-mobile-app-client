@@ -3,10 +3,10 @@ import 'package:dio/dio.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../../../core/network/http_error_message.dart';
 import '../../../../../core/utils/async_state.dart';
 import '../../../../../core/utils/logger.dart';
-import '../../../../../network/http_error_message.dart';
-import '../../../../profile/data/profile_repository.dart';
+import '../../../../profile/data/repositories/profile_repository.dart';
 import '../../../data/account_preference.dart';
 import '../../../data/preference_repository.dart';
 import '../../../data/push_repository.dart';

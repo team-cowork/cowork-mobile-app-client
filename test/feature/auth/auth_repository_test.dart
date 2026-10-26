@@ -2,8 +2,8 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:cowork_app/core/network/dio_client.dart';
 import 'package:cowork_app/feature/auth/data/auth_repository.dart';
-import 'package:cowork_app/network/dio_client.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';

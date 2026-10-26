@@ -2,12 +2,12 @@ import 'package:dio/dio.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../../../core/network/http_error_message.dart';
 import '../../../../../core/utils/async_state.dart';
 import '../../../../../core/utils/logger.dart';
-import '../../../../../network/http_error_message.dart';
-import '../../../data/github_repository.dart';
-import '../../../data/profile_repository.dart';
 import '../../../data/profile_store.dart';
+import '../../../data/repositories/github_repository.dart';
+import '../../../data/repositories/profile_repository.dart';
 import '../../../domain/profile.dart';
 
 part 'profile_event.dart';

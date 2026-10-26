@@ -9,9 +9,9 @@ import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_web_auth_2/flutter_web_auth_2.dart';
 
+import '../../../core/network/dio_client.dart';
+import '../../../core/network/http_error_message.dart';
 import '../../../core/utils/logger.dart';
-import '../../../network/dio_client.dart';
-import '../../../network/http_error_message.dart';
 import 'dgsm_oauth_config.dart';
 
 /// 사용자에게 그대로 보여줄 수 있는 로그인 실패 사유.

@@ -2,8 +2,8 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
-import 'package:cowork_app/feature/profile/data/profile_repository.dart';
-import 'package:cowork_app/network/auth_interceptor.dart';
+import 'package:cowork_app/core/network/auth_interceptor.dart';
+import 'package:cowork_app/feature/profile/data/repositories/profile_repository.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 

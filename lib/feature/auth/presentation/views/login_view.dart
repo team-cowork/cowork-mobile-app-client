@@ -1,7 +1,7 @@
 import 'package:cowork_design_system/design_system.dart';
 import 'package:flutter/material.dart';
 
-import '../../../../core/utils/base_scaffold.dart';
+import '../../../../shared/widgets/base_scaffold.dart';
 
 /// Figma `App / Login` 화면 퍼블리싱.
 ///

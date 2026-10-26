@@ -5,9 +5,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../../core/utils/bloc_scaffold.dart';
-import '../../data/github_repository.dart';
-import '../../data/profile_repository.dart';
+import '../../../../shared/utils/initial.dart';
+import '../../../../shared/widgets/bloc_scaffold.dart';
+import '../../data/repositories/github_repository.dart';
+import '../../data/repositories/profile_repository.dart';
 import '../../domain/enums/user_status.dart';
 import '../../domain/profile.dart';
 import '../blocs/profile/profile_bloc.dart';
@@ -193,9 +194,7 @@ class _ProfileCard extends StatelessWidget {
 
   /// 아바타 이미지. 로컬 사진 > 네트워크 URL > 이니셜 폴백 순으로 표시한다.
   Widget _avatarImage() {
-    final fallback = CoworkAvatar(
-      initials: profile.name.isEmpty ? '?' : profile.name.characters.first,
-    );
+    final fallback = CoworkAvatar(initials: initialOf(profile.name));
     final path = profile.localAvatarPath;
     if (path != null) {
       return Image.file(

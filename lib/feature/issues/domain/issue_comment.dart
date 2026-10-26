@@ -1,6 +1,6 @@
 import 'package:equatable/equatable.dart';
 
-import '../../profile/domain/profile_entity.dart';
+import '../../../shared/domain/profile_entity.dart';
 
 class IssueComment extends Equatable {
   const IssueComment({

@@ -1,7 +1,7 @@
 import 'package:cowork_design_system/design_system.dart';
 import 'package:equatable/equatable.dart';
 
-import '../data/user_response.dart';
+import '../data/model/responses/user_response.dart';
 import 'enums/user_status.dart';
 
 /// 값이 있는 문자열만 통과시킨다. 서버는 nullable 필드를 null 로도, 빈 문자열로도
