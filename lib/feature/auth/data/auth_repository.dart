@@ -47,6 +47,10 @@ class AuthRepository {
   /// 진행 중인 갱신. 동시에 부른 쪽들이 갱신을 각자 보내지 않게 묶는다.
   Future<bool>? _restoring;
 
+  /// 로그인·로그아웃을 시작할 때마다 올린다. 갱신을 보낼 때의 값과 응답을 받은 뒤의
+  /// 값이 다르면 지난 세션의 응답이라 저장·삭제·알림을 하지 않는다.
+  int _generation = 0;
+
   final _sessionExpired = StreamController<void>.broadcast();
 
   /// 인증이 필요한 API 호출에 붙일 Bearer 토큰. 로그아웃 상태면 null.
@@ -57,6 +61,7 @@ class AuthRepository {
 
   /// 브라우저를 열어 DataGSM 로그인을 수행하고 토큰까지 발급받는다.
   Future<void> signIn() async {
+    _generation++;
     final verifier = createCodeVerifier();
     final state = createCodeVerifier(16);
 
@@ -113,20 +118,31 @@ class AuthRepository {
   ///
   /// 서버가 refresh token 을 거절했을 때(400/401)만 토큰을 지우고 [sessionExpired] 로
   /// 알린다. 네트워크나 서버 장애로 실패하면 토큰을 남겨 다음 갱신 때 다시 시도한다.
+  ///
+  /// 응답을 기다리는 사이 로그아웃·재로그인했으면 그 응답은 버리고 false 를 준다.
+  /// 늦게 온 성공이 지운 토큰을 되살리거나, 늦게 온 401 이 새 로그인 토큰을 지우지
+  /// 않게 하려는 것이다.
   Future<bool> restoreSession() =>
       _restoring ??= _refresh().whenComplete(() => _restoring = null);
 
   Future<bool> _refresh() async {
+    // 저장소를 읽는 사이에도 로그아웃이 끼어들 수 있어 읽기 전에 잡는다.
+    final generation = _generation;
     final refreshToken = await _storage.read(key: _refreshTokenKey);
     if (refreshToken == null) return false;
 
+    // 세대 검사와 토큰 변경 사이에 await 가 끼면 그 틈에 다시 꼬이므로, 검사한 뒤
+    // 곧바로 저장·삭제한다.
     try {
-      await _saveTokens(
-        await _post('/auth/refresh', {'refresh_token': refreshToken}),
-      );
+      final tokens = await _post('/auth/refresh', {
+        'refresh_token': refreshToken,
+      });
+      if (generation != _generation) return false;
+      await _saveTokens(tokens);
       return true;
     } on AuthException catch (e) {
       Logger.e('세션 복원 실패', tag: 'Auth', error: e);
+      if (generation != _generation) return false;
       if (e.statusCode == 400 || e.statusCode == 401) {
         await _clear();
         _sessionExpired.add(null);
@@ -136,6 +152,7 @@ class AuthRepository {
   }
 
   Future<void> signOut() async {
+    _generation++;
     final refreshToken = await _storage.read(key: _refreshTokenKey);
     final accessToken = _accessToken;
 

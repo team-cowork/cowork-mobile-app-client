@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
@@ -11,10 +12,13 @@ import 'package:flutter_test/flutter_test.dart';
 /// 실제 dio 를 거쳐 나온 DioException 으로 검증한다. 손으로 만든 DioException 은
 /// validateStatus / responseType 이 바뀌어도 통과해버려서 회귀를 못 잡는다.
 class _StubAdapter implements HttpClientAdapter {
-  _StubAdapter(this.statusCode, this.body);
+  _StubAdapter(this.statusCode, this.body, {this.hold});
 
   final int statusCode;
   final String body;
+
+  /// 주면 이게 끝날 때까지 응답을 붙잡아 둔다. 응답이 늦게 오는 상황을 만든다.
+  final Future<void>? hold;
   int calls = 0;
 
   @override
@@ -24,6 +28,7 @@ class _StubAdapter implements HttpClientAdapter {
     Future<void>? cancelFuture,
   ) async {
     calls++;
+    await hold;
     return ResponseBody.fromString(
       body,
       statusCode,
@@ -179,6 +184,50 @@ void main() {
       expect(adapter.calls, 1);
       expect(repository.accessToken, 'a');
       expect(await _storedRefreshToken(), 'r2');
+    });
+
+    test('갱신 중에 로그아웃하면 늦게 온 성공 응답이 토큰을 되살리지 않는다', () async {
+      final response = Completer<void>();
+      final repository = _signedIn(
+        _StubAdapter(
+          200,
+          jsonEncode({'access_token': 'a', 'refresh_token': 'r2'}),
+          hold: response.future,
+        ),
+      );
+
+      final restoring = repository.restoreSession();
+      await pumpEventQueue();
+      await repository.signOut();
+      response.complete();
+
+      expect(await restoring, isFalse);
+      expect(repository.accessToken, isNull);
+      expect(await _storedRefreshToken(), isNull);
+    });
+
+    test('갱신 중에 로그아웃하고 다시 로그인하면 늦게 온 401 이 새 토큰을 지우지 않는다', () async {
+      final response = Completer<void>();
+      final repository = _signedIn(
+        _StubAdapter(401, '{"message":"expired"}', hold: response.future),
+      );
+      final expired = <void>[];
+      repository.sessionExpired.listen(expired.add);
+
+      final restoring = repository.restoreSession();
+      await pumpEventQueue();
+      await repository.signOut();
+      // signIn 은 브라우저를 열어서 테스트에서 부를 수 없다. 로그인 결과만 흉내 낸다.
+      await const FlutterSecureStorage().write(
+        key: 'cowork.refresh_token',
+        value: 'new',
+      );
+      response.complete();
+
+      expect(await restoring, isFalse);
+      await pumpEventQueue();
+      expect(await _storedRefreshToken(), 'new');
+      expect(expired, isEmpty);
     });
   });
 }
