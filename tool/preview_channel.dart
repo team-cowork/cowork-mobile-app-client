@@ -7,7 +7,7 @@
 //
 // lib/ 밖이라 앱 번들에는 안 들어가지만 analyze 대상이라, 화면 API 가 바뀌면
 // 여기서 먼저 깨진다.
-import 'package:cowork_app/feature/chat/presentation/views/chat_view.dart';
+import 'package:cowork_app/feature/channel/presentation/views/chat_view.dart';
 import 'package:cowork_design_system/design_system.dart';
 import 'package:flutter/material.dart';
 

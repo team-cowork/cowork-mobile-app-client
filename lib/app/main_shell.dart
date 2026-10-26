@@ -1,0 +1,55 @@
+import 'package:cowork_design_system/design_system.dart';
+import 'package:flutter/material.dart';
+
+import '../feature/channel/presentation/views/chat_view.dart';
+import '../feature/issues/presentation/views/issues_view.dart';
+import '../feature/notes/presentation/views/notes_view.dart';
+import '../feature/profile/presentation/views/my_profile_view.dart';
+import '../shared/widgets/base_scaffold.dart';
+
+class MainShell extends StatefulWidget {
+  const MainShell({super.key});
+
+  @override
+  State<MainShell> createState() => _MainShellState();
+}
+
+class _MainShellState extends State<MainShell> {
+  static const _items = [
+    CoworkBottomNavigationItem(icon: AppIcon.navChannel, label: '채널'),
+    CoworkBottomNavigationItem(icon: AppIcon.navIssue, label: '이슈'),
+    CoworkBottomNavigationItem(icon: AppIcon.navNote, label: '회의록'),
+    CoworkBottomNavigationItem(icon: AppIcon.navProfile, label: '프로필'),
+  ];
+
+  int _index = 0;
+  final Set<int> _visited = {0};
+
+  Widget _tabView(int index) {
+    if (!_visited.contains(index)) return const SizedBox.shrink();
+    return switch (index) {
+      0 => const ChatView(),
+      1 => const IssuesView(),
+      2 => const NotesView(),
+      _ => const MyProfileView(),
+    };
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return BaseScaffold(
+      body: IndexedStack(
+        index: _index,
+        children: [for (var i = 0; i < _items.length; i++) _tabView(i)],
+      ),
+      bottomNavigationBar: CoworkBottomNavigationBar(
+        items: _items,
+        currentIndex: _index,
+        onTap: (next) => setState(() {
+          _index = next;
+          _visited.add(next);
+        }),
+      ),
+    );
+  }
+}

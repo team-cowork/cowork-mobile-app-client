@@ -1,16 +1,16 @@
-import 'package:cowork_app/feature/chat/data/repositories/channel_repository.dart';
+import 'package:cowork_app/core/network/chat_socket.dart';
+import 'package:cowork_app/feature/channel/data/repositories/channel_repository.dart';
 import 'package:cowork_app/feature/chat/data/repositories/message_repository.dart';
 import 'package:cowork_app/feature/chat/presentation/views/channel_view.dart';
 import 'package:cowork_app/feature/profile/data/repositories/profile_repository.dart';
-import 'package:cowork_app/network/chat_socket.dart';
 import 'package:cowork_design_system/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 
+import '../channel/chat_test_server.dart';
 import 'channel_message_test_server.dart';
-import 'chat_test_server.dart';
 
 void main() {
   Future<void> pumpChannel(

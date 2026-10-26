@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:cowork_app/network/notification_stream.dart';
+import 'package:cowork_app/core/network/notification_stream.dart';
 
 /// 가짜 알림 스트림. 켜고 끈 것을 기록하고, 테스트가 알림을 [push] 한다.
 class FakeNotificationStream implements NotificationStream {

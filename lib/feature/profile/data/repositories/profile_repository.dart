@@ -2,8 +2,8 @@ import 'dart:io';
 
 import 'package:dio/dio.dart';
 
-import '../../../../core/utils/initial.dart';
-import '../../../../network/dio_client.dart';
+import '../../../../core/network/dio_client.dart';
+import '../../../../shared/utils/initial.dart';
 import '../../../auth/data/auth_repository.dart';
 import '../model/requests/confirm_profile_image_request.dart';
 import '../model/requests/presigned_upload_request.dart';

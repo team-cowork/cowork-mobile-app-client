@@ -2,7 +2,7 @@ import 'package:cowork_design_system/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../../../core/utils/bloc_scaffold.dart';
+import '../../../../shared/widgets/bloc_scaffold.dart';
 import '../../domain/enums/avatar_color.dart';
 import '../../domain/search_result.dart';
 import '../blocs/search/search_bloc.dart';

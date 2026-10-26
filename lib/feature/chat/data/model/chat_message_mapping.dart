@@ -1,8 +1,8 @@
-import '../../../../core/utils/initial.dart';
-import '../../../profile/domain/profile_entity.dart';
+import '../../../../shared/domain/enums/chat_avatar_color.dart';
+import '../../../../shared/domain/profile_entity.dart';
+import '../../../../shared/utils/initial.dart';
 import '../../domain/chat_attachment.dart';
 import '../../domain/chat_message.dart';
-import '../../domain/enums/chat_avatar_color.dart';
 import 'responses/message_response.dart';
 
 /// 같은 사람이 늘 같은 색이 되도록 작성자 id 로 고르는 아바타 색.

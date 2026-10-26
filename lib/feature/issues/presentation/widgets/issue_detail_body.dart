@@ -2,7 +2,7 @@ import 'package:cowork_design_system/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../../core/utils/base_scaffold.dart';
+import '../../../../shared/widgets/base_scaffold.dart';
 import '../../domain/issue.dart';
 import 'issue_color_mapping.dart';
 import 'issue_comment_composer.dart';

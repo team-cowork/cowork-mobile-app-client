@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../../core/utils/bloc_scaffold.dart';
+import '../../../../shared/widgets/bloc_scaffold.dart';
 import '../../data/repositories/notification_repository.dart';
 import '../../domain/enums/avatar_color.dart';
 import '../../domain/enums/notification_icon_type.dart';

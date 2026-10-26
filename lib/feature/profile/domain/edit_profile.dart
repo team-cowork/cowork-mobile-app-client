@@ -1,6 +1,6 @@
 import 'package:equatable/equatable.dart';
 
-import '../../../core/utils/initial.dart';
+import '../../../shared/utils/initial.dart';
 import '../data/model/responses/user_response.dart';
 
 /// 프로필 편집 화면에서 사용하는 도메인 모델.

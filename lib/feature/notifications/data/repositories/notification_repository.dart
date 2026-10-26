@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:json_annotation/json_annotation.dart';
 
-import '../../../../network/notification_stream.dart';
+import '../../../../core/network/notification_stream.dart';
 import '../model/received_notification.dart';
 import '../model/responses/notification_event_response.dart';
 

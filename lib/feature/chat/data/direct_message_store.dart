@@ -1,7 +1,7 @@
-import '../../profile/domain/profile_entity.dart';
+import '../../../shared/domain/enums/chat_avatar_color.dart';
+import '../../../shared/domain/profile_entity.dart';
 import '../domain/direct_message_preview.dart';
 import '../domain/dm_presence_entry.dart';
-import '../domain/enums/chat_avatar_color.dart';
 import '../domain/enums/dm_presence.dart';
 
 class DirectMessageStore {

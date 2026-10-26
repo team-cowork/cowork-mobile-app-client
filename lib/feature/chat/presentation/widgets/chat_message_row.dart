@@ -1,9 +1,9 @@
 import 'package:cowork_design_system/design_system.dart';
 import 'package:flutter/material.dart';
 
+import '../../../../shared/extensions/chat_avatar_color_mapping.dart';
 import '../../domain/chat_attachment.dart';
 import '../../domain/chat_message.dart';
-import 'chat_color_mapping.dart';
 
 class ChatMessageRow extends StatelessWidget {
   const ChatMessageRow({

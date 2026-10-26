@@ -1,6 +1,6 @@
 import 'package:equatable/equatable.dart';
 
-import '../../profile/domain/profile_entity.dart';
+import '../../../shared/domain/profile_entity.dart';
 import 'enums/issue_priority.dart';
 import 'enums/issue_status.dart';
 import 'issue_label.dart';

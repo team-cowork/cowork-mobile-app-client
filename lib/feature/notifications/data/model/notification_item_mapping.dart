@@ -1,4 +1,4 @@
-import '../../../../core/utils/initial.dart';
+import '../../../../shared/utils/initial.dart';
 import '../../domain/enums/avatar_color.dart';
 import '../../domain/enums/notification_icon_type.dart';
 import '../../domain/notification_item.dart';

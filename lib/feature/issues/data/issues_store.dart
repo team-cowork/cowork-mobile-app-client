@@ -1,4 +1,4 @@
-import '../../profile/domain/profile_entity.dart';
+import '../../../shared/domain/profile_entity.dart';
 import '../domain/enums/issue_priority.dart';
 import '../domain/enums/issue_status.dart';
 import '../domain/enums/issue_tag_color.dart';
