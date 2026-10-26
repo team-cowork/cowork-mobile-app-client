@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../../core/utils/base_scaffold.dart';
+import '../../../../shared/widgets/base_scaffold.dart';
 import '../../../profile/data/profile_store.dart';
 import '../../domain/note.dart';
 

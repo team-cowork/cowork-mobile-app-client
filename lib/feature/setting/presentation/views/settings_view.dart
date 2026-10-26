@@ -5,14 +5,14 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/utils/async_state.dart';
-import '../../../../core/utils/bloc_scaffold.dart';
+import '../../../../shared/widgets/bloc_scaffold.dart';
+import '../../../../shared/widgets/settings_section.dart';
+import '../../../../shared/widgets/settings_tile.dart';
 import '../../../auth/presentation/blocs/auth/auth_bloc.dart';
 import '../../../profile/data/repositories/profile_repository.dart';
 import '../../data/preference_repository.dart';
 import '../../data/push_repository.dart';
 import '../blocs/settings/settings_bloc.dart';
-import '../widgets/settings_section.dart';
-import '../widgets/settings_tile.dart';
 
 /// 설정 화면. 마이 프로필에서 설정 아이콘을 눌렀을 때 진입한다.
 class SettingsView extends StatelessWidget {

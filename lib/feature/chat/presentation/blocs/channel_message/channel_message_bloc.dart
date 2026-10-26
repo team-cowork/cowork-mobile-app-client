@@ -6,18 +6,18 @@ import 'package:equatable/equatable.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../../../core/network/chat_socket.dart';
+import '../../../../../core/network/http_error_message.dart';
 import '../../../../../core/utils/async_state.dart';
 import '../../../../../core/utils/logger.dart';
-import '../../../../../network/chat_socket.dart';
-import '../../../../../network/http_error_message.dart';
+import '../../../../../shared/domain/profile_entity.dart';
+import '../../../../channel/data/repositories/channel_repository.dart';
 import '../../../../profile/data/repositories/profile_repository.dart';
-import '../../../../profile/domain/profile_entity.dart';
 import '../../../data/model/chat_message_mapping.dart';
 import '../../../data/model/message_socket_event.dart';
 import '../../../data/model/requests/edit_message_request.dart';
 import '../../../data/model/requests/send_message_request.dart';
 import '../../../data/model/responses/message_response.dart';
-import '../../../data/repositories/channel_repository.dart';
 import '../../../data/repositories/message_repository.dart';
 import '../../../domain/chat_message.dart';
 

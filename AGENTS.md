@@ -62,10 +62,17 @@ type(scope): 설명
 ## 코드 구조 규칙
 
 - feature layer structure를 따른다.
+- `lib/` 최상위는 아래처럼 나눈다.
+  - `core/`: 앱이 돌아가기 위한 기반 설비. 비즈니스 의미가 거의 없고 앱 전체에 하나씩 있는 기술적인 것. 기능이 하나도 없는 빈 앱에도 있을 법한 것만 둔다. (네트워크 클라이언트·인터셉터·소켓, 로깅, 앱 생명주기, `AsyncState`·`CommandBloc` 같은 상태 기본 타입, 로컬 저장소 래퍼) 디자인 토큰·테마는 `cowork_design_system` 패키지에 있다.
+  - `shared/`: 여러 feature 가 같이 쓰는 재사용 부품. feature 에서 쓰다가 다른 feature 에서도 쓰게 되면 끌어내린다. (`widgets/` 공통 위젯, `domain/` 여러 feature 에 걸친 엔티티, `extensions/`, `utils/` 포맷터)
+  - `feature/<name>/`: 기능 단위 코드.
+  - `app/`: feature 들을 조립하는 앱 셸. (라우터, 탭 셸, 인증 분기)
+- 의존 방향은 `app` → `feature` → `shared` → `core` 한쪽으로만 둔다. `core` 와 `shared` 는 `feature` 와 `app` 을 import 하지 않는다.
+  - 예외: `core/network/` 는 토큰·주소 때문에 아직 `feature/auth` 를 import 한다. 토큰 저장·갱신을 core 로 내리면 끊는다.
 - 기능 변경 시 관련 feature 경계 안에서 먼저 해결한다.
-- 공통화가 필요한 경우에만 shared/core 성격의 위치로 이동한다.
+- 공통화가 필요한 경우에만 `shared/` 로, 기반 설비만 `core/` 로 이동한다.
 - 새로운 구조나 추상화는 기존 패턴을 먼저 확인한 뒤 최소한으로 추가한다.
-- 위젯은 쓰이는 곳 수로 위치를 정한다. 여러 feature에서 쓰면 `core/` 또는 design_system, 한 feature의 여러 화면에서 쓰면 `feature/<name>/presentation/widgets/`, 한 화면에서만 쓰면 그 화면 파일 안 private 클래스로 둔다.
+- 위젯은 쓰이는 곳 수로 위치를 정한다. 여러 feature에서 쓰면 `shared/widgets/` 또는 design_system, 한 feature의 여러 화면에서 쓰면 `feature/<name>/presentation/widgets/`, 한 화면에서만 쓰면 그 화면 파일 안 private 클래스로 둔다.
 - 위젯 테스트가 직접 참조하는 위젯은 두 번째 소비자가 있는 것으로 보고 `widgets/` 에 남긴다.
 
 ## UI / 기능 개발 경계
