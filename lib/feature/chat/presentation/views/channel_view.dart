@@ -54,8 +54,10 @@ class ChannelView extends StatelessWidget {
                     name: data.name,
                     description: data.description,
                     onBack: () => context.pop(),
-                    onMembersTap: () => context.push('/chat/channel/members'),
-                    onMoreTap: () => context.push('/chat/channel/settings'),
+                    onMembersTap: () =>
+                        context.push('/chat/channel/$channelId/members'),
+                    onMoreTap: () =>
+                        context.push('/chat/channel/$channelId/settings'),
                   ),
                   Expanded(child: _MessageList(data: data)),
                   const Padding(
@@ -115,14 +117,18 @@ class _MessageList extends StatelessWidget {
     );
   }
 
-  Widget _messageRow(BuildContext context, ChatMessage message) =>
-      ChatMessageRow(
-        message: message,
-        onTap: () => context.push('/chat/channel/thread'),
-        onLongPress: message.editable
-            ? () => _showMessageActions(context, message)
-            : null,
-      );
+  Widget _messageRow(
+    BuildContext context,
+    ChatMessage message,
+  ) => ChatMessageRow(
+    message: message,
+    onTap: () => context.push(
+      '/chat/channel/${context.read<ChannelMessageBloc>().channelId}/thread',
+    ),
+    onLongPress: message.editable
+        ? () => _showMessageActions(context, message)
+        : null,
+  );
 
   /// 내 메시지를 길게 눌렀을 때. 고치거나 지울지 고르게 한다.
   static Future<void> _showMessageActions(

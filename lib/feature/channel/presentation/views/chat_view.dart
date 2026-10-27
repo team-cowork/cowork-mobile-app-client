@@ -323,10 +323,7 @@ class _ChannelList extends StatelessWidget {
                   type: channel.type,
                   label: channel.name,
                   onTap: channel.type == ChannelType.chat
-                      ? () => context.push(
-                          '/chat/channel',
-                          extra: int.parse(channel.id),
-                        )
+                      ? () => context.push('/chat/channel/${channel.id}')
                       : null,
                 ),
             ],
