@@ -11,8 +11,8 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
-import 'package:cowork_app/feature/profile/data/github_repository.dart';
-import 'package:cowork_app/feature/profile/data/profile_repository.dart';
+import 'package:cowork_app/feature/profile/data/repositories/github_repository.dart';
+import 'package:cowork_app/feature/profile/data/repositories/profile_repository.dart';
 import 'package:cowork_app/feature/profile/presentation/views/my_profile_view.dart';
 import 'package:cowork_design_system/design_system.dart';
 import 'package:dio/dio.dart';
@@ -33,10 +33,7 @@ class _StubAdapter implements HttpClientAdapter {
     Future<void>? cancelFuture,
   ) async {
     final target = '${options.method} ${options.path}';
-    final key = responses.keys.firstWhere(
-      target.contains,
-      orElse: () => '',
-    );
+    final key = responses.keys.firstWhere(target.contains, orElse: () => '');
     final (status, body) = responses[key] ?? (404, '{"message":"stub 없음"}');
     return ResponseBody.fromString(
       body,
@@ -69,15 +66,13 @@ String _events() {
   ]);
 }
 
-Dio _dio(String baseUrl, Map<String, (int, String)> responses) =>
-    Dio(
-        BaseOptions(
-          baseUrl: baseUrl,
-          contentType: Headers.jsonContentType,
-          responseType: ResponseType.plain,
-        ),
-      )
-      ..httpClientAdapter = _StubAdapter(responses);
+Dio _dio(String baseUrl, Map<String, (int, String)> responses) => Dio(
+  BaseOptions(
+    baseUrl: baseUrl,
+    contentType: Headers.jsonContentType,
+    responseType: ResponseType.plain,
+  ),
+)..httpClientAdapter = _StubAdapter(responses);
 
 void main() {
   final me = jsonEncode({

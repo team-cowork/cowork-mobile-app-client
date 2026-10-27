@@ -32,7 +32,9 @@ abstract final class DgsmOAuthConfig {
   /// 기본값을 두지 않는다. 개발/운영 서버가 갈리는 값이라 기본값을 박아두면
   /// 릴리스 빌드가 조용히 개발 서버를 가리킨다. 빌드마다 명시적으로 주입한다.
   /// (웹 클라이언트도 `NEXT_PUBLIC_BASE_URL` 을 빈 값으로 두고 주입을 강제한다.)
-  static const String apiBaseUrl = String.fromEnvironment('COWORK_API_BASE_URL');
+  static const String apiBaseUrl = String.fromEnvironment(
+    'COWORK_API_BASE_URL',
+  );
 
   /// dart-define 없이 실행하면 [apiBaseUrl] 이 빈 문자열이라 요청이 조용히
   /// 실패한다. 앱 진입 시점에 바로 터지게 한다.

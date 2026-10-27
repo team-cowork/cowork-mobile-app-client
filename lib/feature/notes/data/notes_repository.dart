@@ -1,39 +1,64 @@
 import 'package:dio/dio.dart';
 
-import '../../../network/dio_client.dart';
+import '../../../core/network/dio_client.dart';
+import '../../../shared/utils/initial.dart';
 import '../../auth/data/auth_repository.dart';
-import '../../profile/data/user_response.dart';
+import '../../channel/data/repositories/channel_repository.dart';
+import '../../profile/data/model/responses/user_response.dart';
+import '../../team/data/repositories/team_repository.dart';
 import '../domain/note.dart';
 import 'meeting_note_request.dart';
 import 'meeting_note_response.dart';
 
-/// 회의록(`/channels/{channelId}/meeting-notes`) 저장소.
+/// channel 서비스의 회의록(`/channels/{channelId}/meeting-notes`) 저장소.
 ///
-/// 서버 회의록은 채널에 속하는데 앱에는 아직 채널을 고르는 화면이 없다. 그래서
+/// 서버 회의록은 채널에 속하는데 회의록 탭은 채널을 고르지 않는다. 그래서
 /// 조회는 내 팀의 모든 채널을 훑어 한 목록으로 합치고, 작성은 그중 읽을 수 있는
 /// 첫 채널에 쓴다.
 ///
-/// ponytail: 채널 화면(#49)이 나오면 선택된 채널 하나만 읽고 쓰도록 좁힌다.
+/// ponytail: 회의록 탭이 채널을 고르게 되면 선택된 채널 하나만 읽고 쓰도록 좁힌다.
 /// 채널이 많아지면 조회가 채널 수만큼 늘어나는 게 먼저 아플 자리다.
 class NotesRepository {
-  NotesRepository(AuthRepository auth) : this.withDio(createAuthedDio(auth));
+  NotesRepository(
+    AuthRepository auth, {
+    required TeamRepository teams,
+    required ChannelRepository channels,
+  }) : this.withDio(
+         createAuthedDio(ApiService.channel, auth),
+         users: createAuthedDio(ApiService.user, auth),
+         teams: teams,
+         channels: channels,
+       );
 
-  NotesRepository.withDio(this._dio);
+  NotesRepository.withDio(
+    this._dio, {
+    required Dio users,
+    required TeamRepository teams,
+    required ChannelRepository channels,
+  }) : _users = users,
+       _teams = teams,
+       _channels = channels;
 
   final Dio _dio;
+
+  /// 작성자 이름·사진(`/users/{id}`)을 읽는 user 서비스 dio.
+  final Dio _users;
+
+  final TeamRepository _teams;
+  final ChannelRepository _channels;
 
   /// 마지막 조회에서 읽는 데 성공한 채널 id 들. 작성 대상 채널을 여기서 고른다.
   List<int> _channelIds = const [];
 
   /// 내 팀의 회의록을 최신순으로 모아 온다.
   Future<List<Note>> fetchNotes() async {
-    final teams = await _list('/teams');
+    final teams = await _teams.fetchMyTeams();
     final channels = await Future.wait([
-      for (final team in teams) _list('/teams/${team['id']}/channels'),
+      for (final team in teams) _channels.fetchChannels(team.id),
     ]);
     final ids = [
       for (final channel in channels.expand((page) => page))
-        if (channel['id'] case final int id) id,
+        if (int.tryParse(channel.id) case final int id) id,
     ];
 
     // 목록에는 못 읽는 채널도 섞여 있다. 읽힌 채널만 남겨야 작성도 거기로 간다.
@@ -91,9 +116,9 @@ class NotesRepository {
     try {
       return (
         channelId,
-        (await _list('/channels/$channelId/meeting-notes'))
-            .map(MeetingNoteResponse.fromJson)
-            .toList(),
+        (await _list(
+          '/channels/$channelId/meeting-notes',
+        )).map(MeetingNoteResponse.fromJson).toList(),
       );
     } on DioException catch (e) {
       if (e.response?.statusCode == 403) return null;
@@ -103,7 +128,9 @@ class NotesRepository {
 
   /// 켜져 있는 템플릿 id. 없으면 채널의 첫 템플릿을 쓴다.
   Future<int> _templateIdOf(int channelId) async {
-    final templates = await _list('/channels/$channelId/meeting-note-templates');
+    final templates = await _list(
+      '/channels/$channelId/meeting-note-templates',
+    );
     final template =
         templates.where((t) => t['isActive'] == true).firstOrNull ??
         templates.firstOrNull;
@@ -126,7 +153,7 @@ class NotesRepository {
   Future<UserResponse?> _userOf(int id) async {
     try {
       return UserResponse.fromJson(
-        unwrapPayload((await _dio.get<String>('/users/$id')).data ?? ''),
+        unwrapPayload((await _users.get<String>('/users/$id')).data ?? ''),
       );
     } on DioException {
       return null;
@@ -147,7 +174,7 @@ class NotesRepository {
     return NoteAuthor(
       authorId: note.createdBy,
       name: name.isEmpty ? '알 수 없음' : name,
-      initial: name.isEmpty ? '?' : name.substring(0, 1),
+      initial: initialOf(name),
       avatarUrl: user?.profileImageUrl ?? '',
       date:
           '${date.month.toString().padLeft(2, '0')}.'

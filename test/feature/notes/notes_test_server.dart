@@ -1,18 +1,26 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:cowork_app/feature/channel/data/repositories/channel_repository.dart';
 import 'package:cowork_app/feature/notes/data/notes_repository.dart';
+import 'package:cowork_app/feature/team/data/repositories/team_repository.dart';
 import 'package:cowork_design_system/design_system.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 
-/// 회의록 화면 테스트용 가짜 서버.
+/// 회의록 화면 테스트용 가짜 게이트웨이.
 ///
 /// 팀 1 → 채널 10 하나에 회의록 셋을 담아 둔다. 작성·수정도 이 목록에 반영해,
-/// 화면이 저장한 뒤 목록을 다시 읽어도 같은 서버를 보게 한다.
+/// 화면이 저장한 뒤 목록을 다시 읽어도 같은 서버를 보게 한다. 게이트웨이처럼
+/// 서비스 prefix(`/team`, `/channel`, `/user`)로 요청을 가르고, 모르는 경로는
+/// 404 로 답해 다른 서비스로 간 요청을 드러낸다. 작성 실패는 [failCreate] 로 건다.
 class FakeNotesServer implements HttpClientAdapter {
   final List<Map<String, dynamic>> notes = [..._seed];
+
+  /// 걸어 두면 회의록 작성을 이 (상태 코드, 사유)로 거절한다.
+  (int, String)? failCreate;
 
   int _nextId = 100;
 
@@ -22,40 +30,54 @@ class FakeNotesServer implements HttpClientAdapter {
     Stream<Uint8List>? requestStream,
     Future<void>? cancelFuture,
   ) async {
-    final path = options.path;
+    final path = options.uri.path.replaceFirst('/api', '');
     final body = await _body(requestStream);
 
+    if ((path, options.method, failCreate) case (
+      '/channel/channels/10/meeting-notes',
+      'POST',
+      (final statusCode, final message),
+    )) {
+      return _json({'message': message}, statusCode);
+    }
+
     final data = switch (path) {
-      '/teams' => [
+      '/team/teams' => [
         {'id': 1, 'name': '코워크팀'},
       ],
-      '/teams/1/channels' => [
-        {'id': 10, 'name': '일반'},
+      '/channel/teams/1/channels' => [
+        {'id': 10, 'name': '일반', 'type': 'TEXT', 'viewType': 'TEXT'},
       ],
-      '/channels/10/meeting-note-templates' => [
+      '/channel/channels/10/meeting-note-templates' => [
         {'id': 5, 'name': '회의록', 'isActive': true},
       ],
-      '/channels/10/meeting-notes' when options.method == 'GET' => notes,
-      '/channels/10/meeting-notes' => _create(body),
-      _ when path.startsWith('/channels/10/meeting-notes/') => _update(
+      '/channel/channels/10/meeting-notes' when options.method == 'GET' =>
+        notes,
+      '/channel/channels/10/meeting-notes' => _create(body),
+      _ when path.startsWith('/channel/channels/10/meeting-notes/') => _update(
         int.parse(path.split('/').last),
         body,
       ),
-      _ when path.startsWith('/users/') => {
+      _ when path.startsWith('/user/users/') => {
         'id': int.parse(path.split('/').last),
         'name': _names[int.parse(path.split('/').last)],
       },
       _ => null,
     };
 
-    return ResponseBody.fromString(
-      jsonEncode({'status': 'OK', 'code': 200, 'message': 'OK', 'data': data}),
-      200,
-      headers: {
-        Headers.contentTypeHeader: [Headers.jsonContentType],
-      },
-    );
+    return data == null
+        ? _json({'message': '없는 경로: $path'}, 404)
+        : _json({'status': 'OK', 'code': 200, 'message': 'OK', 'data': data});
   }
+
+  static ResponseBody _json(Object body, [int statusCode = 200]) =>
+      ResponseBody.fromString(
+        jsonEncode(body),
+        statusCode,
+        headers: {
+          Headers.contentTypeHeader: [Headers.jsonContentType],
+        },
+      );
 
   Map<String, dynamic> _create(Map<String, dynamic> body) {
     final note = {
@@ -125,21 +147,37 @@ class FakeNotesServer implements HttpClientAdapter {
   ];
 }
 
+/// [server] 로 [service] 요청을 보내는 dio. 실제와 같은 서비스별 baseUrl 을 쓴다.
+Dio _dioOf(HttpClientAdapter server, String service) => Dio(
+  BaseOptions(
+    baseUrl: 'https://example.test/api/$service',
+    contentType: Headers.jsonContentType,
+    responseType: ResponseType.plain,
+  ),
+)..httpClientAdapter = server;
+
+/// [server] 로 요청을 보내는 회의록 저장소. 팀·채널 목록도 같은 서버에서 읽는다.
+NotesRepository notesRepositoryOf(HttpClientAdapter server) =>
+    NotesRepository.withDio(
+      _dioOf(server, 'channel'),
+      users: _dioOf(server, 'user'),
+      teams: TeamRepository.withDio(_dioOf(server, 'team')),
+      channels: ChannelRepository.withDio(_dioOf(server, 'channel')),
+    );
+
 /// [FakeNotesServer] 를 보는 [NotesRepository] 를 깔고 [home] 을 띄운다.
 ///
 /// 저장소는 `MaterialApp` 바깥에 둔다. 편집 화면처럼 새 라우트로 열리는 화면은
 /// `home` 아래에 깐 provider 를 보지 못하기 때문이다(main.dart 와 같은 배치).
 Widget notesTestApp(Widget home, FakeNotesServer server) =>
-    RepositoryProvider<NotesRepository>(
-      create: (_) => NotesRepository.withDio(
-        Dio(
-            BaseOptions(
-              baseUrl: 'https://example.test/api',
-              contentType: Headers.jsonContentType,
-              responseType: ResponseType.plain,
-            ),
-          )
-          ..httpClientAdapter = server,
-      ),
+    RepositoryProvider.value(
+      value: notesRepositoryOf(server),
       child: MaterialApp(theme: AppTheme.dark(), home: home),
+    );
+
+/// [notesTestApp] 의 go_router 판. 상세·편집으로 라우트를 타는 테스트가 쓴다.
+Widget notesRouterTestApp(GoRouter router, FakeNotesServer server) =>
+    RepositoryProvider.value(
+      value: notesRepositoryOf(server),
+      child: MaterialApp.router(theme: AppTheme.dark(), routerConfig: router),
     );

@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
-import 'package:cowork_app/feature/profile/data/profile_repository.dart';
+import 'package:cowork_app/feature/profile/data/repositories/profile_repository.dart';
 import 'package:cowork_app/feature/profile/data/profile_store.dart';
 import 'package:cowork_app/feature/profile/presentation/views/edit_profile_view.dart';
 import 'package:cowork_design_system/design_system.dart';
@@ -16,7 +16,8 @@ class _StubAdapter implements HttpClientAdapter {
     : body = jsonEncode({
         'id': 7,
         'name': '김준혁',
-        'status': 'ONLINE',
+        'status': 'online',
+        'custom_status': 'DO_NOT_DISTURB',
         'nickname': 'joon',
         'status_message': '',
         'description': '',
@@ -62,15 +63,13 @@ Future<_StubAdapter> _openEditProfile(
     profileImageUrl: profileImageUrl,
     saveStatus: saveStatus,
   );
-  final dio =
-      Dio(
-          BaseOptions(
-            baseUrl: 'https://example.test/api',
-            contentType: Headers.jsonContentType,
-            responseType: ResponseType.plain,
-          ),
-        )
-        ..httpClientAdapter = adapter;
+  final dio = Dio(
+    BaseOptions(
+      baseUrl: 'https://example.test/api',
+      contentType: Headers.jsonContentType,
+      responseType: ResponseType.plain,
+    ),
+  )..httpClientAdapter = adapter;
 
   await tester.pumpWidget(
     RepositoryProvider(
@@ -122,13 +121,24 @@ void main() {
 
     expect(
       adapter.requests.map((r) => '${r.method} ${r.path}'),
-      containsAllInOrder([
-        'DELETE /users/me/profile-image',
-        'PATCH /users/me',
-      ]),
+      containsAllInOrder(['DELETE /users/me/profile-image', 'PATCH /users/me']),
       reason: '사진을 먼저 지우고 나머지 값을 저장한다',
     );
     expect(find.text('열기'), findsOneWidget, reason: '저장이 끝나야 화면이 닫힌다');
+  });
+
+  testWidgets('상태는 시트가 맡아 편집 화면은 상태를 건드리지 않는다', (tester) async {
+    final adapter = await _openEditProfile(tester, profileImageUrl: null);
+
+    expect(find.text('상태 메시지'), findsNothing);
+
+    await tester.tap(find.text('저장'));
+    await tester.pumpAndSettle();
+
+    expect(
+      adapter.requests.map((r) => r.path),
+      isNot(contains('/users/me/status')),
+    );
   });
 
   testWidgets('저장이 실패하면 화면을 닫지 않고 서버 사유를 띄운다', (tester) async {

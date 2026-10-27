@@ -25,14 +25,24 @@ Load `reference/commit-convention.md` before selecting commit types/scopes and a
    - Use `git diff -- <path>` and `git diff --cached -- <path>`.
    - For untracked files, use `sed`, `cat`, or file-specific tooling to inspect content.
    - Never commit files whose purpose is unclear without inspecting them.
-3. Split changes by logical task, not by mechanical file list:
-   - If unrelated tasks are present, create separate commits.
-   - If one file contains unrelated tasks, stage hunks selectively.
+3. Split changes by logical task, not by mechanical file list. Before staging
+   anything, write out the task list in the response: one line per task, each
+   with its intended `type(scope): 설명` title and the files/hunks it covers.
+   Every changed file must land in exactly one task.
+   - A "logical task" is one reviewable intent (one fix, one refactor, one
+     feature). "커밋 대상 전부" is not a task.
+   - Refactor and behavior change are separate tasks even in the same file.
+   - Renames/moves belong with the task that motivated them, not in a
+     leftover cleanup commit.
+   - One commit total is correct only when the whole worktree really is one
+     intent. State that explicitly instead of defaulting to it.
    - Preserve user-owned unrelated changes by leaving them unstaged.
 4. Stage each task safely:
-   - Prefer direct file staging only when the whole file belongs to the task.
-   - Prefer `git add -p <path>` for mixed files.
-   - If `git add -p` is unavailable or impractical, use the patch fallback below.
+   - Stage whole files only when the entire file belongs to the task.
+   - For files spanning multiple tasks, use the patch staging fallback below.
+     `git add -p` is interactive and does not work in this environment; never
+     reach for it, and never collapse two tasks into one just because a file
+     is mixed.
    - After staging, verify with `git diff --cached --stat` and `git diff --cached -- <path>`.
 5. For each task:
    - Determine `type` from the convention.
@@ -101,7 +111,7 @@ If multiple commits were created, run `git log --oneline -n <count>` and list al
 Before final response, confirm:
 
 - Every created commit title matches `type(scope): 설명`.
-- Each commit contains only one logical task.
+- Each commit contains only one logical task, matching the task list from step 3.
 - No unclear or unrelated changes were accidentally staged.
 - Commit contents were verified with `git show`/`git diff-tree`.
 - Remaining changes, if any, are intentionally left uncommitted and listed.

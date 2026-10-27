@@ -1,0 +1,1 @@
+enum ChannelSettingsToggle { isPrivate, isMuted }

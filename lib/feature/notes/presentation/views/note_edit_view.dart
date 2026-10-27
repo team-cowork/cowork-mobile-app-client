@@ -1,11 +1,12 @@
 import 'package:cowork_design_system/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 
-import '../../../../core/utils/base_scaffold.dart';
+import '../../../../shared/widgets/base_scaffold.dart';
 import '../../data/notes_repository.dart';
 import '../../domain/note.dart';
-import '../viewModels/note_edit_bloc.dart';
+import '../blocs/note_edit/note_edit_bloc.dart';
 
 /// 회의록 편집 화면.
 ///
@@ -34,7 +35,7 @@ class NoteEditView extends StatelessWidget {
             ).showSnackBar(SnackBar(content: Text(error)));
             return;
           }
-          Navigator.of(context).pop(state.note);
+          context.pop(state.note);
         },
         child: _NoteEditForm(note: note),
       ),
@@ -132,9 +133,9 @@ class _NoteEditFormState extends State<_NoteEditForm> {
   void _save() {
     final title = _title.text.trim();
     if (title.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('제목을 입력해 주세요.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('제목을 입력해 주세요.')));
       return;
     }
     context.read<NoteEditBloc>().add(
@@ -153,12 +154,7 @@ class _NoteEditFormState extends State<_NoteEditForm> {
     return BaseScaffold(
       appBar: CoworkAppBar.detail(
         title: '📝 회의록',
-        actions: [
-          CoworkButton(
-            label: '저장',
-            onPressed: _save,
-          ),
-        ],
+        actions: [CoworkButton(label: '저장', onPressed: _save)],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(
@@ -449,10 +445,7 @@ enum MarkdownAction { bold, heading, bullet, checkbox, mention }
       final selected = text.substring(start, end);
       final next =
           '${text.substring(0, start)}**$selected**${text.substring(end)}';
-      return (
-        text: next,
-        selection: TextSelection.collapsed(offset: end + 4),
-      );
+      return (text: next, selection: TextSelection.collapsed(offset: end + 4));
     case MarkdownAction.mention:
       final next = '${text.substring(0, start)}@${text.substring(end)}';
       return (

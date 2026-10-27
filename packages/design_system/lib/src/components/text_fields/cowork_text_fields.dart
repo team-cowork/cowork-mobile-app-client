@@ -18,6 +18,7 @@ class CoworkTextField extends StatelessWidget {
     this.suffixIcon,
     this.prefixIcon,
     this.maxLines = 1,
+    this.fillColor,
   });
 
   final TextEditingController? controller;
@@ -34,6 +35,9 @@ class CoworkTextField extends StatelessWidget {
   final Widget? suffixIcon;
   final Widget? prefixIcon;
   final int? maxLines;
+
+  /// 지정 시 입력창 배경을 채운다. (예: 검색창처럼 배경이 필요한 경우)
+  final Color? fillColor;
 
   @override
   Widget build(BuildContext context) {
@@ -63,10 +67,13 @@ class CoworkTextField extends StatelessWidget {
           keyboardType: keyboardType,
           textInputAction: textInputAction,
           maxLines: obscureText ? 1 : maxLines,
+          style: AppFont.subtextL.copyWith(color: colors.onSurface),
           decoration: InputDecoration(
             hintText: hintText,
             suffixIcon: suffixIcon,
             prefixIcon: prefixIcon,
+            filled: fillColor != null,
+            fillColor: fillColor,
 
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(AppRadius.r12),

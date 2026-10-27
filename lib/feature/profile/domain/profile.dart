@@ -1,7 +1,7 @@
 import 'package:cowork_design_system/design_system.dart';
 import 'package:equatable/equatable.dart';
 
-import '../data/user_response.dart';
+import '../data/model/responses/user_response.dart';
 import 'enums/user_status.dart';
 
 /// 값이 있는 문자열만 통과시킨다. 서버는 nullable 필드를 null 로도, 빈 문자열로도
@@ -21,6 +21,8 @@ class Profile extends Equatable {
     required this.metaChips,
     required this.streak,
     this.status = UserStatus.offline,
+    this.customStatus,
+    this.statusMessage = '',
     this.localAvatarPath,
   });
 
@@ -38,12 +40,15 @@ class Profile extends Equatable {
     final studentNumber = _text(me.studentNumber);
     final major = _text(me.major);
     final roles = me.roles;
+    final customStatus = _text(me.customStatus);
 
     return Profile(
       name: _text(me.name) ?? '',
       avatarUrl: _text(me.profileImageUrl) ?? '',
       localAvatarPath: localAvatarPath,
-      status: UserStatus.from(me.status),
+      status: UserStatus.of(presence: me.status, custom: me.customStatus),
+      customStatus: customStatus == null ? null : UserStatus.from(customStatus),
+      statusMessage: _text(me.statusMessage) ?? '',
       subtitle: [
         if (nickname != null) '@$nickname',
         if (specialty != null) specialty,
@@ -89,6 +94,12 @@ class Profile extends Equatable {
   /// 접속 상태. 아바타 오른쪽 아래 점 색으로 나타난다.
   final UserStatus status;
 
+  /// 사용자가 고른 상태. 고른 적 없으면 null 이다. 상태 설정 시트의 초기 선택값.
+  final UserStatus? customStatus;
+
+  /// 상태 메시지 (예: PR 리뷰 환영 🙌). 없으면 빈 문자열.
+  final String statusMessage;
+
   /// 이름 아래 한 줄 소개 (예: @joon_hyeok0204 · 프론트엔드 개발자).
   final String subtitle;
 
@@ -106,6 +117,8 @@ class Profile extends Equatable {
     name,
     avatarUrl,
     status,
+    customStatus,
+    statusMessage,
     subtitle,
     badges,
     metaChips,

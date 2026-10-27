@@ -1,11 +1,11 @@
 import 'package:cowork_design_system/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
+import 'package:go_router/go_router.dart';
 
-import '../../../../core/utils/base_scaffold.dart';
+import '../../../../shared/widgets/base_scaffold.dart';
 import '../../../profile/data/profile_store.dart';
 import '../../domain/note.dart';
-import 'note_edit_view.dart';
 
 /// 회의록 상세 화면.
 ///
@@ -39,9 +39,7 @@ class _NoteDetailViewState extends State<NoteDetailView> {
       _note.author.authorId == ProfileStore.instance.currentUserId;
 
   Future<void> _openEditor() async {
-    final updated = await Navigator.of(context).push<Note>(
-      MaterialPageRoute(builder: (_) => NoteEditView(note: _note)),
-    );
+    final updated = await context.push<Note>('/notes/edit', extra: _note);
     if (updated != null) setState(() => _note = updated);
   }
 
@@ -101,8 +99,7 @@ class _NoteDetailViewState extends State<NoteDetailView> {
           const Divider(height: 1, thickness: 1, color: AppColors.neutral700),
           if (note.summary.isNotEmpty)
             _Section(title: '내용', lines: [note.summary]),
-          if (note.agenda.isNotEmpty)
-            _Section(title: '안건', lines: note.agenda),
+          if (note.agenda.isNotEmpty) _Section(title: '안건', lines: note.agenda),
           if (note.decisions.isNotEmpty)
             _Section(title: '결정 사항', lines: note.decisions),
           if (note.actionItems.isNotEmpty) ...[
@@ -425,9 +422,7 @@ class _ActionItemRowState extends State<_ActionItemRow> {
                 widget.item.label,
                 style: AppFont.subtextM.copyWith(
                   fontSize: 14,
-                  color: _done
-                      ? AppColors.neutral300
-                      : AppColors.darkOnSurface,
+                  color: _done ? AppColors.neutral300 : AppColors.darkOnSurface,
                 ),
               ),
             ),

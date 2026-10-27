@@ -2,8 +2,8 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
-import 'package:cowork_app/feature/profile/data/profile_repository.dart';
-import 'package:cowork_app/network/auth_interceptor.dart';
+import 'package:cowork_app/core/network/auth_interceptor.dart';
+import 'package:cowork_app/feature/profile/data/repositories/profile_repository.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -40,15 +40,13 @@ class _RecordingAdapter implements HttpClientAdapter {
   void close({bool force = false}) {}
 }
 
-Dio _dio(HttpClientAdapter adapter) =>
-    Dio(
-        BaseOptions(
-          baseUrl: 'https://example.test/api',
-          contentType: Headers.jsonContentType,
-          responseType: ResponseType.plain,
-        ),
-      )
-      ..httpClientAdapter = adapter;
+Dio _dio(HttpClientAdapter adapter) => Dio(
+  BaseOptions(
+    baseUrl: 'https://example.test/api',
+    contentType: Headers.jsonContentType,
+    responseType: ResponseType.plain,
+  ),
+)..httpClientAdapter = adapter;
 
 void main() {
   test('사진 업로드는 presigned → 스토리지 PUT → confirm 순서로 나간다', () async {
@@ -85,11 +83,9 @@ void main() {
       '/users/me/profile-image/presigned',
       '/users/me/profile-image/confirm',
     ]);
-    expect(
-      api.requests.first.data,
-      {'content_type': 'image/png'},
-      reason: '확장자에서 뽑은 MIME 이 서명에 들어간다',
-    );
+    expect(api.requests.first.data, {
+      'content_type': 'image/png',
+    }, reason: '확장자에서 뽑은 MIME 이 서명에 들어간다');
     expect(api.requests.last.data, {'object_key': 'users/7/avatar.png'});
 
     final upload = storage.requests.single;

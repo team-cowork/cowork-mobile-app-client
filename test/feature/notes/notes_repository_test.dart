@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
-import 'package:cowork_app/feature/notes/data/notes_repository.dart';
 import 'package:cowork_app/feature/notes/domain/note.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -9,6 +8,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'notes_test_server.dart';
 
 /// 경로마다 상태 코드와 본문을 정해 두는 어댑터. 못 읽는 채널을 흉내낼 때 쓴다.
+///
+/// 경로는 게이트웨이처럼 서비스 prefix 를 붙여 적는다(`/channel/channels/...`).
 class _Server implements HttpClientAdapter {
   _Server(this.responses, {this.onPost});
 
@@ -23,8 +24,9 @@ class _Server implements HttpClientAdapter {
     Stream<Uint8List>? requestStream,
     Future<void>? cancelFuture,
   ) async {
-    if (options.method == 'POST') onPost?.call(options.path);
-    final (status, data) = responses[options.path] ?? (404, null);
+    final path = options.uri.path.replaceFirst('/api', '');
+    if (options.method == 'POST') onPost?.call(path);
+    final (status, data) = responses[path] ?? (404, null);
     return ResponseBody.fromString(
       jsonEncode({'status': 'OK', 'code': status, 'data': data}),
       status,
@@ -38,21 +40,9 @@ class _Server implements HttpClientAdapter {
   void close({bool force = false}) {}
 }
 
-NotesRepository _repository(HttpClientAdapter adapter) =>
-    NotesRepository.withDio(
-      Dio(
-          BaseOptions(
-            baseUrl: 'https://example.test/api',
-            contentType: Headers.jsonContentType,
-            responseType: ResponseType.plain,
-          ),
-        )
-        ..httpClientAdapter = adapter,
-    );
-
 void main() {
   test('회의록을 최신순으로 모으고 섹션·작성자를 화면 모델로 옮긴다', () async {
-    final notes = await _repository(FakeNotesServer()).fetchNotes();
+    final notes = await notesRepositoryOf(FakeNotesServer()).fetchNotes();
 
     expect(notes.map((note) => note.title), [
       '2026 1분기 킥오프 회의',
@@ -73,46 +63,60 @@ void main() {
   });
 
   test('못 읽는 채널이 있어도 나머지 채널의 회의록은 보여준다', () async {
-    final repository = _repository(
+    final repository = notesRepositoryOf(
       _Server({
-        '/teams': (200, [
-          {'id': 1},
-        ]),
-        '/teams/1/channels': (200, [
-          {'id': 10},
-          {'id': 11},
-        ]),
-        '/channels/10/meeting-notes': (200, [
-          {
-            'id': 1,
-            'channelId': 10,
-            'title': '읽을 수 있는 채널',
-            'content': '{}',
-            'createdBy': 1,
-            'createdAt': '2026-03-12T09:00:00Z',
-          },
-        ]),
-        '/channels/11/meeting-notes': (403, null),
-        '/users/1': (200, {'id': 1, 'name': '김준혁'}),
+        '/team/teams': (
+          200,
+          [
+            {'id': 1},
+          ],
+        ),
+        '/channel/teams/1/channels': (
+          200,
+          [
+            {'id': 10},
+            {'id': 11},
+          ],
+        ),
+        '/channel/channels/10/meeting-notes': (
+          200,
+          [
+            {
+              'id': 1,
+              'channelId': 10,
+              'title': '읽을 수 있는 채널',
+              'content': '{}',
+              'createdBy': 1,
+              'createdAt': '2026-03-12T09:00:00Z',
+            },
+          ],
+        ),
+        '/channel/channels/11/meeting-notes': (403, null),
+        '/user/users/1': (200, {'id': 1, 'name': '김준혁'}),
       }),
     );
 
-    expect(
-      (await repository.fetchNotes()).map((note) => note.title),
-      ['읽을 수 있는 채널'],
-    );
+    expect((await repository.fetchNotes()).map((note) => note.title), [
+      '읽을 수 있는 채널',
+    ]);
   });
 
   test('못 읽는 채널 말고 다른 실패는 그대로 던진다', () async {
-    final repository = _repository(
+    final repository = notesRepositoryOf(
       _Server({
-        '/teams': (200, [
-          {'id': 1},
-        ]),
-        '/teams/1/channels': (200, [
-          {'id': 10},
-        ]),
-        '/channels/10/meeting-notes': (500, null),
+        '/team/teams': (
+          200,
+          [
+            {'id': 1},
+          ],
+        ),
+        '/channel/teams/1/channels': (
+          200,
+          [
+            {'id': 10},
+          ],
+        ),
+        '/channel/channels/10/meeting-notes': (500, null),
       }),
     );
 
@@ -121,32 +125,41 @@ void main() {
 
   test('첫 채널을 못 읽으면 읽을 수 있는 채널에 작성한다', () async {
     final posts = <String>[];
-    final repository = _repository(
+    final repository = notesRepositoryOf(
       _Server({
-        '/teams': (200, [
-          {'id': 1},
-        ]),
-        '/teams/1/channels': (200, [
-          {'id': 10},
-          {'id': 11},
-        ]),
-        '/channels/10/meeting-notes': (403, null),
-        '/channels/11/meeting-notes': (200, const []),
-        '/channels/11/meeting-note-templates': (200, [
-          {'id': 5, 'isActive': true},
-        ]),
+        '/team/teams': (
+          200,
+          [
+            {'id': 1},
+          ],
+        ),
+        '/channel/teams/1/channels': (
+          200,
+          [
+            {'id': 10},
+            {'id': 11},
+          ],
+        ),
+        '/channel/channels/10/meeting-notes': (403, null),
+        '/channel/channels/11/meeting-notes': (200, const []),
+        '/channel/channels/11/meeting-note-templates': (
+          200,
+          [
+            {'id': 5, 'isActive': true},
+          ],
+        ),
       }, onPost: posts.add),
     );
     await repository.fetchNotes();
 
     await repository.createNote(title: '주간 스크럼', summary: '이번 주');
 
-    expect(posts, ['/channels/11/meeting-notes']);
+    expect(posts, ['/channel/channels/11/meeting-notes']);
   });
 
   test('작성한 회의록은 채널의 켜진 템플릿으로 저장된다', () async {
     final server = FakeNotesServer();
-    final repository = _repository(server);
+    final repository = notesRepositoryOf(server);
     await repository.fetchNotes(); // 쓸 채널을 찾는다.
 
     await repository.createNote(title: '주간 스크럼', summary: '이번 주 진행 상황');
@@ -158,7 +171,7 @@ void main() {
   });
 
   test('편집한 액션 아이템의 체크 상태가 저장 후 다시 읽어도 남는다', () async {
-    final repository = _repository(FakeNotesServer());
+    final repository = notesRepositoryOf(FakeNotesServer());
     final note = (await repository.fetchNotes()).first;
 
     await repository.updateNote(

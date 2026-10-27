@@ -1,13 +1,34 @@
+import 'package:cowork_app/feature/notes/domain/note.dart';
+import 'package:cowork_app/feature/notes/presentation/views/note_detail_view.dart';
+import 'package:cowork_app/feature/notes/presentation/views/note_edit_view.dart';
 import 'package:cowork_app/feature/notes/presentation/views/notes_view.dart';
 import 'package:cowork_app/feature/profile/data/profile_store.dart';
 import 'package:cowork_design_system/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 
 import 'notes_test_server.dart';
 
+GoRouter _notesRouter() => GoRouter(
+  initialLocation: '/',
+  routes: [
+    GoRoute(path: '/', builder: (context, state) => const NotesView()),
+    GoRoute(
+      path: '/notes/detail',
+      builder: (context, state) => NoteDetailView(note: state.extra! as Note),
+    ),
+    GoRoute(
+      path: '/notes/edit',
+      builder: (context, state) => NoteEditView(note: state.extra! as Note),
+    ),
+  ],
+);
+
 Future<void> _openNote(WidgetTester tester, String title) async {
-  await tester.pumpWidget(notesTestApp(const NotesView(), FakeNotesServer()));
+  await tester.pumpWidget(
+    notesRouterTestApp(_notesRouter(), FakeNotesServer()),
+  );
   await tester.pumpAndSettle();
   await tester.tap(find.text(title));
   await tester.pumpAndSettle();
@@ -27,9 +48,7 @@ void main() {
     expect(find.byIcon(Icons.edit_outlined), findsOneWidget);
   });
 
-  testWidgets('수정 아이콘 → 편집 화면에서 제목을 바꿔 저장하면 상세에 반영된다', (
-    tester,
-  ) async {
+  testWidgets('수정 아이콘 → 편집 화면에서 제목을 바꿔 저장하면 상세에 반영된다', (tester) async {
     await _openNote(tester, '2026 1분기 킥오프 회의');
 
     await tester.tap(find.byIcon(Icons.edit_outlined));

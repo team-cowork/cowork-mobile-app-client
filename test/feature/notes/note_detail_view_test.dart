@@ -4,8 +4,20 @@ import 'package:cowork_app/feature/notes/presentation/views/notes_view.dart';
 import 'package:cowork_design_system/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 
 import 'notes_test_server.dart';
+
+GoRouter _notesRouter() => GoRouter(
+  initialLocation: '/',
+  routes: [
+    GoRoute(path: '/', builder: (context, state) => const NotesView()),
+    GoRoute(
+      path: '/notes/detail',
+      builder: (context, state) => NoteDetailView(note: state.extra! as Note),
+    ),
+  ],
+);
 
 void main() {
   testWidgets('카드를 누르면 상세 화면이 섹션과 액션 아이템을 렌더링한다', (tester) async {
@@ -15,7 +27,9 @@ void main() {
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
 
-    await tester.pumpWidget(notesTestApp(const NotesView(), FakeNotesServer()));
+    await tester.pumpWidget(
+      notesRouterTestApp(_notesRouter(), FakeNotesServer()),
+    );
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('2026 1분기 킥오프 회의'));
@@ -32,7 +46,9 @@ void main() {
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
 
-    await tester.pumpWidget(notesTestApp(const NotesView(), FakeNotesServer()));
+    await tester.pumpWidget(
+      notesRouterTestApp(_notesRouter(), FakeNotesServer()),
+    );
     await tester.pumpAndSettle();
     await tester.tap(find.text('2026 1분기 킥오프 회의'));
     await tester.pumpAndSettle();
@@ -46,9 +62,7 @@ void main() {
     expect(find.byIcon(Icons.check), findsNWidgets(2));
   });
 
-  testWidgets('참여자가 5명을 넘으면 아바타 4개 + 카운터만 표시하고 탭하면 전체 목록이 나온다', (
-    tester,
-  ) async {
+  testWidgets('참여자가 5명을 넘으면 아바타 4개 + 카운터만 표시하고 탭하면 전체 목록이 나온다', (tester) async {
     const note = Note(
       id: 999,
       title: '대규모 회의',
@@ -64,7 +78,10 @@ void main() {
     );
 
     await tester.pumpWidget(
-      MaterialApp(theme: AppTheme.dark(), home: const NoteDetailView(note: note)),
+      MaterialApp(
+        theme: AppTheme.dark(),
+        home: const NoteDetailView(note: note),
+      ),
     );
     await tester.pumpAndSettle();
 

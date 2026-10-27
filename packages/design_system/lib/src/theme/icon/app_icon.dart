@@ -10,7 +10,6 @@ class AppIcon {
   static const IconData home = Icons.home_outlined;
   static const IconData back = Icons.arrow_back_ios_new;
   static const IconData close = Icons.close;
-  static const IconData search = Icons.search;
   static const IconData settings = Icons.settings_outlined;
 
 
@@ -102,5 +101,122 @@ class AppIcon {
     height: size,
     fit: BoxFit.contain,
   );
+
+  static Widget taskAssigned({double size = AppSize.iconSmall}) => SvgPicture.asset(
+    'assets/images/task_assigned.svg',
+    package: 'cowork_design_system',
+    width: size,
+    height: size,
+    fit: BoxFit.contain,
+  );
+
+  static Widget gitPush({double size = AppSize.iconSmall}) => SvgPicture.asset(
+    'assets/images/git_push.svg',
+    package: 'cowork_design_system',
+    width: size,
+    height: size,
+    fit: BoxFit.contain,
+  );
+
+  static Widget clear({double size = AppSize.iconSmall}) => SvgPicture.asset(
+    'assets/images/clear.svg',
+    package: 'cowork_design_system',
+    width: size,
+    height: size,
+    fit: BoxFit.contain,
+  );
+
+  static Widget users({double size = AppSize.iconMedium}) => SvgPicture.asset(
+    'assets/images/users.svg',
+    package: 'cowork_design_system',
+    width: size,
+    height: size,
+    fit: BoxFit.contain,
+  );
+
+  static Widget more({double size = AppSize.iconMedium}) => SvgPicture.asset(
+    'assets/images/more.svg',
+    package: 'cowork_design_system',
+    width: size,
+    height: size,
+    fit: BoxFit.contain,
+  );
+
+  static Widget userPlus({double size = AppSize.iconMedium}) =>
+      SvgPicture.asset(
+        'assets/images/user-plus.svg',
+        package: 'cowork_design_system',
+        width: size,
+        height: size,
+        fit: BoxFit.contain,
+      );
+
+  static Widget chevronBack({double size = AppSize.iconLarge}) =>
+      SvgPicture.asset(
+        'assets/images/chevron-back.svg',
+        package: 'cowork_design_system',
+        width: size,
+        height: size,
+        fit: BoxFit.contain,
+      );
+
+  static Widget hash({double size = AppSize.iconMedium}) => SvgPicture.asset(
+    'assets/images/hash.svg',
+    package: 'cowork_design_system',
+    width: size,
+    height: size,
+    fit: BoxFit.contain,
+  );
+
+  static Widget send({double size = AppSize.iconSmall}) => SvgPicture.asset(
+    'assets/images/send.svg',
+    package: 'cowork_design_system',
+    width: size,
+    height: size,
+    fit: BoxFit.contain,
+  );
+
+  static Widget attach({double size = AppSize.iconMedium}) =>
+      SvgPicture.asset(
+        'assets/images/attach.svg',
+        package: 'cowork_design_system',
+        width: size,
+        height: size,
+        fit: BoxFit.contain,
+      );
+
+  static Widget muted({double size = 14}) => SvgPicture.asset(
+    'assets/images/muted.svg',
+    package: 'cowork_design_system',
+    width: size,
+    height: size,
+    fit: BoxFit.contain,
+  );
+
+  static Widget edit({double size = AppSize.iconMedium}) => SvgPicture.asset(
+    'assets/images/edit.svg',
+    package: 'cowork_design_system',
+    width: size,
+    height: size,
+    fit: BoxFit.contain,
+  );
+
+  static Widget dmHome({double size = AppSize.iconMedium}) =>
+      SvgPicture.asset(
+        'assets/images/dm-home.svg',
+        package: 'cowork_design_system',
+        width: size,
+        height: size,
+        fit: BoxFit.contain,
+      );
+
+  static Widget search({double size = AppSize.iconMedium}) =>
+      SvgPicture.asset(
+        'assets/images/search.svg',
+        package: 'cowork_design_system',
+        width: size,
+        height: size,
+        fit: BoxFit.contain,
+      );
 
 }
