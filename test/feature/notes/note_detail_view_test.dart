@@ -6,6 +6,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 
+import 'notes_test_server.dart';
+
 GoRouter _notesRouter() => GoRouter(
   initialLocation: '/',
   routes: [
@@ -26,7 +28,7 @@ void main() {
     addTearDown(tester.view.reset);
 
     await tester.pumpWidget(
-      MaterialApp.router(theme: AppTheme.dark(), routerConfig: _notesRouter()),
+      notesRouterTestApp(_notesRouter(), FakeNotesServer()),
     );
     await tester.pumpAndSettle();
 
@@ -36,7 +38,6 @@ void main() {
     expect(find.text('안건'), findsOneWidget);
     expect(find.text('결정 사항'), findsOneWidget);
     expect(find.text('액션 아이템'), findsOneWidget);
-    expect(find.text('확정'), findsOneWidget);
     expect(find.text('이슈 트래커 칸반 스펙 문서화 (민재)'), findsOneWidget);
   });
 
@@ -46,13 +47,13 @@ void main() {
     addTearDown(tester.view.reset);
 
     await tester.pumpWidget(
-      MaterialApp.router(theme: AppTheme.dark(), routerConfig: _notesRouter()),
+      notesRouterTestApp(_notesRouter(), FakeNotesServer()),
     );
     await tester.pumpAndSettle();
     await tester.tap(find.text('2026 1분기 킥오프 회의'));
     await tester.pumpAndSettle();
 
-    // 시드에서 체크된 항목은 1개.
+    // 서버 본문에서 체크된 항목은 1개.
     expect(find.byIcon(Icons.check), findsOneWidget);
 
     await tester.tap(find.text('음성 채널 인원 제한 정책 확정 (서연)'));

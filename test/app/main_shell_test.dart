@@ -1,16 +1,21 @@
 import 'package:cowork_app/app/main_shell.dart';
 import 'package:cowork_design_system/design_system.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../feature/channel/chat_test_server.dart';
+import '../feature/notes/notes_test_server.dart';
 
 void main() {
   testWidgets('탭을 누르면 해당 화면으로 전환된다', (tester) async {
     await tester.pumpWidget(
-      chatTestApp(
-        FakeChatServer(),
-        theme: AppTheme.dark(),
-        home: const MainShell(),
+      RepositoryProvider.value(
+        value: notesRepositoryOf(FakeNotesServer()),
+        child: chatTestApp(
+          FakeChatServer(),
+          theme: AppTheme.dark(),
+          home: const MainShell(),
+        ),
       ),
     );
     await tester.pumpAndSettle();

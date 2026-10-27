@@ -7,6 +7,7 @@ import 'package:cowork_app/feature/auth/data/dgsm_oauth_config.dart';
 import 'package:cowork_app/feature/auth/presentation/blocs/auth/auth_bloc.dart';
 import 'package:cowork_app/feature/channel/data/repositories/channel_repository.dart';
 import 'package:cowork_app/feature/chat/data/repositories/message_repository.dart';
+import 'package:cowork_app/feature/notes/data/notes_repository.dart';
 import 'package:cowork_app/feature/profile/data/repositories/github_repository.dart';
 import 'package:cowork_app/feature/profile/data/repositories/profile_repository.dart';
 import 'package:cowork_app/feature/setting/data/preference_repository.dart';
@@ -60,6 +61,13 @@ class CoworkApp extends StatelessWidget {
               ChannelRepository(context.read<AuthRepository>()),
         ),
         RepositoryProvider(
+          create: (context) => NotesRepository(
+            context.read<AuthRepository>(),
+            teams: context.read<TeamRepository>(),
+            channels: context.read<ChannelRepository>(),
+          ),
+        ),
+        RepositoryProvider(
           create: (context) =>
               MessageRepository(context.read<AuthRepository>()),
         ),
@@ -77,9 +85,10 @@ class CoworkApp extends StatelessWidget {
         ),
       ],
       child: BlocProvider(
-        create: (context) =>
-            AuthBloc(repository: context.read<AuthRepository>())
-              ..add(const AuthEvent.sessionRestored()),
+        create: (context) => AuthBloc(
+          repository: context.read<AuthRepository>(),
+          profile: context.read<ProfileRepository>(),
+        )..add(const AuthEvent.sessionRestored()),
         child: MaterialApp.router(
           title: 'cowork',
           debugShowCheckedModeBanner: false,

@@ -3,15 +3,17 @@
 /// 프로필은 `/users/me` 가 원본이고([ProfileRepository]), 여기엔 회의록 작성자에
 /// 필요한 최소한만 남긴다. 회의록 화면이 프로필 응답을 다시 부르지 않게 하는 게 목적.
 ///
-// ponytail: 앱 재시작 시 초기화됨. 아래 기본값은 프로필 화면에 한 번도 들어가지
-// 않고 회의록부터 쓸 때만 보이는 목 값이다. 회의록이 서버로 붙으면 같이 사라진다.
+// ponytail: 앱 재시작 시 초기화됨. 로그인 직후 [ProfileRepository.fetchMe] 가 채운다.
+// 아래 이름·사진 기본값은 그 응답이 오기 전 잠깐만 보이는 목 값이다.
 class ProfileStore {
   ProfileStore._();
 
   static final ProfileStore instance = ProfileStore._();
 
   /// 현재 로그인 사용자 id. 회의록 소유 판별(내 노트인지)에 쓰인다.
-  int currentUserId = 1;
+  ///
+  /// 아직 못 읽었으면 null 이다. 아무 id 나 넣어 두면 남의 회의록을 내 것으로 본다.
+  int? currentUserId;
 
   String name = '김준혁';
   String avatarUrl = 'https://avatars.githubusercontent.com/u/0';
