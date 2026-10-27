@@ -1,8 +1,10 @@
 import 'package:cowork_design_system/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../../shared/widgets/bloc_scaffold.dart';
+import '../../data/repositories/notification_repository.dart';
 import '../../domain/enums/avatar_color.dart';
 import '../../domain/enums/notification_icon_type.dart';
 import '../../domain/notification_item.dart';
@@ -14,7 +16,9 @@ class NotificationsView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocScaffold<NotificationsBloc, List<NotificationItem>>(
-      create: (_) => NotificationsBloc()..add(const NotificationsRequested()),
+      create: (context) =>
+          NotificationsBloc(context.read<NotificationRepository>())
+            ..add(const NotificationsRequested()),
       errorTitle: '알림을 불러오지 못했어요',
       onRetry: (context) =>
           context.read<NotificationsBloc>().add(const NotificationsRequested()),
@@ -41,29 +45,53 @@ class _NotificationsBody extends StatelessWidget {
             ),
           ),
           Expanded(
-            child: SingleChildScrollView(
-              child: Column(
-                children: [
-                  for (final item in items) ...[
-                    _NotificationListItem(
-                      item: item,
-                      onTap: () => context.read<NotificationsBloc>().add(
-                        NotificationsReadRequested(id: item.id),
+            child: items.isEmpty
+                ? const Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(AppSpacing.s16),
+                      child: CoworkEmptyState(
+                        icon: Icons.notifications_none_outlined,
+                        title: '아직 받은 알림이 없어요',
+                        description: '앱을 켜 둔 동안 받은 알림이 여기에 쌓여요.',
                       ),
                     ),
-                    const Divider(
-                      height: 1,
-                      thickness: 1,
-                      color: AppColors.neutral700,
+                  )
+                : SingleChildScrollView(
+                    child: Column(
+                      children: [
+                        for (final item in items) ...[
+                          _NotificationListItem(
+                            item: item,
+                            onTap: () => _open(context, item),
+                          ),
+                          const Divider(
+                            height: 1,
+                            thickness: 1,
+                            color: AppColors.neutral700,
+                          ),
+                        ],
+                      ],
                     ),
-                  ],
-                ],
-              ),
-            ),
+                  ),
           ),
         ],
       ),
     );
+  }
+}
+
+/// 읽음으로 바꾸고, 채널 알림이면 그 채널로 간다. 채널 없이 팀만 있는 알림이면
+/// 팀 id 를 돌려주며 닫아, 알림 화면을 연 채팅 홈이 그 팀으로 바꾸게 한다.
+void _open(BuildContext context, NotificationItem item) {
+  context.read<NotificationsBloc>().add(
+    NotificationsReadRequested(id: item.id),
+  );
+  final channelId = item.channelId;
+  final teamId = item.teamId;
+  if (channelId != null) {
+    context.push('/chat/channel', extra: channelId);
+  } else if (teamId != null && context.canPop()) {
+    context.pop(teamId);
   }
 }
 

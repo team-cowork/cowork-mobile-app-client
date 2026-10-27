@@ -91,13 +91,33 @@ class ChannelListBloc extends Bloc<ChannelListEvent, ChannelListState> {
     await _loadChannels(team, emit);
   }
 
+  /// [ChannelListTeamSelected.teamId] 팀으로 옮긴다.
+  ///
+  /// 알림으로 들어온 팀(새로 초대된 팀 등)은 아직 읽은 목록에 없을 수 있어 팀 목록을
+  /// 다시 읽어 찾는다. 그래도 없으면(그 사이 빠진 팀) 보던 팀에 남는다.
   Future<void> _onTeamSelected(
     ChannelListTeamSelected event,
     Emitter<ChannelListState> emit,
   ) async {
-    final team = _teams.where((team) => team.id == event.teamId).firstOrNull;
-    if (team == null || team.id == _teamId) return;
+    if (event.teamId == _teamId) return;
+    var team = _teams.where((team) => team.id == event.teamId).firstOrNull;
     emit(const ChannelListState.loading());
+    if (team == null) {
+      try {
+        _teams = await _teamRepository.fetchMyTeams();
+      } catch (e, s) {
+        Logger.e('팀 목록 조회 실패', tag: 'Chat', error: e, stackTrace: s);
+        emit(ChannelListState.failure(_reasonOf('팀 목록 조회 실패', e)));
+        return;
+      }
+      team =
+          _teams.where((team) => team.id == event.teamId).firstOrNull ??
+          _currentTeam();
+      if (team == null) {
+        _showNoTeam(emit);
+        return;
+      }
+    }
     await _loadChannels(team, emit);
   }
 

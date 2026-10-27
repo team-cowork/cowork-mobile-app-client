@@ -37,6 +37,26 @@ class ChatView extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // 팀이 없어도 초대 알림을 볼 수 있게 알림만 둔다. 자리는 헤더와 맞춘다.
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.s16,
+                  AppSpacing.s6,
+                  AppSpacing.s16,
+                  AppSpacing.s12,
+                ),
+                child: Align(
+                  alignment: Alignment.centerRight,
+                  child: Semantics(
+                    label: '알림',
+                    button: true,
+                    child: GestureDetector(
+                      onTap: () => _openNotifications(context),
+                      child: AppIcon.bell(),
+                    ),
+                  ),
+                ),
+              ),
               _ChatShortcutBar(
                 shortcuts: const [],
                 onDmHomeTap: () => context.push('/dm'),
@@ -70,7 +90,7 @@ class ChatView extends StatelessWidget {
                   onCreateProject: () => NewProjectSheet.show(context),
                 ),
                 onSearchTap: () => context.push('/search'),
-                onNotificationTap: () => context.push('/notifications'),
+                onNotificationTap: () => _openNotifications(context),
               ),
               _ChatShortcutBar(
                 shortcuts: data.workspaceShortcuts,
@@ -86,6 +106,16 @@ class ChatView extends StatelessWidget {
         ),
       },
     );
+  }
+
+  /// 알림 화면을 연다. 팀 알림을 눌러 닫히면 그 팀으로 옮긴다.
+  static Future<void> _openNotifications(BuildContext context) async {
+    final bloc = context.read<ChannelListBloc>();
+    final teamId = await context.push<int>('/notifications');
+    // 알림 화면에 있는 동안 홈이 사라졌으면(로그아웃 등) 옮길 곳이 없다.
+    if (teamId != null && !bloc.isClosed) {
+      bloc.add(ChannelListEvent.teamSelected(teamId));
+    }
   }
 
   /// 팀 생성 시트를 띄우고, 만들어지면 그 팀으로 옮기고 알린다.
