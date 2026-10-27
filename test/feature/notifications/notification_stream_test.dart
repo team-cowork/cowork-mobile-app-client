@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
-import 'package:cowork_app/core/network/notification_stream.dart';
+import 'package:cowork_app/feature/notifications/data/notification_stream.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 

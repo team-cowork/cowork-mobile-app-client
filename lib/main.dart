@@ -1,13 +1,13 @@
 import 'package:cowork_app/app/app_router.dart';
 import 'package:cowork_app/core/network/chat_socket.dart';
 import 'package:cowork_app/core/network/dev_http_overrides.dart';
-import 'package:cowork_app/core/network/notification_stream.dart';
 import 'package:cowork_app/core/utils/logger.dart';
 import 'package:cowork_app/feature/auth/data/auth_repository.dart';
 import 'package:cowork_app/feature/auth/data/dgsm_oauth_config.dart';
 import 'package:cowork_app/feature/auth/presentation/blocs/auth/auth_bloc.dart';
 import 'package:cowork_app/feature/channel/data/repositories/channel_repository.dart';
 import 'package:cowork_app/feature/chat/data/repositories/message_repository.dart';
+import 'package:cowork_app/feature/notifications/data/notification_stream.dart';
 import 'package:cowork_app/feature/notifications/data/repositories/notification_repository.dart';
 import 'package:cowork_app/feature/profile/data/repositories/github_repository.dart';
 import 'package:cowork_app/feature/profile/data/repositories/profile_repository.dart';

@@ -3,10 +3,10 @@ import 'dart:convert';
 
 import 'package:dio/dio.dart';
 
-import '../utils/logger.dart';
-import '../../feature/auth/data/auth_repository.dart';
-import 'dio_client.dart';
-import 'sse.dart';
+import '../../../core/network/dio_client.dart';
+import '../../../core/network/sse.dart';
+import '../../../core/utils/logger.dart';
+import '../../auth/data/auth_repository.dart';
 
 /// notification 서비스의 SSE 알림 스트림 (`GET /notifications/stream`).
 ///
