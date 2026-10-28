@@ -15,6 +15,7 @@ final class ChannelConversation extends Equatable {
     this.hasOlder = false,
     this.loadingOlder = false,
     this.errorMessage,
+    this.closedReason,
   });
 
   final String name;
@@ -32,6 +33,9 @@ final class ChannelConversation extends Equatable {
   /// 직전 이전 메시지 불러오기·전송이 실패한 사유. 화면이 한 번 보여 준다.
   final String? errorMessage;
 
+  /// 채널이 지워졌거나 더 볼 수 없게 된 사유. 있으면 화면이 알리고 채널을 닫는다.
+  final String? closedReason;
+
   ChannelConversation withError(String message) => ChannelConversation(
     name: name,
     description: description,
@@ -39,6 +43,7 @@ final class ChannelConversation extends Equatable {
     hasOlder: hasOlder,
     loadingOlder: loadingOlder,
     errorMessage: message,
+    closedReason: closedReason,
   );
 
   @override
@@ -49,5 +54,6 @@ final class ChannelConversation extends Equatable {
     hasOlder,
     loadingOlder,
     errorMessage,
+    closedReason,
   ];
 }

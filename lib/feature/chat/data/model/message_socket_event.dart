@@ -21,6 +21,19 @@ sealed class MessageSocketEvent {
       'message:deleted' when data['messageId'] is String => MessageDeleted(
         data['messageId'] as String,
       ),
+      'channel:deleted' when data['channelId'] is int => ChannelAccessLost(
+        channelId: data['channelId'] as int,
+        reason: ChannelAccessLostReason.deleted,
+      ),
+      'channel:access:revoked' when data['channelId'] is int =>
+        ChannelAccessLost(
+          channelId: data['channelId'] as int,
+          reason: ChannelAccessLostReason.revoked,
+        ),
+      'team:access:revoked' when data['teamId'] is int => ChannelAccessLost(
+        teamId: data['teamId'] as int,
+        reason: ChannelAccessLostReason.leftTeam,
+      ),
       _ => null,
     };
   }
@@ -56,4 +69,19 @@ final class MessageDeleted extends MessageSocketEvent {
   const MessageDeleted(this.messageId);
 
   final String messageId;
+}
+
+enum ChannelAccessLostReason { deleted, revoked, leftTeam }
+
+/// 채널을 더 볼 수 없게 됐다. (`channel:deleted` / `channel:access:revoked` /
+/// `team:access:revoked`)
+///
+/// 채널 이벤트는 [channelId], 팀 이벤트는 [teamId] 만 있다. 받는 쪽이 보고 있는
+/// 채널·팀과 맞는지 본다.
+final class ChannelAccessLost extends MessageSocketEvent {
+  const ChannelAccessLost({this.channelId, this.teamId, required this.reason});
+
+  final int? channelId;
+  final int? teamId;
+  final ChannelAccessLostReason reason;
 }

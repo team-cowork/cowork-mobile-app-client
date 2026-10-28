@@ -478,4 +478,91 @@ void main() {
     expect(_texts(bloc), ['남의 메시지', '내 메시지', '이제 보냄']);
     expect(_data(bloc).messages[1].editable, isTrue);
   });
+
+  group('채널을 더 볼 수 없게 되면', () {
+    Future<String?> closedReasonAfter(
+      String name,
+      Map<String, dynamic> data,
+    ) async {
+      final socket = FakeChatSocket();
+      final bloc = await _loaded(FakeMessageGateway(), socket);
+      addTearDown(bloc.close);
+
+      socket.push(name, data);
+      await pumpEventQueue();
+
+      return _data(bloc).closedReason;
+    }
+
+    test('보고 있는 채널이 지워지면 닫힘 사유를 싣는다', () async {
+      expect(
+        await closedReasonAfter('channel:deleted', {
+          'channelId': 10,
+          'teamId': 1,
+        }),
+        '채널이 삭제됐어요.',
+      );
+    });
+
+    test('보고 있는 채널 권한이 사라지면 닫힘 사유를 싣는다', () async {
+      expect(
+        await closedReasonAfter('channel:access:revoked', {'channelId': 10}),
+        '이 채널에 더 이상 접근할 수 없어요.',
+      );
+    });
+
+    test('이 채널의 팀에서 빠지면 닫힘 사유를 싣는다', () async {
+      expect(
+        await closedReasonAfter('team:access:revoked', {'teamId': 1}),
+        '팀에서 빠져서 이 채널을 볼 수 없어요.',
+      );
+    });
+
+    test('다른 채널·팀 이야기면 그대로 둔다', () async {
+      expect(
+        await closedReasonAfter('channel:deleted', {
+          'channelId': 11,
+          'teamId': 1,
+        }),
+        isNull,
+      );
+      expect(
+        await closedReasonAfter('team:access:revoked', {'teamId': 2}),
+        isNull,
+      );
+    });
+
+    test('불러오는 중에 온 것도 다 불러온 뒤 반영한다', () async {
+      final socket = FakeChatSocket();
+      final gateway = FakeMessageGateway();
+      final gate = Completer<void>();
+      gateway.listGate = gate.future;
+      final bloc = _bloc(gateway, socket)
+        ..add(const ChannelMessageEvent.requested());
+      addTearDown(bloc.close);
+      await pumpEventQueue();
+
+      socket.push('channel:access:revoked', {'channelId': 10});
+      await pumpEventQueue();
+      gate.complete();
+      await bloc.stream.firstWhere(
+        (s) => s is AsyncSuccess<ChannelConversation>,
+      );
+
+      expect(_data(bloc).closedReason, '이 채널에 더 이상 접근할 수 없어요.');
+    });
+
+    test('닫힌 뒤에 온 메시지는 반영하지 않는다', () async {
+      final socket = FakeChatSocket();
+      final bloc = await _loaded(FakeMessageGateway(), socket);
+      addTearDown(bloc.close);
+
+      socket
+        ..push('channel:deleted', {'channelId': 10, 'teamId': 1})
+        ..push('message', messageJson('m3', 2, '늦게 온 메시지'));
+      await pumpEventQueue();
+
+      expect(_texts(bloc), ['첫 번째', '두 번째']);
+    });
+  });
 }
