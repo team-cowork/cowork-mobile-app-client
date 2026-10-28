@@ -42,8 +42,9 @@ void main() {
                 ],
               ),
               GoRoute(
-                path: '/chat/channel',
-                builder: (_, state) => Text('채널 ${state.extra}'),
+                path: '/chat/channel/:channelId',
+                builder: (_, state) =>
+                    Text('채널 ${state.pathParameters['channelId']}'),
               ),
             ],
           ),

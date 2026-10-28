@@ -16,6 +16,26 @@ import '../feature/search/presentation/views/search_view.dart';
 import '../feature/setting/presentation/views/settings_view.dart';
 import 'auth_gate.dart';
 
+/// 채널 대화와 그 하위 화면. 채널 id 를 경로에 담아 딥링크·앱 복원으로 들어와도
+/// 화면을 다시 만들 수 있다. id 가 숫자가 아니면 홈으로 보낸다.
+final channelRoute = GoRoute(
+  path: '/chat/channel/:channelId',
+  redirect: (context, state) => _channelIdOf(state) == null ? '/' : null,
+  builder: (context, state) => ChannelView(channelId: _channelIdOf(state)!),
+  routes: [
+    GoRoute(path: 'thread', builder: (context, state) => const ThreadView()),
+    GoRoute(path: 'members', builder: (context, state) => const MembersView()),
+    GoRoute(
+      path: 'settings',
+      builder: (context, state) =>
+          ChannelSettingsView(channelId: _channelIdOf(state)!),
+    ),
+  ],
+);
+
+int? _channelIdOf(GoRouterState state) =>
+    int.tryParse(state.pathParameters['channelId'] ?? '');
+
 final GoRouter appRouter = GoRouter(
   initialLocation: '/',
   routes: [
@@ -41,26 +61,11 @@ final GoRouter appRouter = GoRouter(
       path: '/profile/settings',
       builder: (context, state) => const SettingsView(),
     ),
-    GoRoute(
-      path: '/chat/channel',
-      builder: (context, state) => ChannelView(channelId: state.extra! as int),
-    ),
-    GoRoute(
-      path: '/chat/channel/thread',
-      builder: (context, state) => const ThreadView(),
-    ),
-    GoRoute(
-      path: '/chat/channel/members',
-      builder: (context, state) => const MembersView(),
-    ),
+    channelRoute,
     GoRoute(
       path: '/issues/detail',
       builder: (context, state) =>
           IssueDetailView(issue: state.extra! as Issue),
-    ),
-    GoRoute(
-      path: '/chat/channel/settings',
-      builder: (context, state) => const ChannelSettingsView(),
     ),
     GoRoute(path: '/dm', builder: (context, state) => const DmListView()),
   ],

@@ -89,7 +89,7 @@ void _open(BuildContext context, NotificationItem item) {
   final channelId = item.channelId;
   final teamId = item.teamId;
   if (channelId != null) {
-    context.push('/chat/channel', extra: channelId);
+    context.push('/chat/channel/$channelId');
   } else if (teamId != null && context.canPop()) {
     context.pop(teamId);
   }
