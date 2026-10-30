@@ -9,6 +9,7 @@ class NoteTemplatesData extends Equatable {
     required this.channels,
     required this.channelId,
     required this.templates,
+    this.loadingTemplates = false,
   });
 
   /// 내 회의록 채널.
@@ -20,6 +21,10 @@ class NoteTemplatesData extends Equatable {
   /// 고른 채널의 템플릿.
   final List<NoteTemplate> templates;
 
+  /// 채널을 바꿔 템플릿을 읽는 중인지. 채널 칩은 그대로 두고 템플릿 영역만 로딩을
+  /// 보여준다.
+  final bool loadingTemplates;
+
   @override
-  List<Object?> get props => [channels, channelId, templates];
+  List<Object?> get props => [channels, channelId, templates, loadingTemplates];
 }

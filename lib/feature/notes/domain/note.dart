@@ -1,8 +1,6 @@
 import 'package:equatable/equatable.dart';
 
 import '../data/meeting_note_response.dart';
-import 'note_section_field.dart';
-import 'note_template.dart';
 
 /// 회의록 화면에서 사용하는 도메인 모델.
 ///
@@ -42,8 +40,7 @@ class Note extends Equatable {
 
   /// 섹션 제목 → 내용 (예: `{'안건': '1. ...'}`).
   ///
-  /// 템플릿 섹션 순서다. 서버는 키 순서를 지키지 않으므로 읽어 올 때
-  /// [Note.fromMeetingNote] 가 다시 맞춘다. 상세 화면도 이 순서로 보여준다.
+  /// 서버는 저장한 키 순서를 그대로 돌려준다. 상세 화면도 이 순서로 보여준다.
   final Map<String, String> sections;
 
   /// 카드에 보이는 본문 요약 (2줄 내외).
@@ -54,13 +51,9 @@ class Note extends Equatable {
       sections['요약'] ?? sections['내용'] ?? sections.values.join(' ').trim();
 
   /// 서버 회의록을 화면 모델로 옮긴다. 태그·참여자는 서버에 없어 비운다.
-  ///
-  /// [template] 이 있으면 섹션을 그 순서로 다시 놓고, 템플릿에 없는 키는 뒤에 붙인다.
-  /// 없으면(못 읽었거나 지워진 템플릿) 서버가 준 순서 그대로다.
   factory Note.fromMeetingNote(
     MeetingNoteResponse note, {
     required NoteAuthor author,
-    NoteTemplate? template,
   }) => Note(
     id: note.id,
     channelId: note.channelId,
@@ -68,10 +61,7 @@ class Note extends Equatable {
     title: note.title,
     tags: const [],
     author: author,
-    sections: {
-      for (final field in sectionFieldsOf(template, note.sections))
-        if (note.sections[field.title] case final body?) field.title: body,
-    },
+    sections: note.sections,
   );
 
   Note copyWith({

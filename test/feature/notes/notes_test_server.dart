@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
@@ -41,6 +42,9 @@ class FakeNotesServer implements HttpClientAdapter {
   /// 걸어 두면 회의록 작성을 이 (상태 코드, 사유)로 거절한다.
   (int, String)? failCreate;
 
+  /// 채널 id → 끝낼 때까지 그 채널의 템플릿 목록 응답을 붙잡아 둘 completer.
+  final Map<int, Completer<void>> holdTemplates = {};
+
   int _nextId = 100;
 
   static final _notesPath = RegExp(
@@ -64,9 +68,11 @@ class FakeNotesServer implements HttpClientAdapter {
     requests.add((method, path, body));
 
     if (_templatesPath.firstMatch(path) case final match?) {
+      final channelId = int.parse(match[1]!);
+      if (method == 'GET') await holdTemplates[channelId]?.future;
       return _template(
         method,
-        channelId: int.parse(match[1]!),
+        channelId: channelId,
         templateId: int.tryParse(match[2] ?? ''),
         action: match[3],
         sectionId: int.tryParse(match[4] ?? ''),
@@ -80,7 +86,7 @@ class FakeNotesServer implements HttpClientAdapter {
       if (method == 'GET') {
         return _ok([
           for (final note in notes)
-            if (note['channelId'] == channelId) _asStored(note),
+            if (note['channelId'] == channelId) note,
         ]);
       }
       if (failCreate case (final statusCode, final message)) {
@@ -206,28 +212,6 @@ class FakeNotesServer implements HttpClientAdapter {
     return notes[index] = {...notes[index], ...body};
   }
 
-  /// 실제 서버가 다시 읽어 주는 모양. 본문이 MySQL `JSON` 컬럼에 들어가면서 키가
-  /// (UTF-8 바이트 길이, 바이트 값) 순으로 다시 정렬된다. 작성·수정 응답은 저장 전
-  /// 값을 그대로 돌려주므로 목록 조회에만 적용한다.
-  static Map<String, dynamic> _asStored(Map<String, dynamic> note) {
-    final content = jsonDecode(note['content'] as String);
-    if (content is! Map<String, dynamic>) return note;
-    int byMysql(String a, String b) {
-      final (x, y) = (utf8.encode(a), utf8.encode(b));
-      if (x.length != y.length) return x.length - y.length;
-      for (var i = 0; i < x.length; i++) {
-        if (x[i] != y[i]) return x[i] - y[i];
-      }
-      return 0;
-    }
-
-    final keys = content.keys.toList()..sort(byMysql);
-    return {
-      ...note,
-      'content': jsonEncode({for (final key in keys) key: content[key]}),
-    };
-  }
-
   static Future<Map<String, dynamic>> _body(Stream<Uint8List>? stream) async {
     if (stream == null) return const {};
     final bytes = (await stream.toList()).expand((chunk) => chunk).toList();
@@ -349,7 +333,6 @@ NotesRepository notesRepositoryOf(HttpClientAdapter server) =>
       users: _dioOf(server, 'user'),
       teams: TeamRepository.withDio(_dioOf(server, 'team')),
       channels: ChannelRepository.withDio(_dioOf(server, 'channel')),
-      templates: noteTemplateRepositoryOf(server),
     );
 
 /// [server] 로 요청을 보내는 회의록 템플릿 저장소.

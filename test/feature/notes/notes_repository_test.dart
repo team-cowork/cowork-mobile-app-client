@@ -52,8 +52,7 @@ void main() {
     expect(first.author.name, '김준혁');
     expect(first.author.date, '03.12');
     expect(first.summary, '분기 목표 정렬 및 팀별 OKR 확정.');
-    // 템플릿 섹션 순서로 놓고, 템플릿에 없는 `요약` 은 뒤에 붙인다.
-    expect(first.sections.keys, ['참석자', '안건', '결정 사항', '액션 아이템', '요약']);
+    expect(first.sections.keys, ['요약', '참석자', '안건', '결정 사항', '액션 아이템']);
   });
 
   test('못 읽는 채널이 있어도 나머지 채널의 회의록은 보여준다', () async {
@@ -93,44 +92,6 @@ void main() {
     expect((await repository.fetchNotes()).map((note) => note.title), [
       '읽을 수 있는 채널',
     ]);
-  });
-
-  test('템플릿을 못 읽으면 섹션을 서버가 준 순서 그대로 둔다', () async {
-    final repository = notesRepositoryOf(
-      _Server({
-        '/team/teams': (
-          200,
-          [
-            {'id': 1},
-          ],
-        ),
-        '/channel/teams/1/channels': (
-          200,
-          [
-            {'id': 10},
-          ],
-        ),
-        '/channel/channels/10/meeting-notes': (
-          200,
-          [
-            {
-              'id': 1,
-              'channelId': 10,
-              'templateId': 5,
-              'title': '템플릿을 못 읽는 회의록',
-              'content': jsonEncode({'안건': '배포', '참석자': '김준혁'}),
-              'createdBy': 1,
-              'createdAt': '2026-03-12T09:00:00Z',
-            },
-          ],
-        ),
-        '/channel/channels/10/meeting-note-templates': (500, null),
-        '/user/users/1': (200, {'id': 1, 'name': '김준혁'}),
-      }),
-    );
-
-    final note = (await repository.fetchNotes()).single;
-    expect(note.sections.keys, ['안건', '참석자']);
   });
 
   test('못 읽는 채널 말고 다른 실패는 그대로 던진다', () async {
@@ -188,7 +149,7 @@ void main() {
     expect(note.author.name, '김준혁');
   });
 
-  test('서버가 본문 키를 다시 정렬해 돌려줘도 템플릿 섹션 순서로 되돌린다', () async {
+  test('저장한 섹션을 보낸 순서 그대로 다시 읽는다', () async {
     final repository = notesRepositoryOf(FakeNotesServer());
     final note = (await repository.fetchNotes()).first;
 
@@ -201,7 +162,6 @@ void main() {
 
     final saved = (await repository.fetchNotes()).first;
     expect(saved.title, '수정한 제목');
-    // 서버는 짧은 키부터(`메모`·`안건` 6바이트, `참석자` 9바이트) 돌려준다.
     expect(saved.sections.keys, ['참석자', '안건', '메모']);
     expect(saved.sections['안건'], '- [x] 끝난 일');
   });

@@ -71,7 +71,6 @@ class CoworkApp extends StatelessWidget {
             context.read<AuthRepository>(),
             teams: context.read<TeamRepository>(),
             channels: context.read<ChannelRepository>(),
-            templates: context.read<NoteTemplateRepository>(),
           ),
         ),
         RepositoryProvider(

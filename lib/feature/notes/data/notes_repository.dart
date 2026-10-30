@@ -9,10 +9,8 @@ import '../../channel/domain/enums/channel_type.dart';
 import '../../profile/data/model/responses/user_response.dart';
 import '../../team/data/repositories/team_repository.dart';
 import '../domain/note.dart';
-import '../domain/note_template.dart';
 import 'meeting_note_request.dart';
 import 'meeting_note_response.dart';
-import 'repositories/note_template_repository.dart';
 
 /// channel 서비스의 회의록(`/channels/{channelId}/meeting-notes`) 저장소.
 ///
@@ -26,13 +24,11 @@ class NotesRepository {
     AuthRepository auth, {
     required TeamRepository teams,
     required ChannelRepository channels,
-    required NoteTemplateRepository templates,
   }) : this.withDio(
          createAuthedDio(ApiService.channel, auth),
          users: createAuthedDio(ApiService.user, auth),
          teams: teams,
          channels: channels,
-         templates: templates,
        );
 
   NotesRepository.withDio(
@@ -40,11 +36,9 @@ class NotesRepository {
     required Dio users,
     required TeamRepository teams,
     required ChannelRepository channels,
-    required NoteTemplateRepository templates,
   }) : _users = users,
        _teams = teams,
-       _channels = channels,
-       _templates = templates;
+       _channels = channels;
 
   final Dio _dio;
 
@@ -53,13 +47,8 @@ class NotesRepository {
 
   final TeamRepository _teams;
   final ChannelRepository _channels;
-  final NoteTemplateRepository _templates;
 
   /// 내 팀의 회의록을 최신순으로 모아 온다.
-  ///
-  /// 서버는 본문을 MySQL `JSON` 컬럼에 넣는데, MySQL 은 저장할 때 키를 길이 순으로
-  /// 다시 정렬한다. 그래서 보낸 섹션 순서가 돌아오지 않는다. 회의록이 쓴 템플릿을
-  /// 같이 읽어 그 섹션 순서로 되돌린다.
   Future<List<Note>> fetchNotes() async {
     final ids = [
       for (final channel in await _myChannels())
@@ -71,17 +60,10 @@ class NotesRepository {
     final notes = pages.expand((page) => page.$2).toList()
       ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
-    final (authors, templates) = await (
-      _usersOf({for (final note in notes) note.createdBy}),
-      _templatesOf({for (final note in notes) note.channelId}),
-    ).wait;
+    final authors = await _usersOf({for (final note in notes) note.createdBy});
     return [
       for (final note in notes)
-        Note.fromMeetingNote(
-          note,
-          author: _authorOf(note, authors),
-          template: templates[note.templateId],
-        ),
+        Note.fromMeetingNote(note, author: _authorOf(note, authors)),
     ];
   }
 
@@ -148,26 +130,6 @@ class NotesRepository {
       if (e.response?.statusCode == 403) return null;
       rethrow;
     }
-  }
-
-  /// 템플릿 id → 템플릿. 회의록이 있는 채널마다 한 번씩 읽는다.
-  ///
-  /// 섹션 순서를 맞추는 데만 쓰므로 못 읽은 채널은 빠진다. 그 채널의 회의록은
-  /// 서버가 준 순서로 보인다.
-  Future<Map<int, NoteTemplate>> _templatesOf(Set<int> channelIds) async {
-    final pages = await Future.wait(
-      channelIds.map((id) async {
-        try {
-          return await _templates.fetchTemplates(id);
-        } on DioException {
-          return const <NoteTemplate>[];
-        }
-      }),
-    );
-    return {
-      for (final template in pages.expand((page) => page))
-        template.id: template,
-    };
   }
 
   /// 작성자 id → 사용자. 회의록마다 부르지 않도록 중복을 없애 한 번씩만 읽는다.

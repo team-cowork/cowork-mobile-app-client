@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cowork_app/feature/notes/presentation/widgets/note_choice_chip.dart';
 import 'package:cowork_design_system/design_system.dart';
 import 'package:flutter/material.dart';
@@ -70,6 +72,51 @@ void main() {
 
     expect(find.text('템플릿이 없어요'), findsOneWidget);
     expect(find.text('스프린트 회고'), findsNothing);
+  });
+
+  testWidgets('채널을 바꾸는 동안 칩은 두고 템플릿 영역만 로딩을 보여준다', (tester) async {
+    final server = FakeNotesServer();
+    await openTemplates(tester, server);
+    final hold = server.holdTemplates[11] = Completer<void>();
+
+    await tester.tap(find.text('# 주간 회의'));
+    await tester.pump();
+
+    expect(find.text('# 회의록'), findsOneWidget);
+    expect(
+      tester
+          .widget<NoteChoiceChip>(
+            find.widgetWithText(NoteChoiceChip, '# 주간 회의'),
+          )
+          .selected,
+      isTrue,
+    );
+    expect(find.byType(CoworkLoadingPane), findsOneWidget);
+    expect(find.text('스프린트 회고'), findsNothing);
+
+    hold.complete();
+    await tester.pumpAndSettle();
+
+    expect(find.byType(CoworkLoadingPane), findsNothing);
+    expect(find.text('템플릿이 없어요'), findsOneWidget);
+  });
+
+  testWidgets('다른 채널을 고른 뒤 늦게 온 응답은 버린다', (tester) async {
+    final server = FakeNotesServer();
+    await openTemplates(tester, server);
+    final hold = server.holdTemplates[11] = Completer<void>();
+
+    await tester.tap(find.text('# 주간 회의'));
+    await tester.pump();
+    await tester.tap(find.text('# 회의록'));
+    await tester.pumpAndSettle();
+    expect(find.text('스프린트 회고'), findsOneWidget);
+
+    hold.complete();
+    await tester.pumpAndSettle();
+
+    expect(find.text('스프린트 회고'), findsOneWidget);
+    expect(find.text('템플릿이 없어요'), findsNothing);
   });
 
   testWidgets('기본 템플릿은 사용 중으로 보이고 삭제할 수 없다', (tester) async {

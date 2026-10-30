@@ -87,7 +87,9 @@ class NoteTemplatesView extends StatelessWidget {
               style: AppFont.subtextS.copyWith(color: AppColors.neutral300),
             ),
             const SizedBox(height: AppSpacing.s16),
-            if (data.templates.isEmpty)
+            if (data.loadingTemplates)
+              const CoworkLoadingPane(height: 96)
+            else if (data.templates.isEmpty)
               const CoworkEmptyState(
                 icon: AppIcon.navNote,
                 title: '템플릿이 없어요',
