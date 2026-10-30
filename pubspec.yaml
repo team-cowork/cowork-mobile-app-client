@@ -35,6 +35,9 @@ workspace:
 dependencies:
   flutter:
     sdk: flutter
+  # 날짜·시간 선택 창 등 Material 기본 문구 한국어
+  flutter_localizations:
+    sdk: flutter
 
   cowork_design_system:
     path: packages/design_system

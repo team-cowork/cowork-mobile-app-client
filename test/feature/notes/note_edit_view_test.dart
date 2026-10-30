@@ -1,6 +1,9 @@
+import 'package:cowork_app/feature/notes/domain/note.dart';
 import 'package:cowork_app/feature/notes/presentation/views/note_edit_view.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+import 'notes_test_server.dart';
 
 void main() {
   group('applyMarkdown', () {
@@ -71,27 +74,88 @@ void main() {
     });
   });
 
-  group('parseActionItems', () {
-    test('체크 여부에 따라 done을 채운다', () {
-      final items = parseActionItems('- [x] 완료함\n- [ ] 안함');
-      expect(items.length, 2);
-      expect(items[0].label, '완료함');
-      expect(items[0].done, isTrue);
-      expect(items[1].label, '안함');
-      expect(items[1].done, isFalse);
+  group('템플릿 섹션 편집', () {
+    // 기본 800x600 뷰에서는 아래 섹션이 화면 밖이라 폰 크기보다 길게 맞춘다.
+    setUp(() {
+      final view =
+          TestWidgetsFlutterBinding.instance.platformDispatcher.views.first;
+      view.physicalSize = const Size(400, 1400);
+      view.devicePixelRatio = 1;
+      addTearDown(view.reset);
     });
 
-    test('체크박스 문법이 아닌 줄도 미완료 항목으로', () {
-      final items = parseActionItems('그냥 할일\n- 불릿 할일');
-      expect(items.length, 2);
-      expect(items[0].label, '그냥 할일');
-      expect(items[0].done, isFalse);
-      expect(items[1].label, '불릿 할일');
+    Note noteOf({
+      int templateId = 5,
+      Map<String, String> sections = const {},
+    }) => Note(
+      id: 1,
+      channelId: 10,
+      templateId: templateId,
+      title: '주간 회의',
+      tags: const [],
+      author: const NoteAuthor(
+        authorId: 1,
+        name: '김준혁',
+        initial: '김',
+        date: '03.12',
+      ),
+      sections: sections,
+    );
+
+    testWidgets('템플릿 섹션 순서로 칸을 그리고, 템플릿에 없는 본문 섹션은 뒤에 남긴다', (tester) async {
+      await tester.pumpWidget(
+        notesTestApp(
+          NoteEditView(note: noteOf(sections: {'요약': '예전 본문', '안건': '1. 목표'})),
+          FakeNotesServer(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final titles = ['참석자', '안건', '결정 사항', '액션 아이템', '다음 회의', '요약'];
+      final tops = [for (final t in titles) tester.getTopLeft(find.text(t)).dy];
+      expect(tops, orderedEquals([...tops]..sort()));
+
+      expect(find.text('필수'), findsNWidgets(2));
+      expect(find.text('템플릿에 없는 섹션'), findsOneWidget);
+      // 본문이 있는 칸은 채워 두고, 빈 칸은 템플릿의 안내 문구를 보여준다.
+      expect(find.text('예전 본문'), findsOneWidget);
+      expect(find.text('1. 목표'), findsOneWidget);
+      // 메타 줄은 템플릿 이름을 보여준다.
+      expect(find.textContaining('·  주간 회의'), findsOneWidget);
+      // 날짜 형식 칸에는 달력 버튼이 있다.
+      expect(find.byIcon(Icons.calendar_today_outlined), findsOneWidget);
     });
 
-    test('빈 줄은 건너뛴다', () {
-      final items = parseActionItems('- [ ] a\n\n   \n- [x] b');
-      expect(items.length, 2);
+    testWidgets('필수 섹션이 비어 있으면 저장하지 않고 알린다', (tester) async {
+      final server = FakeNotesServer();
+      await tester.pumpWidget(
+        notesTestApp(NoteEditView(note: noteOf()), server),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('저장'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('필수 섹션을 채워 주세요: 참석자, 안건'), findsOneWidget);
+      expect(server.requests.where((r) => r.$1 == 'PATCH'), isEmpty);
+    });
+
+    testWidgets('템플릿을 못 읽으면 저장된 섹션만으로 연다', (tester) async {
+      await tester.pumpWidget(
+        notesTestApp(
+          NoteEditView(
+            note: noteOf(templateId: 999, sections: {'요약': '예전 본문'}),
+          ),
+          FakeNotesServer(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('템플릿을 불러오지 못해 저장된 섹션만 보여요.'), findsOneWidget);
+      expect(find.text('요약'), findsOneWidget);
+      expect(find.text('참석자'), findsNothing);
+      // 무엇이 템플릿 밖인지 모르므로 표시하지 않는다.
+      expect(find.text('템플릿에 없는 섹션'), findsNothing);
     });
   });
 }

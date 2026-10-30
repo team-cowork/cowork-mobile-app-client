@@ -8,8 +8,12 @@ import '../feature/chat/presentation/views/thread_view.dart';
 import '../feature/issues/domain/issue.dart';
 import '../feature/issues/presentation/views/issue_detail_view.dart';
 import '../feature/notes/domain/note.dart';
+import '../feature/notes/domain/note_draft.dart';
+import '../feature/notes/domain/note_template.dart';
 import '../feature/notes/presentation/views/note_detail_view.dart';
 import '../feature/notes/presentation/views/note_edit_view.dart';
+import '../feature/notes/presentation/views/note_template_edit_view.dart';
+import '../feature/notes/presentation/views/note_templates_view.dart';
 import '../feature/notifications/presentation/views/notifications_view.dart';
 import '../feature/profile/presentation/views/edit_profile_view.dart';
 import '../feature/search/presentation/views/search_view.dart';
@@ -32,6 +36,23 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/notes/edit',
       builder: (context, state) => NoteEditView(note: state.extra! as Note),
+    ),
+    // 새 노트 시트에서 고른 값으로 아직 서버에 없는 회의록을 쓴다.
+    GoRoute(
+      path: '/notes/new',
+      builder: (context, state) =>
+          NoteEditView.create(draft: state.extra! as NoteDraft),
+    ),
+    // extra 는 처음 고를 회의록 채널 id. 회의록 탭에서 열면 없다.
+    GoRoute(
+      path: '/notes/templates',
+      builder: (context, state) =>
+          NoteTemplatesView(channelId: state.extra as int?),
+    ),
+    GoRoute(
+      path: '/notes/templates/edit',
+      builder: (context, state) =>
+          NoteTemplateEditView(template: state.extra! as NoteTemplate),
     ),
     GoRoute(
       path: '/profile/edit',
