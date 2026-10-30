@@ -11,12 +11,9 @@ import 'notes_test_server.dart';
 ///
 /// 경로는 게이트웨이처럼 서비스 prefix 를 붙여 적는다(`/channel/channels/...`).
 class _Server implements HttpClientAdapter {
-  _Server(this.responses, {this.onPost});
+  _Server(this.responses);
 
   final Map<String, (int, Object?)> responses;
-
-  /// 작성 요청이 어느 채널로 갔는지 확인할 때 쓴다.
-  final void Function(String path)? onPost;
 
   @override
   Future<ResponseBody> fetch(
@@ -25,7 +22,6 @@ class _Server implements HttpClientAdapter {
     Future<void>? cancelFuture,
   ) async {
     final path = options.uri.path.replaceFirst('/api', '');
-    if (options.method == 'POST') onPost?.call(path);
     final (status, data) = responses[path] ?? (404, null);
     return ResponseBody.fromString(
       jsonEncode({'status': 'OK', 'code': status, 'data': data}),
@@ -52,14 +48,11 @@ void main() {
 
     final first = notes.first;
     expect(first.channelId, 10);
+    expect(first.templateId, 5);
     expect(first.author.name, '김준혁');
     expect(first.author.date, '03.12');
     expect(first.summary, '분기 목표 정렬 및 팀별 OKR 확정.');
-    expect(first.agenda, hasLength(2));
-    expect(first.decisions, ['· 채팅과 이슈 트래커를 1차 MVP로 확정.']);
-    expect(first.actionItems.first.done, isTrue);
-    expect(first.actionItems.last.done, isFalse);
-    expect(first.actionItems.last.label, '음성 채널 인원 제한 정책 확정 (서연)');
+    expect(first.sections.keys, ['요약', '참석자', '안건', '결정 사항', '액션 아이템']);
   });
 
   test('못 읽는 채널이 있어도 나머지 채널의 회의록은 보여준다', () async {
@@ -123,68 +116,53 @@ void main() {
     expect(repository.fetchNotes(), throwsA(isA<DioException>()));
   });
 
-  test('첫 채널을 못 읽으면 읽을 수 있는 채널에 작성한다', () async {
-    final posts = <String>[];
-    final repository = notesRepositoryOf(
-      _Server({
-        '/team/teams': (
-          200,
-          [
-            {'id': 1},
-          ],
-        ),
-        '/channel/teams/1/channels': (
-          200,
-          [
-            {'id': 10},
-            {'id': 11},
-          ],
-        ),
-        '/channel/channels/10/meeting-notes': (403, null),
-        '/channel/channels/11/meeting-notes': (200, const []),
-        '/channel/channels/11/meeting-note-templates': (
-          200,
-          [
-            {'id': 5, 'isActive': true},
-          ],
-        ),
-      }, onPost: posts.add),
-    );
-    await repository.fetchNotes();
+  test('회의록 채널만 골라 준다', () async {
+    final channels = await notesRepositoryOf(
+      FakeNotesServer(),
+    ).fetchNoteChannels();
 
-    await repository.createNote(title: '주간 스크럼', summary: '이번 주');
-
-    expect(posts, ['/channel/channels/11/meeting-notes']);
+    expect(channels.map((channel) => channel.name), ['회의록', '주간 회의']);
   });
 
-  test('작성한 회의록은 채널의 켜진 템플릿으로 저장된다', () async {
+  test('처음 저장한 회의록을 본문까지 채워 만들고, 서버가 정한 id 를 돌려준다', () async {
     final server = FakeNotesServer();
-    final repository = notesRepositoryOf(server);
-    await repository.fetchNotes(); // 쓸 채널을 찾는다.
 
-    await repository.createNote(title: '주간 스크럼', summary: '이번 주 진행 상황');
+    final note = await notesRepositoryOf(server).createNote(
+      const Note(
+        id: 0,
+        channelId: 10,
+        templateId: 6,
+        title: '주간 스크럼',
+        tags: [],
+        author: NoteAuthor(authorId: 1, name: '', initial: '', date: ''),
+        sections: {'Keep': '배포 자동화'},
+      ),
+    );
 
-    expect(server.notes.first['templateId'], 5);
-    expect(jsonDecode(server.notes.first['content'] as String), {
-      '요약': '이번 주 진행 상황',
-    });
+    final saved = server.notes.first;
+    expect(saved['templateId'], 6);
+    expect(jsonDecode(saved['content'] as String), {'Keep': '배포 자동화'});
+    expect(note.id, saved['id']);
+    expect(note.channelId, 10);
+    expect(note.templateId, 6);
+    expect(note.title, '주간 스크럼');
+    expect(note.author.name, '김준혁');
   });
 
-  test('편집한 액션 아이템의 체크 상태가 저장 후 다시 읽어도 남는다', () async {
+  test('저장한 섹션을 보낸 순서 그대로 다시 읽는다', () async {
     final repository = notesRepositoryOf(FakeNotesServer());
     final note = (await repository.fetchNotes()).first;
 
     await repository.updateNote(
       note.copyWith(
-        actionItems: [
-          for (final item in note.actionItems)
-            NoteActionItem(label: item.label, done: true),
-        ],
+        title: '수정한 제목',
+        sections: {'참석자': '김준혁', '안건': '- [x] 끝난 일', '메모': '템플릿 밖'},
       ),
     );
 
     final saved = (await repository.fetchNotes()).first;
-    expect(saved.actionItems.map((item) => item.done), everyElement(isTrue));
-    expect(saved.actionItems, hasLength(3));
+    expect(saved.title, '수정한 제목');
+    expect(saved.sections.keys, ['참석자', '안건', '메모']);
+    expect(saved.sections['안건'], '- [x] 끝난 일');
   });
 }

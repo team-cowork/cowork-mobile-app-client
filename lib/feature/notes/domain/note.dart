@@ -10,13 +10,11 @@ class Note extends Equatable {
     required this.id,
     required this.title,
     this.channelId = 0,
+    this.templateId = 0,
     required this.tags,
-    required this.summary,
     required this.author,
     this.participants = const [],
-    this.agenda = const [],
-    this.decisions = const [],
-    this.actionItems = const [],
+    this.sections = const {},
   });
 
   /// 회의록 식별자. 서버가 준 회의록 id 다.
@@ -25,14 +23,14 @@ class Note extends Equatable {
   /// 회의록이 속한 채널 id. 수정 요청 경로에 쓴다.
   final int channelId;
 
+  /// 회의록을 쓸 때 고른 템플릿 id. 편집 화면이 섹션 형식을 여기서 읽는다.
+  final int templateId;
+
   /// 회의록 제목 (예: 2026 1분기 킥오프 회의).
   final String title;
 
   /// 제목 우측에 붙는 태그 배지 라벨 (예: 확정, OKR).
   final List<String> tags;
-
-  /// 본문 요약 (2줄 내외).
-  final String summary;
 
   /// 작성자 정보.
   final NoteAuthor author;
@@ -40,91 +38,63 @@ class Note extends Equatable {
   /// 참여자 이니셜. 상세 화면 우측 아바타 스택에 표시된다.
   final List<String> participants;
 
-  /// 상세 화면 `안건` 항목.
-  final List<String> agenda;
-
-  /// 상세 화면 `결정 사항` 항목.
-  final List<String> decisions;
-
-  /// 상세 화면 `액션 아이템` 체크리스트.
-  final List<NoteActionItem> actionItems;
-
-  /// 서버 회의록을 화면 모델로 옮긴다.
+  /// 섹션 제목 → 내용 (예: `{'안건': '1. ...'}`).
   ///
-  /// 서버는 섹션 이름을 자유롭게 두므로 이름에 들어간 낱말로 화면 항목을 고른다
-  /// (`안건`, `결정 사항`, `액션 아이템`). 나머지 섹션은 카드 요약으로 이어 붙인다.
-  /// 태그·참여자는 서버에 없어 비운다.
+  /// 서버는 저장한 키 순서를 그대로 돌려준다. 상세 화면도 이 순서로 보여준다.
+  final Map<String, String> sections;
+
+  /// 카드에 보이는 본문 요약 (2줄 내외).
+  ///
+  /// 예전 회의록이 쓰던 `요약`·`내용` 섹션이 있으면 그것을, 없으면 모든 섹션을
+  /// 이어 붙인다.
+  String get summary =>
+      sections['요약'] ?? sections['내용'] ?? sections.values.join(' ').trim();
+
+  /// 서버 회의록을 화면 모델로 옮긴다. 태그·참여자는 서버에 없어 비운다.
   factory Note.fromMeetingNote(
     MeetingNoteResponse note, {
     required NoteAuthor author,
-  }) {
-    final sections = note.sections;
-    return Note(
-      id: note.id,
-      channelId: note.channelId,
-      title: note.title,
-      tags: const [],
-      summary:
-          sections['요약'] ?? sections['내용'] ?? sections.values.join(' ').trim(),
-      author: author,
-      agenda: _linesOf(sections, '안건'),
-      decisions: _linesOf(sections, '결정'),
-      actionItems: _linesOf(
-        sections,
-        '액션',
-      ).map(NoteActionItem.fromLine).toList(),
-    );
-  }
-
-  /// 이름에 [keyword] 가 든 첫 섹션을 줄 단위로 쪼갠다. 없으면 빈 목록.
-  static List<String> _linesOf(Map<String, String> sections, String keyword) {
-    final key = sections.keys.where((k) => k.contains(keyword)).firstOrNull;
-    if (key == null) return const [];
-    return sections[key]!
-        .split('\n')
-        .map((line) => line.trim())
-        .where((line) => line.isNotEmpty)
-        .toList();
-  }
+  }) => Note(
+    id: note.id,
+    channelId: note.channelId,
+    templateId: note.templateId,
+    title: note.title,
+    tags: const [],
+    author: author,
+    sections: note.sections,
+  );
 
   Note copyWith({
     String? title,
     List<String>? tags,
-    String? summary,
     NoteAuthor? author,
     List<String>? participants,
-    List<String>? agenda,
-    List<String>? decisions,
-    List<NoteActionItem>? actionItems,
+    Map<String, String>? sections,
   }) => Note(
     id: id,
     channelId: channelId,
+    templateId: templateId,
     title: title ?? this.title,
     tags: tags ?? this.tags,
-    summary: summary ?? this.summary,
     author: author ?? this.author,
     participants: participants ?? this.participants,
-    agenda: agenda ?? this.agenda,
-    decisions: decisions ?? this.decisions,
-    actionItems: actionItems ?? this.actionItems,
+    sections: sections ?? this.sections,
   );
 
   @override
   List<Object?> get props => [
     id,
     channelId,
+    templateId,
     title,
     tags,
-    summary,
     author,
     participants,
-    agenda,
-    decisions,
-    actionItems,
+    sections,
   ];
 }
 
-/// 회의록의 액션 아이템 한 줄.
+/// 섹션 본문의 체크박스 한 줄 (`- [ ] 할 일`). 상세 화면이 체크 칸으로 그린다.
 class NoteActionItem extends Equatable {
   const NoteActionItem({required this.label, this.done = false});
 

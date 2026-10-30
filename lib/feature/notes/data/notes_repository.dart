@@ -4,6 +4,8 @@ import '../../../core/network/dio_client.dart';
 import '../../../shared/utils/initial.dart';
 import '../../auth/data/auth_repository.dart';
 import '../../channel/data/repositories/channel_repository.dart';
+import '../../channel/domain/channel.dart';
+import '../../channel/domain/enums/channel_type.dart';
 import '../../profile/data/model/responses/user_response.dart';
 import '../../team/data/repositories/team_repository.dart';
 import '../domain/note.dart';
@@ -12,12 +14,11 @@ import 'meeting_note_response.dart';
 
 /// channel 서비스의 회의록(`/channels/{channelId}/meeting-notes`) 저장소.
 ///
-/// 서버 회의록은 채널에 속하는데 회의록 탭은 채널을 고르지 않는다. 그래서
-/// 조회는 내 팀의 모든 채널을 훑어 한 목록으로 합치고, 작성은 그중 읽을 수 있는
-/// 첫 채널에 쓴다.
+/// 서버 회의록은 채널에 속하는데 회의록 탭 목록은 채널을 고르지 않는다. 그래서
+/// 조회는 내 팀의 모든 채널을 훑어 한 목록으로 합친다. 작성은 새 노트 시트에서
+/// 고른 회의록 채널에 쓴다.
 ///
-/// ponytail: 회의록 탭이 채널을 고르게 되면 선택된 채널 하나만 읽고 쓰도록 좁힌다.
-/// 채널이 많아지면 조회가 채널 수만큼 늘어나는 게 먼저 아플 자리다.
+/// ponytail: 채널이 많아지면 조회가 채널 수만큼 늘어나는 게 먼저 아플 자리다.
 class NotesRepository {
   NotesRepository(
     AuthRepository auth, {
@@ -47,24 +48,15 @@ class NotesRepository {
   final TeamRepository _teams;
   final ChannelRepository _channels;
 
-  /// 마지막 조회에서 읽는 데 성공한 채널 id 들. 작성 대상 채널을 여기서 고른다.
-  List<int> _channelIds = const [];
-
   /// 내 팀의 회의록을 최신순으로 모아 온다.
   Future<List<Note>> fetchNotes() async {
-    final teams = await _teams.fetchMyTeams();
-    final channels = await Future.wait([
-      for (final team in teams) _channels.fetchChannels(team.id),
-    ]);
     final ids = [
-      for (final channel in channels.expand((page) => page))
+      for (final channel in await _myChannels())
         if (int.tryParse(channel.id) case final int id) id,
     ];
 
-    // 목록에는 못 읽는 채널도 섞여 있다. 읽힌 채널만 남겨야 작성도 거기로 간다.
-    final pages = (await Future.wait(ids.map(_notesOf))).nonNulls.toList();
-    _channelIds = [for (final (id, _) in pages) id];
-
+    // 목록에는 못 읽는 채널도 섞여 있다.
+    final pages = (await Future.wait(ids.map(_notesOf))).nonNulls;
     final notes = pages.expand((page) => page.$2).toList()
       ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
@@ -75,22 +67,32 @@ class NotesRepository {
     ];
   }
 
-  /// 새 회의록을 읽을 수 있는 첫 채널에 쓴다. 템플릿은 채널에서 켜져 있는 것을 쓴다.
-  Future<void> createNote({
-    required String title,
-    required String summary,
-  }) async {
-    final channelId = _channelIds.firstOrNull;
-    if (channelId == null) throw Exception('회의록을 쓸 채널이 없습니다.');
+  /// 내 팀들의 회의록 채널. 새 노트·템플릿 화면이 채널을 고를 때 쓴다.
+  ///
+  /// 템플릿은 채널마다 따로 있으므로, 회의록을 쓰거나 템플릿을 고치려면 채널부터
+  /// 정해야 한다.
+  Future<List<Channel>> fetchNoteChannels() async => [
+    for (final channel in await _myChannels())
+      if (channel.type == ChannelType.meetingNote) channel,
+  ];
 
-    await _dio.post<String>(
-      '/channels/$channelId/meeting-notes',
+  /// 편집 화면에서 처음 저장한 [note] 를 그 채널에 만든다.
+  ///
+  /// 서버가 정한 id 와 작성자를 채운 회의록을 돌려준다.
+  Future<Note> createNote(Note note) async {
+    final response = await _dio.post<String>(
+      '/channels/${note.channelId}/meeting-notes',
       data: CreateMeetingNoteRequest(
-        templateId: await _templateIdOf(channelId),
-        title: title,
-        sections: sectionsOf(summary: summary),
+        templateId: note.templateId,
+        title: note.title,
+        sections: note.sections,
       ).toJson(),
     );
+    final created = MeetingNoteResponse.fromJson(
+      unwrapPayload(response.data ?? ''),
+    );
+    final authors = await _usersOf({created.createdBy});
+    return Note.fromMeetingNote(created, author: _authorOf(created, authors));
   }
 
   /// 편집한 회의록을 저장한다. 서버는 보낸 필드만 반영한다.
@@ -98,14 +100,18 @@ class NotesRepository {
     '/channels/${note.channelId}/meeting-notes/${note.id}',
     data: UpdateMeetingNoteRequest(
       title: note.title,
-      sections: sectionsOf(
-        summary: note.summary,
-        agenda: note.agenda,
-        decisions: note.decisions,
-        actionItems: note.actionItems,
-      ),
+      sections: note.sections,
     ).toJson(),
   );
+
+  /// 내 모든 팀의 채널. 팀 순서, 팀 안에서는 서버 순서다.
+  Future<List<Channel>> _myChannels() async {
+    final teams = await _teams.fetchMyTeams();
+    final pages = await Future.wait([
+      for (final team in teams) _channels.fetchChannels(team.id),
+    ]);
+    return pages.expand((page) => page).toList();
+  }
 
   /// 채널 하나의 (id, 회의록). 못 읽는 채널(비공개 등)은 null 로 빠진다.
   ///
@@ -124,18 +130,6 @@ class NotesRepository {
       if (e.response?.statusCode == 403) return null;
       rethrow;
     }
-  }
-
-  /// 켜져 있는 템플릿 id. 없으면 채널의 첫 템플릿을 쓴다.
-  Future<int> _templateIdOf(int channelId) async {
-    final templates = await _list(
-      '/channels/$channelId/meeting-note-templates',
-    );
-    final template =
-        templates.where((t) => t['isActive'] == true).firstOrNull ??
-        templates.firstOrNull;
-    if (template?['id'] case final int id) return id;
-    throw Exception('채널에 회의록 템플릿이 없습니다.');
   }
 
   /// 작성자 id → 사용자. 회의록마다 부르지 않도록 중복을 없애 한 번씩만 읽는다.
