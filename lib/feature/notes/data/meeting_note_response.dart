@@ -4,13 +4,13 @@ import 'dart:convert';
 ///
 /// 게이트웨이 envelope 을 벗긴 `data` 를 받는다(`unwrapPayload`).
 ///
-/// 서버는 본문을 섹션 이름 → 내용 JSON 문자열 하나로 들고 있다. 회의록 화면이
-/// 쓰는 안건·결정 사항 같은 구분은 여기서 [sections] 로만 풀어 두고, 어느 섹션이
-/// 어느 화면 항목인지는 [Note.fromMeetingNote] 가 정한다.
+/// 서버는 본문을 섹션 제목 → 내용 JSON 문자열 하나로 들고 있다. 섹션 제목은
+/// 템플릿이 정하므로 여기서는 [sections] 로 풀어 두기만 한다.
 class MeetingNoteResponse {
   const MeetingNoteResponse({
     required this.id,
     required this.channelId,
+    required this.templateId,
     required this.title,
     required this.sections,
     required this.createdBy,
@@ -21,6 +21,7 @@ class MeetingNoteResponse {
       MeetingNoteResponse(
         id: json['id'] as int? ?? 0,
         channelId: json['channelId'] as int? ?? 0,
+        templateId: json['templateId'] as int? ?? 0,
         title: json['title'] as String? ?? '',
         sections: parseSections(json['content']),
         createdBy: json['createdBy'] as int? ?? 0,
@@ -34,6 +35,9 @@ class MeetingNoteResponse {
 
   /// 회의록이 속한 채널. 수정·삭제 경로에 필요해 같이 들고 다닌다.
   final int channelId;
+
+  /// 회의록을 쓸 때 고른 템플릿. 편집 화면이 섹션 형식을 여기서 읽는다.
+  final int templateId;
 
   final String title;
 

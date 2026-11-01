@@ -20,7 +20,7 @@ GoRouter _notesRouter() => GoRouter(
 );
 
 void main() {
-  testWidgets('카드를 누르면 상세 화면이 섹션과 액션 아이템을 렌더링한다', (tester) async {
+  testWidgets('카드를 누르면 상세 화면이 본문 섹션을 저장된 순서대로 렌더링한다', (tester) async {
     // 내용·안건·결정사항까지 더해지면 액션 아이템이 기본 화면(600) 밖으로 밀려
     // ListView가 빌드하지 않으므로 세로를 넉넉히 준다.
     tester.view.physicalSize = const Size(800, 2000);
@@ -35,9 +35,10 @@ void main() {
     await tester.tap(find.text('2026 1분기 킥오프 회의'));
     await tester.pumpAndSettle();
 
-    expect(find.text('안건'), findsOneWidget);
-    expect(find.text('결정 사항'), findsOneWidget);
-    expect(find.text('액션 아이템'), findsOneWidget);
+    // 템플릿에 없는 `요약` 도 빠뜨리지 않고 그린다.
+    final titles = ['요약', '참석자', '안건', '결정 사항', '액션 아이템'];
+    final tops = [for (final t in titles) tester.getTopLeft(find.text(t)).dy];
+    expect(tops, orderedEquals([...tops]..sort()));
     expect(find.text('이슈 트래커 칸반 스펙 문서화 (민재)'), findsOneWidget);
   });
 
@@ -67,7 +68,6 @@ void main() {
       id: 999,
       title: '대규모 회의',
       tags: [],
-      summary: '',
       author: NoteAuthor(
         authorId: 99,
         name: 'junjuny',

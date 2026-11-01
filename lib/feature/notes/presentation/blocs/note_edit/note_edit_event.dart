@@ -3,34 +3,31 @@ part of 'note_edit_bloc.dart';
 sealed class NoteEditEvent extends Equatable {
   const NoteEditEvent();
 
-  /// 편집한 내용을 저장한다. 제목/요약/안건/결정 사항/액션 아이템을 갱신한다.
+  /// 회의록이 쓴 템플릿을 읽어 입력 칸을 만든다.
+  const factory NoteEditEvent.started() = NoteEditStarted;
+
+  /// 편집한 제목과 섹션(제목 → 내용)을 저장한다.
   const factory NoteEditEvent.saved({
     required String title,
-    required String summary,
-    required List<String> agenda,
-    required List<String> decisions,
-    required List<NoteActionItem> actionItems,
+    required Map<String, String> sections,
   }) = NoteEditSaved;
 
   @override
   List<Object?> get props => [];
 }
 
+final class NoteEditStarted extends NoteEditEvent {
+  const NoteEditStarted();
+}
+
 final class NoteEditSaved extends NoteEditEvent {
-  const NoteEditSaved({
-    required this.title,
-    required this.summary,
-    required this.agenda,
-    required this.decisions,
-    required this.actionItems,
-  });
+  const NoteEditSaved({required this.title, required this.sections});
 
   final String title;
-  final String summary;
-  final List<String> agenda;
-  final List<String> decisions;
-  final List<NoteActionItem> actionItems;
+
+  /// 입력 칸 순서대로 담긴 섹션 제목 → 내용.
+  final Map<String, String> sections;
 
   @override
-  List<Object?> get props => [title, summary, agenda, decisions, actionItems];
+  List<Object?> get props => [title, sections];
 }

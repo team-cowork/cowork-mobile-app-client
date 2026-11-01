@@ -10,7 +10,8 @@ import '../../domain/note.dart';
 /// 회의록 상세 화면.
 ///
 /// Figma `App / Note Detail (회의록)` 스펙에 맞춘 다크 전용 레이아웃.
-/// 제목·작성자·참여자·배지 헤더와 안건 / 결정 사항 / 액션 아이템 섹션으로 구성된다.
+/// 제목·작성자·참여자·배지 헤더 아래에 회의록 섹션을 [Note.sections] 순서(템플릿
+/// 섹션 순서)대로 그린다.
 class NoteDetailView extends StatefulWidget {
   const NoteDetailView({super.key, required this.note});
 
@@ -97,15 +98,8 @@ class _NoteDetailViewState extends State<NoteDetailView> {
             const SizedBox(height: AppSpacing.s14),
           ],
           const Divider(height: 1, thickness: 1, color: AppColors.neutral700),
-          if (note.summary.isNotEmpty)
-            _Section(title: '내용', lines: [note.summary]),
-          if (note.agenda.isNotEmpty) _Section(title: '안건', lines: note.agenda),
-          if (note.decisions.isNotEmpty)
-            _Section(title: '결정 사항', lines: note.decisions),
-          if (note.actionItems.isNotEmpty) ...[
-            const _SectionTitle('액션 아이템'),
-            for (final item in note.actionItems) _ActionItemRow(item: item),
-          ],
+          for (final MapEntry(key: title, value: body) in note.sections.entries)
+            if (body.trim().isNotEmpty) _Section(title: title, body: body),
         ],
       ),
     );
@@ -319,12 +313,41 @@ final _markdownStyle = MarkdownStyleSheet(
   a: _markdownBodyStyle.copyWith(color: AppColors.red400),
 );
 
-/// `안건`, `결정 사항` 처럼 제목 + 여러 줄 본문으로 이뤄진 섹션.
+/// 체크박스 한 줄 (`- [ ] 할 일`, `- [x] 한 일`).
+final _checkboxLine = RegExp(r'^-\s*\[( |x|X)\]');
+
+/// 제목 + 본문으로 이뤄진 섹션 하나. (예: 안건, 결정 사항)
+///
+/// 본문은 마크다운으로 그리되, 체크박스 줄은 누를 수 있는 체크 칸으로 그린다.
 class _Section extends StatelessWidget {
-  const _Section({required this.title, required this.lines});
+  const _Section({required this.title, required this.body});
 
   final String title;
-  final List<String> lines;
+  final String body;
+
+  /// 본문을 순서대로 체크박스 줄([NoteActionItem])과 그 사이 마크다운 덩어리
+  /// ([String])로 나눈다.
+  static List<Object> _blocksOf(String body) {
+    final blocks = <Object>[];
+    final markdown = <String>[];
+    void flush() {
+      if (markdown.any((line) => line.trim().isNotEmpty)) {
+        blocks.add(markdown.join('\n'));
+      }
+      markdown.clear();
+    }
+
+    for (final line in body.split('\n')) {
+      if (_checkboxLine.hasMatch(line.trim())) {
+        flush();
+        blocks.add(NoteActionItem.fromLine(line.trim()));
+      } else {
+        markdown.add(line);
+      }
+    }
+    flush();
+    return blocks;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -332,17 +355,21 @@ class _Section extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _SectionTitle(title),
-        MarkdownBody(
-          data: lines.join('\n'),
-          shrinkWrap: true,
-          styleSheet: _markdownStyle,
-        ),
+        for (final block in _blocksOf(body))
+          if (block is NoteActionItem)
+            _ActionItemRow(item: block)
+          else
+            MarkdownBody(
+              data: block as String,
+              shrinkWrap: true,
+              styleSheet: _markdownStyle,
+            ),
       ],
     );
   }
 }
 
-/// 섹션 제목 (안건 / 결정 사항 / 액션 아이템).
+/// 섹션 제목 (예: 안건 / 결정 사항 / 액션 아이템).
 class _SectionTitle extends StatelessWidget {
   const _SectionTitle(this.title);
 
@@ -367,7 +394,7 @@ class _SectionTitle extends StatelessWidget {
   }
 }
 
-/// 액션 아이템 체크박스 한 줄.
+/// 섹션 본문의 체크박스 한 줄.
 ///
 // ponytail: 체크 상태는 화면 안에서만 유지된다. 서버 연동 시 Bloc 이벤트로 승격.
 class _ActionItemRow extends StatefulWidget {
