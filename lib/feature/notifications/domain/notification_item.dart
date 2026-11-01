@@ -13,6 +13,8 @@ class NotificationItem extends Equatable {
     this.avatarInitial,
     this.avatarColor,
     this.icon,
+    this.channelId,
+    this.teamId,
   }) : assert(
          (avatarInitial != null) != (icon != null),
          'avatarInitial 또는 icon 중 하나만 지정해야 한다',
@@ -28,16 +30,11 @@ class NotificationItem extends Equatable {
   final AvatarColor? avatarColor;
   final NotificationIconType? icon;
 
-  NotificationItem copyWith({bool? isUnread}) => NotificationItem(
-    id: id,
-    title: title,
-    description: description,
-    time: time,
-    isUnread: isUnread ?? this.isUnread,
-    avatarInitial: avatarInitial,
-    avatarColor: avatarColor,
-    icon: icon,
-  );
+  /// 누르면 갈 채널. 없으면 null.
+  final int? channelId;
+
+  /// 채널이 없을 때 누르면 갈 팀. DM 이거나 갈 수 없는 팀(빠진 팀 등)이면 null.
+  final int? teamId;
 
   @override
   List<Object?> get props => [
@@ -49,5 +46,7 @@ class NotificationItem extends Equatable {
     avatarInitial,
     avatarColor,
     icon,
+    channelId,
+    teamId,
   ];
 }

@@ -6,6 +6,9 @@ import '../../domain/channel.dart';
 import '../model/requests/create_channel_request.dart';
 import '../model/responses/channel_response.dart';
 
+/// 채널 화면 머리에 쓰는 채널 정보. [teamId] 는 DM 채널이면 null.
+typedef ChannelHeader = ({String name, String description, int? teamId});
+
 /// channel 서비스의 채널 저장소.
 class ChannelRepository {
   ChannelRepository(AuthRepository auth)
@@ -23,16 +26,18 @@ class ChannelRepository {
       ChannelResponse.fromJson(json).toChannel(),
   ];
 
-  /// 채널 하나의 이름과 설명. 채널 화면 머리에 쓴다.
-  Future<({String name, String description})> fetchChannelHeader(
-    int channelId,
-  ) async {
+  /// 채널 하나의 이름·설명과 속한 팀. 채널 화면 머리에 쓴다.
+  Future<ChannelHeader> fetchChannelHeader(int channelId) async {
     final channel = ChannelResponse.fromJson(
       unwrapPayload(
         (await _dio.get<String>('/channels/$channelId')).data ?? '',
       ),
     );
-    return (name: channel.name, description: channel.description ?? '');
+    return (
+      name: channel.name,
+      description: channel.description ?? '',
+      teamId: channel.teamId,
+    );
   }
 
   /// 채널을 만들고 서버가 저장한 채널을 돌려준다.

@@ -14,7 +14,9 @@ import '../blocs/channel_settings/channel_settings_bloc.dart';
 import '../widgets/channel_settings_header.dart';
 
 class ChannelSettingsView extends StatelessWidget {
-  const ChannelSettingsView({super.key});
+  const ChannelSettingsView({required this.channelId, super.key});
+
+  final int channelId;
 
   static const _chevron = Icon(
     Icons.chevron_right,
@@ -124,7 +126,9 @@ class ChannelSettingsView extends StatelessWidget {
                                 _chevron,
                               ],
                             ),
-                            onTap: () => context.push('/chat/channel/members'),
+                            onTap: () => context.push(
+                              '/chat/channel/$channelId/members',
+                            ),
                           ),
                           SettingsTile(
                             label: '멤버 초대',

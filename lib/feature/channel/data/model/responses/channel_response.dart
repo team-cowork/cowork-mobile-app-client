@@ -24,6 +24,9 @@ abstract class ChannelResponse with _$ChannelResponse {
 
     /// 채널 설명. 채널 화면 머리에 보인다.
     String? description,
+
+    /// 채널이 속한 팀. DM 채널이면 없다.
+    int? teamId,
   }) = _ChannelResponse;
 
   factory ChannelResponse.fromJson(Map<String, dynamic> json) =>

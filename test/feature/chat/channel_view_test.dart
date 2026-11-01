@@ -43,8 +43,9 @@ void main() {
                 builder: (_, _) => const ChannelView(channelId: 10),
               ),
               GoRoute(
-                path: '/chat/channel/thread',
-                builder: (_, _) => const Text('스레드'),
+                path: '/chat/channel/:channelId/thread',
+                builder: (_, state) =>
+                    Text('스레드 ${state.pathParameters['channelId']}'),
               ),
             ],
           ),
@@ -123,6 +124,15 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('메시지 수정'), findsNothing);
+  });
+
+  testWidgets('메시지를 누르면 이 채널의 스레드로 간다', (tester) async {
+    await pumpChannel(tester, FakeMessageGateway(messages: [otherMessage]));
+
+    await tester.tap(messageText('남의 메시지'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('스레드 10'), findsOneWidget);
   });
 
   testWidgets('파일 메시지는 첨부파일 이름과 크기를 보여 준다', (tester) async {

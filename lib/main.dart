@@ -9,6 +9,8 @@ import 'package:cowork_app/feature/channel/data/repositories/channel_repository.
 import 'package:cowork_app/feature/chat/data/repositories/message_repository.dart';
 import 'package:cowork_app/feature/notes/data/notes_repository.dart';
 import 'package:cowork_app/feature/notes/data/repositories/note_template_repository.dart';
+import 'package:cowork_app/feature/notifications/data/notification_stream.dart';
+import 'package:cowork_app/feature/notifications/data/repositories/notification_repository.dart';
 import 'package:cowork_app/feature/profile/data/repositories/github_repository.dart';
 import 'package:cowork_app/feature/profile/data/repositories/profile_repository.dart';
 import 'package:cowork_app/feature/setting/data/preference_repository.dart';
@@ -89,22 +91,41 @@ class CoworkApp extends StatelessWidget {
         RepositoryProvider(
           create: (context) => PushRepository(context.read<AuthRepository>()),
         ),
+        // 알림 SSE 는 로그인한 동안 앱 전체에서 하나를 열어 두고 받은 알림을 쌓는다.
+        RepositoryProvider(
+          create: (context) => NotificationRepository(
+            NotificationStream(context.read<AuthRepository>()),
+          ),
+          dispose: (repository) => repository.dispose(),
+        ),
       ],
       child: BlocProvider(
         create: (context) => AuthBloc(
           repository: context.read<AuthRepository>(),
           profile: context.read<ProfileRepository>(),
         )..add(const AuthEvent.sessionRestored()),
-        child: MaterialApp.router(
-          title: 'cowork',
-          debugShowCheckedModeBanner: false,
-          // 디자인이 다크 전용이라 시스템 설정과 무관하게 다크로 고정한다.
-          theme: AppTheme.dark(),
-          // 날짜·시간 선택 창 같은 Material 기본 문구를 한국어로 띄운다.
-          locale: const Locale('ko'),
-          supportedLocales: const [Locale('ko')],
-          localizationsDelegates: GlobalMaterialLocalizations.delegates,
-          routerConfig: appRouter,
+        child: BlocListener<AuthBloc, AuthState>(
+          listenWhen: (previous, current) =>
+              (previous is Authenticated) != (current is Authenticated),
+          listener: (context, state) {
+            final notifications = context.read<NotificationRepository>();
+            if (state is Authenticated) {
+              notifications.start();
+            } else {
+              notifications.stop();
+            }
+          },
+          child: MaterialApp.router(
+            title: 'cowork',
+            debugShowCheckedModeBanner: false,
+            // 디자인이 다크 전용이라 시스템 설정과 무관하게 다크로 고정한다.
+            theme: AppTheme.dark(),
+            // 날짜·시간 선택 창 같은 Material 기본 문구를 한국어로 띄운다.
+            locale: const Locale('ko'),
+            supportedLocales: const [Locale('ko')],
+            localizationsDelegates: GlobalMaterialLocalizations.delegates,
+            routerConfig: appRouter,
+          ),
         ),
       ),
     );

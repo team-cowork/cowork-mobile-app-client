@@ -50,6 +50,7 @@ class FakeMessageGateway implements HttpClientAdapter {
         'name': '백엔드',
         'description': 'API 논의',
         'viewType': 'TEXT',
+        'teamId': 1,
       }),
       'GET /chat/chat/channels/10/messages' => await _list(
         uri.queryParameters['before'],

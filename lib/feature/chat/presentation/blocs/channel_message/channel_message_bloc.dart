@@ -89,7 +89,10 @@ class ChannelMessageBloc
   StreamSubscription<AppLifecycleState>? _lifecycle;
 
   /// 채널 머리. 불러오기에 성공하면 채워진다.
-  ({String name, String description})? _header;
+  ChannelHeader? _header;
+
+  /// 채널을 더 볼 수 없게 된 사유. 정해지면 더는 소켓 변경·읽음을 반영하지 않는다.
+  String? _closedReason;
 
   /// 보이는 메시지. 오래된 것부터 최신 순이고, 보낸 뒤 저장 전인 메시지는
   /// `clientMessageId` 를 id 로 들고 있다.
@@ -280,6 +283,7 @@ class ChannelMessageBloc
     _ChannelMessageSocketEventReceived event,
     Emitter<ChannelMessageState> emit,
   ) {
+    if (_closedReason != null) return;
     if (_header == null) {
       _pending.add(event.event);
       return;
@@ -378,6 +382,17 @@ class ChannelMessageBloc
         final before = _messages.length;
         _messages.removeWhere((other) => other.id == messageId);
         return _messages.length != before;
+      case ChannelAccessLost(:final channelId, :final teamId, :final reason):
+        final mine =
+            channelId == this.channelId ||
+            (teamId != null && teamId == _header?.teamId);
+        if (!mine || _closedReason != null) return false;
+        _closedReason = switch (reason) {
+          ChannelAccessLostReason.deleted => '채널이 삭제됐어요.',
+          ChannelAccessLostReason.revoked => '이 채널에 더 이상 접근할 수 없어요.',
+          ChannelAccessLostReason.leftTeam => '팀에서 빠져서 이 채널을 볼 수 없어요.',
+        };
+        return true;
     }
   }
 
@@ -487,7 +502,7 @@ class ChannelMessageBloc
 
   /// 가장 최근에 저장된 메시지까지 읽었다고 알린다. 실패해도 화면엔 영향이 없다.
   void _markRead() {
-    if (!_foreground) return;
+    if (!_foreground || _closedReason != null) return;
     final latest = _messages.reversed.where(_isSaved).firstOrNull;
     if (latest == null || latest.id == _lastReadId) return;
     _lastReadId = latest.id;
@@ -513,9 +528,7 @@ class ChannelMessageBloc
     );
   }
 
-  ChannelConversation _conversationOf(
-    ({String name, String description}) header,
-  ) {
+  ChannelConversation _conversationOf(ChannelHeader header) {
     final now = DateTime.now();
     return ChannelConversation(
       name: header.name,
@@ -531,6 +544,7 @@ class ChannelMessageBloc
       ],
       hasOlder: _hasOlder,
       loadingOlder: _loadingOlder,
+      closedReason: _closedReason,
     );
   }
 

@@ -34,7 +34,8 @@ class ChannelView extends StatelessWidget {
       onRetry: (context) => context.read<ChannelMessageBloc>().add(
         const ChannelMessageEvent.requested(),
       ),
-      builder: (context, data) =>
+      builder: (context, data) => MultiBlocListener(
+        listeners: [
           BlocListener<ChannelMessageBloc, ChannelMessageState>(
             listenWhen: (previous, current) =>
                 current is AsyncSuccess<ChannelConversation> &&
@@ -47,31 +48,62 @@ class ChannelView extends StatelessWidget {
                 ..hideCurrentSnackBar()
                 ..showSnackBar(SnackBar(content: Text(message)));
             },
-            child: SafeArea(
-              child: Column(
-                children: [
-                  _ChannelHeader(
-                    name: data.name,
-                    description: data.description,
-                    onBack: () => context.pop(),
-                    onMembersTap: () => context.push('/chat/channel/members'),
-                    onMoreTap: () => context.push('/chat/channel/settings'),
-                  ),
-                  Expanded(child: _MessageList(data: data)),
-                  const Padding(
-                    padding: EdgeInsets.fromLTRB(
-                      AppSpacing.s12,
-                      AppSpacing.s8,
-                      AppSpacing.s12,
-                      AppSpacing.s24,
-                    ),
-                    child: _MessageComposer(),
-                  ),
-                ],
-              ),
+          ),
+          BlocListener<ChannelMessageBloc, ChannelMessageState>(
+            listenWhen: (previous, current) =>
+                current is AsyncSuccess<ChannelConversation> &&
+                current.data.closedReason != null &&
+                (previous is! AsyncSuccess<ChannelConversation> ||
+                    previous.data.closedReason == null),
+            listener: (context, state) => _close(
+              context,
+              (state as AsyncSuccess<ChannelConversation>).data.closedReason!,
             ),
           ),
+        ],
+        child: SafeArea(
+          child: Column(
+            children: [
+              _ChannelHeader(
+                name: data.name,
+                description: data.description,
+                onBack: () => context.pop(),
+                onMembersTap: () =>
+                    context.push('/chat/channel/$channelId/members'),
+                onMoreTap: () =>
+                    context.push('/chat/channel/$channelId/settings'),
+              ),
+              Expanded(child: _MessageList(data: data)),
+              const Padding(
+                padding: EdgeInsets.fromLTRB(
+                  AppSpacing.s12,
+                  AppSpacing.s8,
+                  AppSpacing.s12,
+                  AppSpacing.s24,
+                ),
+                child: _MessageComposer(),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
+  }
+
+  /// 채널을 더 볼 수 없게 됐다. 사유를 알리고, 위에 열린 스레드·설정까지 걷어 채널
+  /// 화면을 닫는다. 채널로 바로 들어와 돌아갈 곳이 없으면 홈으로 간다.
+  static void _close(BuildContext context, String reason) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(reason)));
+    final route = ModalRoute.of(context);
+    final navigator = Navigator.of(context);
+    navigator.popUntil((other) => other == route);
+    if (navigator.canPop()) {
+      navigator.pop();
+    } else {
+      context.go('/');
+    }
   }
 }
 
@@ -115,14 +147,18 @@ class _MessageList extends StatelessWidget {
     );
   }
 
-  Widget _messageRow(BuildContext context, ChatMessage message) =>
-      ChatMessageRow(
-        message: message,
-        onTap: () => context.push('/chat/channel/thread'),
-        onLongPress: message.editable
-            ? () => _showMessageActions(context, message)
-            : null,
-      );
+  Widget _messageRow(
+    BuildContext context,
+    ChatMessage message,
+  ) => ChatMessageRow(
+    message: message,
+    onTap: () => context.push(
+      '/chat/channel/${context.read<ChannelMessageBloc>().channelId}/thread',
+    ),
+    onLongPress: message.editable
+        ? () => _showMessageActions(context, message)
+        : null,
+  );
 
   /// 내 메시지를 길게 눌렀을 때. 고치거나 지울지 고르게 한다.
   static Future<void> _showMessageActions(
