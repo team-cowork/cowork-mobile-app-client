@@ -19,7 +19,8 @@ class IssueCommentsCubit extends Cubit<List<IssueComment>> {
     final comment = IssueComment(
       id: 'comment-$issueNumber-${DateTime.now().microsecondsSinceEpoch}',
       author: ProfileEntity(
-        id: profile.currentUserId,
+        // 내 id 를 아직 못 읽었으면 0 이다. 아바타 색을 고르는 데만 쓴다.
+        id: profile.currentUserId ?? 0,
         name: profile.name,
         avatarInitial: profile.avatarInitial,
         avatarUrl: profile.avatarUrl,

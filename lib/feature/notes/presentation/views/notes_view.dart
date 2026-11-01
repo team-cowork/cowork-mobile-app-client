@@ -3,9 +3,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/utils/async_state.dart';
+import '../../../../core/utils/command_bloc.dart';
 import '../../../../shared/widgets/bloc_scaffold.dart';
+import '../../../../shared/widgets/create_sheet.dart';
+import '../../../channel/domain/channel.dart';
+import '../../data/notes_repository.dart';
+import '../../data/repositories/note_template_repository.dart';
 import '../../domain/note.dart';
+import '../../domain/note_draft.dart';
+import '../../domain/note_template.dart';
 import '../blocs/notes/notes_bloc.dart';
+import '../widgets/note_choice_chip.dart';
 
 /// 회의록 목록 화면.
 ///
@@ -16,14 +25,20 @@ class NotesView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocScaffold<NotesBloc, List<Note>>(
-      create: (_) => NotesBloc()..add(const NotesRequested()),
+      create: (context) =>
+          NotesBloc(context.read<NotesRepository>())
+            ..add(const NotesRequested()),
       errorTitle: '회의록을 불러오지 못했어요',
       onRetry: (context) =>
           context.read<NotesBloc>().add(const NotesRequested()),
       appBar: CoworkAppBar.section(
         title: '회의록',
         subtitle: '회의 기록 · 템플릿 기반 작성',
-        actions: const [_NewNoteButton()],
+        actions: const [
+          _TemplatesButton(),
+          SizedBox(width: AppSpacing.s8),
+          _NewNoteButton(),
+        ],
       ),
       builder: (context, notes) {
         if (notes.isEmpty) {
@@ -54,15 +69,43 @@ class NotesView extends StatelessWidget {
   }
 }
 
-/// `+ 새 노트` 강조 버튼. (동작은 추후 연결)
+/// `템플릿` 보조 버튼. 회의록 템플릿 관리 화면을 연다.
+class _TemplatesButton extends StatelessWidget {
+  const _TemplatesButton();
+
+  @override
+  Widget build(BuildContext context) {
+    return CoworkButton(
+      label: '템플릿',
+      variant: CoworkButtonVariant.weak,
+      color: CoworkButtonColor.neutral,
+      onPressed: () => context.push<void>('/notes/templates'),
+    );
+  }
+}
+
+/// `+ 새 노트` 강조 버튼. 시트에서 채널·템플릿·제목을 고르면 편집 화면을 연다.
 class _NewNoteButton extends StatelessWidget {
   const _NewNoteButton();
+
+  /// 회의록은 편집 화면에서 저장할 때 만들어진다. 저장하지 않고 나오면 아무것도
+  /// 남지 않는다. 작성자·작성일은 서버가 채우므로 목록은 끼워 넣지 않고 다시 읽는다.
+  static Future<void> _createNote(BuildContext context) async {
+    final bloc = context.read<NotesBloc>();
+    final messenger = ScaffoldMessenger.of(context);
+    final draft = await _NewNoteSheet.show(context);
+    if (draft == null || !context.mounted) return;
+    final created = await context.push<Note>('/notes/new', extra: draft);
+    if (created == null) return;
+    bloc.add(const NotesRequested());
+    messenger.showSnackBar(const SnackBar(content: Text('회의록을 만들었어요.')));
+  }
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTap: () => _NewNoteSheet.show(context),
+      onTap: () => _createNote(context),
       child: Container(
         decoration: BoxDecoration(
           color: AppColors.red400,
@@ -106,7 +149,7 @@ class _NoteCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      // 상세에서 편집하면 스토어가 갱신되므로, 돌아오면 목록을 다시 불러온다.
+      // 상세에서 편집하면 서버 회의록이 바뀌므로, 돌아오면 목록을 다시 불러온다.
       onTap: () async {
         await context.push<void>('/notes/detail', extra: note);
         if (context.mounted) {
@@ -219,158 +262,367 @@ class _AuthorLine extends StatelessWidget {
   );
 }
 
+/// 내 회의록 채널을 읽는 [CommandBloc]. 인자는 없다.
+typedef _LoadChannels = CommandBloc<void, List<Channel>>;
+
+/// 채널 하나의 템플릿을 읽는 [CommandBloc]. 인자는 채널 id 다.
+typedef _LoadTemplates = CommandBloc<int, List<NoteTemplate>>;
+
 /// 회의록 생성(새 노트) 바텀시트.
 ///
-/// Figma `Sheet / 새 노트` 스펙. 제목·내용 입력과 템플릿 선택을 제공하고,
-/// `노트 만들기`를 누르면 [NotesBloc]에 [NoteAdded]를 보낸다.
+/// Figma `App / 새 노트 (모달) — 서버 템플릿` 스펙. 회의록 채널을 고르면 그 채널의
+/// 서버 템플릿을 불러와 고르게 하고, 템플릿이 없으면 입력 전에 알린다. 본문은
+/// 받지 않는다. 고른 값([NoteDraft])을 돌려주면 목록이 편집 화면을 열고, 회의록은
+/// 거기서 저장할 때 만들어진다.
 ///
-/// ponytail: 입력값은 시트가 닫히면 버려지는 화면 로컬 상태라 Bloc 없이 setState 로 든다.
+/// ponytail: 입력값은 시트가 닫히면 버려지는 화면 로컬 상태라 setState 로 들고,
+/// 서버 요청 상태만 [CommandBloc] 이 맡는다.
 class _NewNoteSheet extends StatefulWidget {
   const _NewNoteSheet();
 
-  /// 시트를 띄운다. [context]는 [NotesBloc] 하위여야 한다.
-  static Future<void> show(BuildContext context) {
-    final notesBloc = context.read<NotesBloc>();
-
-    return showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: context.colors.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(_sheetRadius)),
+  /// 시트를 띄우고 고른 채널·템플릿·제목을 돌려준다. 고르지 않고 닫으면 null.
+  static Future<NoteDraft?> show(BuildContext context) {
+    final notes = context.read<NotesRepository>();
+    final templates = context.read<NoteTemplateRepository>();
+    return CreateSheet.show<NoteDraft>(
+      context,
+      (_) => MultiBlocProvider(
+        providers: [
+          BlocProvider(
+            create: (_) =>
+                _LoadChannels((_) => notes.fetchNoteChannels(), tag: 'Notes')
+                  ..add(const CommandRun<void>(null)),
+          ),
+          BlocProvider(
+            create: (_) =>
+                _LoadTemplates(templates.fetchTemplates, tag: 'Notes'),
+          ),
+        ],
+        child: const _NewNoteSheet(),
       ),
-      // 시트는 별도 라우트라 목록 Bloc을 직접 넘겨준다.
-      builder: (_) =>
-          BlocProvider.value(value: notesBloc, child: const _NewNoteSheet()),
     );
   }
-
-  static const double _sheetRadius = 22;
-
-  static const templates = [
-    (label: '자유 양식', description: '빈 문서로 시작'),
-    (label: '회의록', description: '안건 · 결정 · 액션 아이템'),
-    (label: '스프린트 회고', description: 'Keep · Problem · Try'),
-  ];
 
   @override
   State<_NewNoteSheet> createState() => _NewNoteSheetState();
 }
 
 class _NewNoteSheetState extends State<_NewNoteSheet> {
+  int? _channelId;
+  int? _templateId;
   String _title = '';
-  String _content = '';
-  int _template = 0;
 
-  /// 제목이 있어야 노트를 만들 수 있다.
-  bool get _canSubmit => _title.trim().isNotEmpty;
+  /// 채널을 바꾸면 고른 템플릿을 비우고 그 채널의 템플릿을 읽는다.
+  void _selectChannel(int channelId) {
+    setState(() {
+      _channelId = channelId;
+      _templateId = null;
+    });
+    context.read<_LoadTemplates>().add(CommandEvent.run(channelId));
+  }
 
-  void _submit() {
-    context.read<NotesBloc>().add(
-      NoteAdded(
-        title: _title,
-        content: _content,
-        template: _NewNoteSheet.templates[_template].label,
-      ),
-    );
-    Navigator.of(context).pop();
+  /// 템플릿 관리 화면을 열고, 돌아오면 고친 템플릿을 다시 읽는다.
+  Future<void> _manageTemplates() async {
+    final channelId = _channelId;
+    if (channelId == null) return;
+    await context.push<void>('/notes/templates', extra: channelId);
+    if (mounted) _selectChannel(channelId);
+  }
+
+  /// 읽은 템플릿 중 고른 것이 없으면 기본 템플릿을, 그것도 없으면 첫 템플릿을 고른다.
+  void _onTemplatesLoaded(List<NoteTemplate> templates) {
+    if (templates.any((template) => template.id == _templateId)) return;
+    final picked =
+        templates.where((template) => template.isDefault).firstOrNull ??
+        templates.firstOrNull;
+    setState(() => _templateId = picked?.id);
   }
 
   @override
   Widget build(BuildContext context) {
-    final colors = context.colors;
-
-    return SafeArea(
-      child: Padding(
-        // 키보드가 올라오면 시트 전체를 밀어 올린다.
-        padding: EdgeInsets.only(
-          bottom: MediaQuery.viewInsetsOf(context).bottom,
+    return MultiBlocListener(
+      listeners: [
+        // 채널을 읽으면 첫 채널을 골라 템플릿을 읽는다.
+        BlocListener<_LoadChannels, AsyncState<List<Channel>>>(
+          listener: (context, state) {
+            if (state case AsyncSuccess(:final data) when _channelId == null) {
+              if (data.firstOrNull case final first?) {
+                _selectChannel(int.parse(first.id));
+              }
+            }
+          },
         ),
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(
-            AppSpacing.s20,
-            AppSpacing.s12,
-            AppSpacing.s20,
-            AppSpacing.s24,
+        BlocListener<_LoadTemplates, AsyncState<List<NoteTemplate>>>(
+          listener: (context, state) {
+            if (state case AsyncSuccess(:final data)) _onTemplatesLoaded(data);
+          },
+        ),
+      ],
+      child: Builder(builder: _buildSheet),
+    );
+  }
+
+  Widget _buildSheet(BuildContext context) {
+    final channels = context.watch<_LoadChannels>().state;
+    final templates = context.watch<_LoadTemplates>().state;
+
+    final loaded = switch (templates) {
+      AsyncSuccess(:final data) => data,
+      _ => const <NoteTemplate>[],
+    };
+    final template = loaded.where((t) => t.id == _templateId).firstOrNull;
+    final channelId = _channelId;
+    final canSubmit =
+        _title.trim().isNotEmpty && channelId != null && template != null;
+
+    return CreateSheet(
+      title: '새 노트',
+      children: [
+        ..._channelSection(
+          channels,
+          // 템플릿을 읽는 중에 채널을 바꾸면 그 요청은 무시되므로 잠가 둔다.
+          enabled: templates is! AsyncLoading,
+        ),
+        if (templates is AsyncSuccess && loaded.isEmpty)
+          _SheetNotice(
+            title: '이 채널에는 템플릿이 없어요',
+            description: '템플릿이 있어야 회의록을 쓸 수 있어요.',
+            actionLabel: '템플릿 만들기',
+            onAction: _manageTemplates,
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            spacing: AppSpacing.s16,
+        if (channels case AsyncSuccess(:final data) when data.isNotEmpty)
+          CoworkTextField(
+            labelText: '제목',
+            hintText: '노트 제목을 입력하세요',
+            enabled: loaded.isNotEmpty,
+            textInputAction: TextInputAction.done,
+            onChanged: (value) => setState(() => _title = value),
+          ),
+        ..._templateSection(templates, loaded),
+        SizedBox(
+          width: double.infinity,
+          child: CoworkButton(
+            label: '노트 만들기',
+            size: CoworkButtonSize.large,
+            enabled: canSubmit,
+            onPressed: () => Navigator.of(context).pop<NoteDraft>((
+              channelId: channelId!,
+              template: template!,
+              title: _title.trim(),
+            )),
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// `채널` 라벨 + 회의록 채널 칩. 못 읽었거나 채널이 없으면 그 사유를 보여준다.
+  List<Widget> _channelSection(
+    AsyncState<List<Channel>> state, {
+    required bool enabled,
+  }) => switch (state) {
+    AsyncSuccess(:final data) when data.isEmpty => const [
+      _SheetNotice(
+        title: '회의록 채널이 없어요',
+        description: '채널 탭에서 회의록 채널을 먼저 만들어 주세요.',
+      ),
+    ],
+    AsyncSuccess(:final data) => [
+      const _SheetLabel('채널'),
+      Wrap(
+        spacing: AppSpacing.s8,
+        runSpacing: AppSpacing.s8,
+        children: [
+          for (final channel in data)
+            NoteChoiceChip(
+              label: '# ${channel.name}',
+              selected: int.parse(channel.id) == _channelId,
+              onTap: enabled
+                  ? () => _selectChannel(int.parse(channel.id))
+                  : null,
+            ),
+        ],
+      ),
+    ],
+    AsyncFailure(:final message) => [
+      CreateSheetError(
+        title: '회의록 채널을 불러오지 못했어요',
+        message: message ?? '잠시 후 다시 시도해 주세요.',
+      ),
+      CoworkButton(
+        label: '다시 시도',
+        variant: CoworkButtonVariant.weak,
+        color: CoworkButtonColor.neutral,
+        onPressed: () =>
+            context.read<_LoadChannels>().add(const CommandRun<void>(null)),
+      ),
+    ],
+    // 스피너(44)와 카드 여백이 들어가는 가장 낮은 높이.
+    _ => const [_SheetLabel('채널'), CoworkLoadingPane(height: 80)],
+  };
+
+  /// `템플릿 · 관리` 라벨 + 서버 템플릿 카드. 템플릿이 없으면 시트 위쪽 안내가 대신한다.
+  List<Widget> _templateSection(
+    AsyncState<List<NoteTemplate>> state,
+    List<NoteTemplate> templates,
+  ) => switch (state) {
+    AsyncSuccess() when templates.isEmpty => const [],
+    AsyncSuccess() => [
+      Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          const _SheetLabel('템플릿'),
+          GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: _manageTemplates,
+            child: Text(
+              '관리',
+              style: AppFont.subtextS.copyWith(
+                fontWeight: AppFont.semiBold,
+                color: AppColors.red400,
+              ),
+            ),
+          ),
+        ],
+      ),
+      for (final template in templates)
+        CoworkOptionCard(
+          label: template.name,
+          description: template.sections.isEmpty
+              ? '섹션 없음'
+              : template.sections.map((section) => section.title).join(' · '),
+          icon: AppIcon.navNote,
+          selected: template.id == _templateId,
+          onTap: () => setState(() => _templateId = template.id),
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            spacing: AppSpacing.s8,
             children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: colors.surfaceContainer,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
+              if (template.isDefault)
+                const CoworkBadge(label: '기본', color: CoworkBadgeColor.brand),
+              _TemplateRadio(selected: template.id == _templateId),
+            ],
+          ),
+        ),
+      Text(
+        '만들면 고른 템플릿의 섹션으로 편집 화면이 열려요.',
+        style: AppFont.subtextS.copyWith(color: AppColors.neutral400),
+      ),
+    ],
+    AsyncFailure(:final message) => [
+      CreateSheetError(
+        title: '템플릿을 불러오지 못했어요',
+        message: message ?? '잠시 후 다시 시도해 주세요.',
+      ),
+      CoworkButton(
+        label: '다시 시도',
+        variant: CoworkButtonVariant.weak,
+        color: CoworkButtonColor.neutral,
+        onPressed: _channelId == null
+            ? null
+            : () => _selectChannel(_channelId!),
+      ),
+    ],
+    AsyncLoading() => const [_SheetLabel('템플릿'), CoworkLoadingPane(height: 96)],
+    // 채널을 고르기 전.
+    _ => const [],
+  };
+}
+
+/// 시트 안의 섹션 제목. (예: `채널`, `템플릿`)
+class _SheetLabel extends StatelessWidget {
+  const _SheetLabel(this.label);
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      label,
+      style: AppFont.subtextS.copyWith(
+        fontWeight: AppFont.semiBold,
+        color: context.colors.onSurfaceVariant,
+      ),
+    );
+  }
+}
+
+/// 시트에서 더 진행할 수 없는 이유를 알리는 카드. 필요하면 해결 버튼을 단다.
+///
+/// Figma `App / 새 노트 (모달) — 템플릿 없음` 의 안내 카드.
+class _SheetNotice extends StatelessWidget {
+  const _SheetNotice({
+    required this.title,
+    required this.description,
+    this.actionLabel,
+    this.onAction,
+  });
+
+  final String title;
+  final String description;
+  final String? actionLabel;
+  final VoidCallback? onAction;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.neutral800,
+        border: Border.all(color: AppColors.neutral700),
+        borderRadius: BorderRadius.circular(AppRadius.r12),
+      ),
+      padding: const EdgeInsets.all(AppSpacing.s14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        spacing: AppSpacing.s12,
+        children: [
+          Row(
+            spacing: AppSpacing.s12,
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: AppColors.neutral700,
+                  borderRadius: BorderRadius.circular(9),
+                ),
+                child: const Icon(
+                  AppIcon.navNote,
+                  size: 18,
+                  color: AppColors.neutral300,
                 ),
               ),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    '새 노트',
-                    style: AppFont.titleS.copyWith(color: colors.onSurface),
-                  ),
-                  CoworkIconButton(
-                    icon: AppIcon.close,
-                    size: CoworkIconButtonSize.small,
-                    variant: CoworkIconButtonVariant.weak,
-                    color: CoworkIconButtonColor.neutral,
-                    semanticLabel: '닫기',
-                    onPressed: () => Navigator.of(context).pop(),
-                  ),
-                ],
-              ),
-              CoworkTextField(
-                labelText: '제목',
-                hintText: '노트 제목을 입력하세요',
-                textInputAction: TextInputAction.next,
-                onChanged: (value) => setState(() => _title = value),
-              ),
-              CoworkTextArea(
-                labelText: '내용',
-                hintText: '회의 안건과 논의 내용을 적어보세요. 편집 화면에서 이어서 작성할 수 있어요.',
-                minLines: 4,
-                onChanged: (value) => setState(() => _content = value),
-              ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                spacing: AppSpacing.s8,
-                children: [
-                  Text(
-                    '템플릿',
-                    style: AppFont.subtextS.copyWith(
-                      fontWeight: AppFont.semiBold,
-                      color: colors.onSurfaceVariant,
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  spacing: 2,
+                  children: [
+                    Text(
+                      title,
+                      style: AppFont.labelXs.copyWith(
+                        fontWeight: AppFont.semiBold,
+                        color: AppColors.darkOnSurface,
+                      ),
                     ),
-                  ),
-                  for (final (index, template)
-                      in _NewNoteSheet.templates.indexed)
-                    CoworkOptionCard(
-                      label: template.label,
-                      description: template.description,
-                      icon: AppIcon.navNote,
-                      selected: index == _template,
-                      onTap: () => setState(() => _template = index),
-                      trailing: _TemplateRadio(selected: index == _template),
+                    Text(
+                      description,
+                      style: AppFont.subtextS.copyWith(
+                        color: AppColors.neutral300,
+                      ),
                     ),
-                ],
-              ),
-              SizedBox(
-                width: double.infinity,
-                child: CoworkButton(
-                  label: '노트 만들기',
-                  size: CoworkButtonSize.large,
-                  enabled: _canSubmit,
-                  onPressed: _submit,
+                  ],
                 ),
               ),
             ],
           ),
-        ),
+          if (actionLabel case final label?)
+            CoworkButton(
+              label: label,
+              size: CoworkButtonSize.medium,
+              variant: CoworkButtonVariant.weak,
+              onPressed: onAction,
+            ),
+        ],
       ),
     );
   }

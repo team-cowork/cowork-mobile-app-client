@@ -1,11 +1,16 @@
+import 'dart:convert';
+
 import 'package:cowork_app/feature/notes/domain/note.dart';
 import 'package:cowork_app/feature/notes/presentation/views/note_detail_view.dart';
 import 'package:cowork_app/feature/notes/presentation/views/note_edit_view.dart';
 import 'package:cowork_app/feature/notes/presentation/views/notes_view.dart';
+import 'package:cowork_app/feature/profile/data/profile_store.dart';
 import 'package:cowork_design_system/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+
+import 'notes_test_server.dart';
 
 GoRouter _notesRouter() => GoRouter(
   initialLocation: '/',
@@ -22,9 +27,13 @@ GoRouter _notesRouter() => GoRouter(
   ],
 );
 
-Future<void> _openNote(WidgetTester tester, String title) async {
+Future<void> _openNote(
+  WidgetTester tester,
+  String title, [
+  FakeNotesServer? server,
+]) async {
   await tester.pumpWidget(
-    MaterialApp.router(theme: AppTheme.dark(), routerConfig: _notesRouter()),
+    notesRouterTestApp(_notesRouter(), server ?? FakeNotesServer()),
   );
   await tester.pumpAndSettle();
   await tester.tap(find.text(title));
@@ -32,6 +41,9 @@ Future<void> _openNote(WidgetTester tester, String title) async {
 }
 
 void main() {
+  // 로그인 직후 AuthBloc 이 채워 두는 값. 가짜 서버의 작성자 1 이 나다.
+  setUp(() => ProfileStore.instance.currentUserId = 1);
+
   testWidgets('남의 회의록 상세에는 수정 아이콘이 없다', (tester) async {
     await _openNote(tester, '디자인 시스템 리뷰'); // 작성자 도윤 (내 것 아님)
     expect(find.byIcon(Icons.edit_outlined), findsNothing);
@@ -65,5 +77,29 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('3월 스프린트 플래닝 (수정)'), findsOneWidget);
     expect(find.text('2026 1분기 킥오프 회의'), findsNothing);
+  });
+
+  testWidgets('저장하면 템플릿 순서대로 본문을 보내고 템플릿에 없는 섹션도 남긴다', (tester) async {
+    tester.view.physicalSize = const Size(400, 1400);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+    final server = FakeNotesServer();
+    await _openNote(tester, '2026 1분기 킥오프 회의', server);
+    await tester.tap(find.byIcon(Icons.edit_outlined));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.widgetWithText(TextField, '예: 2026-11-03 14:00'),
+      '2026-11-03 14:00',
+    );
+    await tester.tap(find.text('저장'));
+    await tester.pumpAndSettle();
+
+    final content =
+        jsonDecode(server.notes.first['content'] as String)
+            as Map<String, dynamic>;
+    expect(content.keys, ['참석자', '안건', '결정 사항', '액션 아이템', '다음 회의', '요약']);
+    expect(content['다음 회의'], '2026-11-03 14:00');
+    expect(content['요약'], '분기 목표 정렬 및 팀별 OKR 확정.');
   });
 }
