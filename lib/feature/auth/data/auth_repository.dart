@@ -10,21 +10,41 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_web_auth_2/flutter_web_auth_2.dart';
 
 import '../../../core/network/dio_client.dart';
-import '../../../core/network/http_error_message.dart';
 import '../../../core/utils/logger.dart';
 import 'dgsm_oauth_config.dart';
 
-/// 사용자에게 그대로 보여줄 수 있는 로그인 실패 사유.
-class AuthException implements Exception {
-  const AuthException(this.message, {this.statusCode});
+/// 서버 요청([DioException]) 밖에서 로그인이 실패한 종류.
+enum AuthFailureKind {
+  /// 사용자가 브라우저 로그인을 닫았다.
+  canceled,
 
-  final String message;
+  /// 브라우저 인증 자체가 실패했다.
+  browserFailed,
 
-  /// 서버가 거절했을 때의 HTTP 상태 코드. 연결 자체가 안 됐으면 null.
-  final int? statusCode;
+  /// 돌아온 state 가 보낸 값과 달라 응답을 신뢰할 수 없다.
+  stateMismatch,
+
+  /// 인가 코드 없이 돌아왔다.
+  codeMissing,
+
+  /// 토큰 응답에 access/refresh token 이 없다.
+  invalidTokenResponse,
+}
+
+/// 무슨 일이 있었는지만 알리는 로그인 실패. 사용자 문구는 Bloc 이 정한다.
+class AuthFailure implements Exception {
+  const AuthFailure(this.kind, {this.detail, this.cause});
+
+  final AuthFailureKind kind;
+
+  /// DataGSM 이 인가 코드 대신 돌려준 사유(`error_description`/`error`).
+  final String? detail;
+
+  /// 이 실패로 바꾸기 전의 원래 예외. 로그로 원인을 찾을 때 쓴다.
+  final Object? cause;
 
   @override
-  String toString() => 'AuthException: $message';
+  String toString() => 'AuthFailure(${kind.name}): ${detail ?? cause ?? ''}';
 }
 
 /// DataGSM OAuth(PKCE) 로그인과 Cowork 토큰 수명주기를 담당한다.
@@ -83,21 +103,28 @@ class AuthRepository {
         callbackUrlScheme: DgsmOAuthConfig.callbackUrlScheme,
       );
     } on PlatformException catch (e, s) {
-      Logger.e('브라우저 인증 실패', tag: 'Auth', error: e, stackTrace: s);
-      throw AuthException(
-        e.code == 'CANCELED' ? '로그인이 취소되었습니다.' : '브라우저 인증에 실패했습니다.',
+      // 원래 스택을 남겨야 로그에서 플러그인 쪽 원인을 따라갈 수 있다.
+      Error.throwWithStackTrace(
+        AuthFailure(
+          e.code == 'CANCELED'
+              ? AuthFailureKind.canceled
+              : AuthFailureKind.browserFailed,
+          cause: e,
+        ),
+        s,
       );
     }
 
     final params = Uri.parse(callback).queryParameters;
     // CSRF: 우리가 보낸 state 가 그대로 돌아왔을 때만 인가 코드를 신뢰한다.
     if (params['state'] != state) {
-      throw const AuthException('인증 응답을 신뢰할 수 없어 로그인을 중단했습니다.');
+      throw const AuthFailure(AuthFailureKind.stateMismatch);
     }
     final code = params['code'];
     if (code == null) {
-      throw AuthException(
-        params['error_description'] ?? params['error'] ?? '인가 코드를 받지 못했습니다.',
+      throw AuthFailure(
+        AuthFailureKind.codeMissing,
+        detail: params['error_description'] ?? params['error'],
       );
     }
 
@@ -140,10 +167,12 @@ class AuthRepository {
       if (generation != _generation) return false;
       await _saveTokens(tokens);
       return true;
-    } on AuthException catch (e) {
-      Logger.e('세션 복원 실패', tag: 'Auth', error: e);
+    } catch (e, s) {
+      // 인터셉터·소켓도 부르는 경로라 Bloc 이 대신 남겨 줄 수 없다.
+      Logger.e('세션 복원 실패', tag: 'Auth', error: e, stackTrace: s);
       if (generation != _generation) return false;
-      if (e.statusCode == 400 || e.statusCode == 401) {
+      final status = e is DioException ? e.response?.statusCode : null;
+      if (status == 400 || status == 401) {
         await _clear();
         _sessionExpired.add(null);
       }
@@ -161,9 +190,9 @@ class AuthRepository {
         await _post('/auth/signout', {
           'refresh_token': refreshToken,
         }, bearer: accessToken);
-      } on AuthException catch (e) {
+      } on DioException catch (e, s) {
         // 서버 무효화에 실패해도 로컬 토큰은 반드시 지운다.
-        Logger.e('서버 로그아웃 실패', tag: 'Auth', error: e);
+        Logger.e('서버 로그아웃 실패', tag: 'Auth', error: e, stackTrace: s);
       }
     }
     await _clear();
@@ -174,23 +203,13 @@ class AuthRepository {
     Map<String, String> body, {
     String? bearer,
   }) async {
-    final Response<String> response;
-    try {
-      response = await _dio.post<String>(
-        path,
-        data: body,
-        options: bearer == null
-            ? null
-            : Options(headers: {'Authorization': 'Bearer $bearer'}),
-      );
-    } on DioException catch (e, s) {
-      // 서버가 거절한 건 사용자 문구로 충분하고, 못 붙은 건 원인을 남겨야 한다.
-      if (e.response == null) {
-        Logger.e('$path 요청 실패', tag: 'Auth', error: e, stackTrace: s);
-      }
-      throw authExceptionOf(e);
-    }
-
+    final response = await _dio.post<String>(
+      path,
+      data: body,
+      options: bearer == null
+          ? null
+          : Options(headers: {'Authorization': 'Bearer $bearer'}),
+    );
     return unwrapPayload(response.data ?? '');
   }
 
@@ -198,7 +217,7 @@ class AuthRepository {
     final access = data['access_token'];
     final refresh = data['refresh_token'];
     if (access is! String || refresh is! String) {
-      throw const AuthException('토큰 응답 형식이 올바르지 않습니다.');
+      throw const AuthFailure(AuthFailureKind.invalidTokenResponse);
     }
     _accessToken = access;
     await _storage.write(key: _refreshTokenKey, value: refresh);
@@ -209,11 +228,6 @@ class AuthRepository {
     await _storage.delete(key: _refreshTokenKey);
   }
 }
-
-/// dio 실패를 로그인 화면이 보여줄 예외로 바꾼다. 문구는 공통 규칙을 따른다.
-@visibleForTesting
-AuthException authExceptionOf(DioException e) =>
-    AuthException(dioErrorMessage(e), statusCode: e.response?.statusCode);
 
 /// RFC 7636 code_verifier. [bytes] 32개면 43자로 규격(43~128자)에 들어맞는다.
 @visibleForTesting

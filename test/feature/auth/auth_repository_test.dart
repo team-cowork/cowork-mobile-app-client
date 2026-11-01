@@ -4,6 +4,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:cowork_app/core/network/dio_client.dart';
+import 'package:cowork_app/core/network/http_error_message.dart';
 import 'package:cowork_app/feature/auth/data/auth_repository.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -119,12 +120,12 @@ void main() {
       isNotNull,
       reason: 'dio 가 4xx 를 response 없이 던지면 매핑이 무너진다',
     );
-    expect(authExceptionOf(e).message, '(401) Unauthorized');
+    expect(dioErrorMessage(e), '(401) Unauthorized');
   });
 
   test('JSON 이 아닌 오류 본문은 상태 코드 기본 문구로 떨어진다', () async {
     final e = await _postFailure(502, '<html>502 Bad Gateway</html>');
-    expect(authExceptionOf(e).message, '(502) 서버에 연결할 수 없습니다.');
+    expect(dioErrorMessage(e), '(502) 서버에 연결할 수 없습니다.');
   });
 
   test('연결 자체가 실패하면 네트워크 문구를 쓴다', () {
@@ -133,7 +134,7 @@ void main() {
       reason: 'no route to host',
     );
     expect(e.response, isNull);
-    expect(authExceptionOf(e).message, '네트워크에 연결할 수 없습니다.');
+    expect(dioErrorMessage(e), '네트워크에 연결할 수 없습니다.');
   });
 
   group('restoreSession', () {
