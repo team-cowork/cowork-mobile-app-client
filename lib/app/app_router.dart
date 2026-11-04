@@ -36,11 +36,19 @@ final channelRoute = GoRoute(
 int? _channelIdOf(GoRouterState state) =>
     int.tryParse(state.pathParameters['channelId'] ?? '');
 
+int? _teamIdOf(GoRouterState state) =>
+    int.tryParse(state.uri.queryParameters['teamId'] ?? '');
+
 final GoRouter appRouter = GoRouter(
   initialLocation: '/',
   routes: [
     GoRoute(path: '/', builder: (context, state) => const AuthGate()),
-    GoRoute(path: '/search', builder: (context, state) => const SearchView()),
+    // 검색은 팀 안으로 범위가 묶여 팀 id 를 쿼리로 받는다. 없으면 홈으로 보낸다.
+    GoRoute(
+      path: '/search',
+      redirect: (context, state) => _teamIdOf(state) == null ? '/' : null,
+      builder: (context, state) => SearchView(teamId: _teamIdOf(state)!),
+    ),
     GoRoute(
       path: '/notifications',
       builder: (context, state) => const NotificationsView(),

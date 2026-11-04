@@ -11,6 +11,8 @@ import 'package:cowork_app/feature/notifications/data/notification_stream.dart';
 import 'package:cowork_app/feature/notifications/data/repositories/notification_repository.dart';
 import 'package:cowork_app/feature/profile/data/repositories/github_repository.dart';
 import 'package:cowork_app/feature/profile/data/repositories/profile_repository.dart';
+import 'package:cowork_app/feature/search/data/repositories/recent_search_repository.dart';
+import 'package:cowork_app/feature/search/data/repositories/search_repository.dart';
 import 'package:cowork_app/feature/setting/data/preference_repository.dart';
 import 'package:cowork_app/feature/setting/data/push_repository.dart';
 import 'package:cowork_app/feature/team/data/repositories/team_repository.dart';
@@ -65,6 +67,10 @@ class CoworkApp extends StatelessWidget {
           create: (context) =>
               MessageRepository(context.read<AuthRepository>()),
         ),
+        RepositoryProvider(
+          create: (context) => SearchRepository(context.read<AuthRepository>()),
+        ),
+        RepositoryProvider(create: (_) => RecentSearchRepository()),
         // 채팅 서버 소켓 연결은 앱에 하나만 두고 화면들이 나눠 쓴다.
         RepositoryProvider(
           create: (context) => ChatSocket(context.read<AuthRepository>()),
@@ -98,6 +104,19 @@ class CoworkApp extends StatelessWidget {
               notifications.start();
             } else {
               notifications.stop();
+              // 최근 검색어는 사용자 구분 없이 기기에 남으므로, 다음 사람이 보지 않게
+              // 로그아웃(세션 만료 포함)하면 지운다.
+              context.read<RecentSearchRepository>().clearAll().catchError((
+                Object e,
+                StackTrace s,
+              ) {
+                Logger.e(
+                  '최근 검색어 삭제 실패',
+                  tag: 'Search',
+                  error: e,
+                  stackTrace: s,
+                );
+              });
             }
           },
           child: MaterialApp.router(
