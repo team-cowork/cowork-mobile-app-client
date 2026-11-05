@@ -16,8 +16,10 @@ ChannelMessageBloc _bloc(
   FakeChatSocket socket, {
   Stream<AppLifecycleState>? lifecycle,
   Duration confirmTimeout = const Duration(seconds: 10),
+  String? focusMessageId,
 }) => ChannelMessageBloc(
   channelId: 10,
+  focusMessageId: focusMessageId,
   channelRepository: ChannelRepository.withDio(messageDio(gateway, 'channel')),
   messageRepository: MessageRepository.withDio(
     chat: messageDio(gateway, 'chat'),
@@ -563,6 +565,192 @@ void main() {
       await pumpEventQueue();
 
       expect(_texts(bloc), ['첫 번째', '두 번째']);
+    });
+  });
+
+  group('검색한 메시지로 열면', () {
+    /// m1(가장 오래됨) ~ m200(가장 최근). 서버처럼 최신순이다.
+    FakeMessageGateway twoHundred() => FakeMessageGateway(
+      messages: [for (var i = 200; i > 0; i--) messageJson('m$i', 2, '메시지 $i')],
+    );
+
+    Future<ChannelMessageBloc> focused(
+      FakeMessageGateway gateway,
+      FakeChatSocket socket,
+      String messageId,
+    ) async {
+      final bloc = _bloc(gateway, socket, focusMessageId: messageId)
+        ..add(const ChannelMessageEvent.requested());
+      await bloc.stream.firstWhere(
+        (s) => s is AsyncSuccess<ChannelConversation>,
+      );
+      await pumpEventQueue();
+      return bloc;
+    }
+
+    Future<void> loadNewer(ChannelMessageBloc bloc) async {
+      bloc.add(const ChannelMessageEvent.newerRequested());
+      await bloc.stream.firstWhere(
+        (s) => s is AsyncSuccess<ChannelConversation> && !s.data.loadingNewer,
+      );
+      await pumpEventQueue();
+    }
+
+    test('그 메시지 앞뒤를 읽고, 최근 메시지가 남았으니 읽음은 알리지 않는다', () async {
+      final gateway = twoHundred();
+      final bloc = await focused(gateway, FakeChatSocket(), 'm100');
+      addTearDown(bloc.close);
+
+      final data = _data(bloc);
+      expect(
+        gateway.calls,
+        contains('GET /chat/chat/channels/10/messages?around=m100'),
+      );
+      expect(data.focusMessageId, 'm100');
+      expect(_texts(bloc).first, '메시지 51');
+      expect(_texts(bloc).last, '메시지 150');
+      expect(data.hasOlder, isTrue);
+      expect(data.hasNewer, isTrue);
+      expect(
+        gateway.calls,
+        isNot(contains('POST /chat/chat/channels/10/read')),
+      );
+    });
+
+    test('최근 메시지 근처면 이후 메시지가 없다고 본다', () async {
+      final bloc = await focused(twoHundred(), FakeChatSocket(), 'm190');
+      addTearDown(bloc.close);
+
+      expect(_data(bloc).hasNewer, isFalse);
+      expect(_texts(bloc).last, '메시지 200');
+    });
+
+    test('이후 메시지를 이어 붙이고, 최근까지 오면 읽음을 알린다', () async {
+      final gateway = twoHundred();
+      final bloc = await focused(gateway, FakeChatSocket(), 'm30');
+      addTearDown(bloc.close);
+      expect(_texts(bloc).last, '메시지 80');
+
+      await loadNewer(bloc);
+      expect(
+        gateway.calls,
+        contains('GET /chat/chat/channels/10/messages?after=m80'),
+      );
+      expect(_texts(bloc).last, '메시지 180');
+      expect(_data(bloc).hasNewer, isTrue);
+      expect(
+        gateway.calls,
+        isNot(contains('POST /chat/chat/channels/10/read')),
+      );
+
+      await loadNewer(bloc);
+      expect(_texts(bloc).last, '메시지 200');
+      expect(_data(bloc).hasNewer, isFalse);
+      expect(gateway.bodies['POST /chat/chat/channels/10/read'], {
+        'lastReadMessageId': 'm200',
+      });
+    });
+
+    test('과거 위치를 보는 중 소켓으로 온 새 메시지는 붙이지 않는다', () async {
+      final socket = FakeChatSocket();
+      final bloc = await focused(twoHundred(), socket, 'm100');
+      addTearDown(bloc.close);
+
+      socket.push('message', messageJson('m201', 2, '방금 온 메시지'));
+      await pumpEventQueue();
+
+      expect(_texts(bloc), isNot(contains('방금 온 메시지')));
+      expect(_texts(bloc).last, '메시지 150');
+    });
+
+    test('이후 메시지를 읽는 사이 소켓으로 온 메시지도 최근까지 오면 붙인다', () async {
+      final gateway = twoHundred();
+      final socket = FakeChatSocket();
+      final bloc = await focused(gateway, socket, 'm140');
+      addTearDown(bloc.close);
+      final gate = Completer<void>();
+      gateway.listGate = gate.future;
+
+      bloc.add(const ChannelMessageEvent.newerRequested());
+      await pumpEventQueue();
+      socket.push('message', messageJson('m201', 2, '방금 온 메시지'));
+      await pumpEventQueue();
+      gate.complete();
+      await bloc.stream.firstWhere(
+        (s) => s is AsyncSuccess<ChannelConversation> && !s.data.loadingNewer,
+      );
+
+      expect(_data(bloc).hasNewer, isFalse);
+      expect(_texts(bloc).sublist(_texts(bloc).length - 2), [
+        '메시지 200',
+        '방금 온 메시지',
+      ]);
+    });
+
+    test('보내면 최근 대화로 옮긴 뒤 보낸다', () async {
+      final gateway = twoHundred();
+      final bloc = await focused(gateway, FakeChatSocket(), 'm100');
+      addTearDown(bloc.close);
+      gateway.calls.clear();
+
+      bloc.add(const ChannelMessageEvent.sent('답장'));
+      await pumpEventQueue();
+
+      final data = _data(bloc);
+      expect(gateway.calls, contains('GET /chat/chat/channels/10/messages'));
+      expect(data.focusMessageId, isNull);
+      expect(data.hasNewer, isFalse);
+      expect(_texts(bloc).sublist(_texts(bloc).length - 2), ['메시지 200', '답장']);
+      expect(
+        gateway.bodies['POST /chat/chat/channels/10/messages']!['content'],
+        '답장',
+      );
+    });
+
+    test('서버가 around 를 무시하면 받은 최근 메시지로 열고 알린다', () async {
+      final gateway = twoHundred()..ignoredCursors = {'around'};
+      final bloc = await focused(gateway, FakeChatSocket(), 'm10');
+      addTearDown(bloc.close);
+
+      final data = _data(bloc);
+      expect(data.focusMessageId, isNull);
+      expect(data.hasNewer, isFalse);
+      expect(data.hasOlder, isTrue);
+      expect(_texts(bloc).last, '메시지 200');
+      expect(data.errorMessage, '메시지를 찾을 수 없어 최근 대화를 보여 드려요.');
+      expect(gateway.bodies['POST /chat/chat/channels/10/read'], {
+        'lastReadMessageId': 'm200',
+      });
+    });
+
+    test('after 응답에 새 메시지가 없으면 더 부르지 않는다', () async {
+      final gateway = twoHundred()..ignoredCursors = {'after'};
+      final bloc = await focused(gateway, FakeChatSocket(), 'm100');
+      addTearDown(bloc.close);
+
+      // after 를 무시하니 최근 100개(m101~m200)가 온다. 처음엔 새 메시지가 붙는다.
+      await loadNewer(bloc);
+      expect(_texts(bloc).last, '메시지 200');
+      // 다음 응답은 전부 이미 가진 메시지다. 여기서 멈춰야 한다.
+      await loadNewer(bloc);
+      expect(_data(bloc).hasNewer, isFalse);
+
+      gateway.calls.clear();
+      bloc.add(const ChannelMessageEvent.newerRequested());
+      await pumpEventQueue();
+      expect(gateway.calls, isEmpty);
+    });
+
+    test('그 메시지가 지워졌으면 최근 대화로 열고 알린다', () async {
+      final gateway = twoHundred();
+      final bloc = await focused(gateway, FakeChatSocket(), 'gone');
+      addTearDown(bloc.close);
+
+      final data = _data(bloc);
+      expect(data.focusMessageId, isNull);
+      expect(data.hasNewer, isFalse);
+      expect(_texts(bloc).last, '메시지 200');
+      expect(data.errorMessage, '메시지를 찾을 수 없어 최근 대화를 보여 드려요.');
     });
   });
 }

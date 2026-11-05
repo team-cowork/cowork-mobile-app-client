@@ -21,7 +21,11 @@ import 'auth_gate.dart';
 final channelRoute = GoRoute(
   path: '/chat/channel/:channelId',
   redirect: (context, state) => _channelIdOf(state) == null ? '/' : null,
-  builder: (context, state) => ChannelView(channelId: _channelIdOf(state)!),
+  // 검색 결과에서 오면 `messageId` 쿼리로 보여 줄 메시지를 받는다.
+  builder: (context, state) => ChannelView(
+    channelId: _channelIdOf(state)!,
+    focusMessageId: state.uri.queryParameters['messageId'],
+  ),
   routes: [
     GoRoute(path: 'thread', builder: (context, state) => const ThreadView()),
     GoRoute(path: 'members', builder: (context, state) => const MembersView()),

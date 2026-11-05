@@ -26,6 +26,9 @@ class FakeMessageGateway implements HttpClientAdapter {
   /// 걸어 두면 메시지 목록 응답을 이 Future 가 끝날 때까지 붙잡는다.
   Future<void>? listGate;
 
+  /// 이 커서 파라미터는 모르는 척 무시한다. 아직 배포되지 않은 서버를 흉내 낸다.
+  Set<String> ignoredCursors = {};
+
   @override
   Future<ResponseBody> fetch(
     RequestOptions options,
@@ -52,9 +55,7 @@ class FakeMessageGateway implements HttpClientAdapter {
         'viewType': 'TEXT',
         'teamId': 1,
       }),
-      'GET /chat/chat/channels/10/messages' => await _list(
-        uri.queryParameters['before'],
-      ),
+      'GET /chat/chat/channels/10/messages' => await _list(uri.queryParameters),
       'POST /chat/chat/channels/10/messages' => _ok({'queued': true}),
       'GET /user/users/me' => _ok({'id': 1, 'name': '나'}),
       'GET /user/users/batch' => _ok({
@@ -67,17 +68,40 @@ class FakeMessageGateway implements HttpClientAdapter {
     };
   }
 
-  Future<ResponseBody> _list(String? before) async {
-    final page = _page(before);
+  /// 서버처럼 `before`, `after`, `around` 커서 중 하나로 최신순 한 페이지를 준다.
+  /// `around` 메시지가 없으면 404.
+  Future<ResponseBody> _list(Map<String, String> received) async {
+    final query = {...received}
+      ..removeWhere((key, _) => ignoredCursors.contains(key));
+    final around = query['around'];
+    if (around != null && _indexOf(around) == -1) {
+      return _json({'message': '메시지를 찾을 수 없습니다'}, 404);
+    }
+    final page = _page(query);
     await listGate;
     return _ok(page);
   }
 
-  List<Map<String, dynamic>> _page(String? before) {
-    final start = before == null
-        ? 0
-        : messages.indexWhere((m) => m['_id'] == before) + 1;
-    return messages.skip(start).take(MessageRepository.pageSize).toList();
+  int _indexOf(String id) => messages.indexWhere((m) => m['_id'] == id);
+
+  List<Map<String, dynamic>> _page(Map<String, String> query) {
+    const size = MessageRepository.pageSize;
+    const half = MessageRepository.aroundHalf;
+    if (query['around'] case final around?) {
+      // 이후 쪽 half 개, 기준 포함 이전 쪽 half 개.
+      final index = _indexOf(around);
+      return [
+        ...messages.sublist((index - half).clamp(0, index), index),
+        ...messages.skip(index).take(half),
+      ];
+    }
+    if (query['after'] case final after?) {
+      final index = _indexOf(after);
+      return messages.sublist((index - size).clamp(0, index), index);
+    }
+    final before = query['before'];
+    final start = before == null ? 0 : _indexOf(before) + 1;
+    return messages.skip(start).take(size).toList();
   }
 
   static ResponseBody _ok(Object data) =>

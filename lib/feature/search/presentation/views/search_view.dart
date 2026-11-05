@@ -188,9 +188,9 @@ class _SearchResults extends StatelessWidget {
               for (final message in data.messages)
                 _SearchMessageResultTile(
                   result: message,
-                  // ponytail: 채널 화면이 특정 메시지로 스크롤하는 진입점이 없어 채널만 연다.
-                  onTap: () =>
-                      context.push('/chat/channel/${message.channelId}'),
+                  onTap: () => context.push(
+                    '/chat/channel/${message.channelId}?messageId=${message.id}',
+                  ),
                 ),
               if (state.loadingMoreMessages)
                 const Center(

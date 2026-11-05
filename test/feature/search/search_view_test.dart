@@ -37,8 +37,12 @@ Widget _routedApp(FakeSearchRepository repository) => MultiRepositoryProvider(
         ),
         GoRoute(
           path: '/chat/channel/:channelId',
-          builder: (context, state) =>
-              Text('채널 ${state.pathParameters['channelId']}'),
+          builder: (context, state) => Text(
+            [
+              '채널 ${state.pathParameters['channelId']}',
+              ?state.uri.queryParameters['messageId'],
+            ].join(' '),
+          ),
         ),
       ],
     ),
@@ -88,7 +92,7 @@ void main() {
     expect(find.text('채널 6'), findsOneWidget);
   });
 
-  testWidgets('메시지 결과를 누르면 메시지가 있는 채널로 간다', (tester) async {
+  testWidgets('메시지 결과를 누르면 그 메시지를 보여 줄 채널로 간다', (tester) async {
     final repository = FakeSearchRepository();
     await tester.pumpWidget(_routedApp(repository));
     await _searchWithResults(tester, repository, '배포');
@@ -96,7 +100,7 @@ void main() {
     await tester.tap(find.text('배포 메시지'));
     await tester.pumpAndSettle();
 
-    expect(find.text('채널 7'), findsOneWidget);
+    expect(find.text('채널 7 m1'), findsOneWidget);
   });
 
   testWidgets('검색 중 로딩이 보여도 검색창 입력은 지워지지 않는다', (tester) async {
