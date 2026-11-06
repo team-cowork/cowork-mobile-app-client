@@ -44,7 +44,12 @@ class AuthFailure implements Exception {
   final Object? cause;
 
   @override
-  String toString() => 'AuthFailure(${kind.name}): ${detail ?? cause ?? ''}';
+  String toString() {
+    final reason = detail ?? cause;
+    return reason == null
+        ? 'AuthFailure(${kind.name})'
+        : 'AuthFailure(${kind.name}): $reason';
+  }
 }
 
 /// DataGSM OAuth(PKCE) 로그인과 Cowork 토큰 수명주기를 담당한다.
@@ -124,7 +129,11 @@ class AuthRepository {
     if (code == null) {
       throw AuthFailure(
         AuthFailureKind.codeMissing,
-        detail: params['error_description'] ?? params['error'],
+        // 빈 사유는 없는 것으로 봐야 Bloc 의 기본 문구가 쓰인다.
+        detail: [
+          params['error_description'],
+          params['error'],
+        ].nonNulls.where((reason) => reason.isNotEmpty).firstOrNull,
       );
     }
 
@@ -155,12 +164,14 @@ class AuthRepository {
   Future<bool> _refresh() async {
     // 저장소를 읽는 사이에도 로그아웃이 끼어들 수 있어 읽기 전에 잡는다.
     final generation = _generation;
-    final refreshToken = await _storage.read(key: _refreshTokenKey);
-    if (refreshToken == null) return false;
 
     // 세대 검사와 토큰 변경 사이에 await 가 끼면 그 틈에 다시 꼬이므로, 검사한 뒤
     // 곧바로 저장·삭제한다.
     try {
+      // 저장소 읽기 실패(keystore 손상 등)도 여기서 false 로 끝내야 앱 시작이
+      // 스플래시에서 멈추지 않는다.
+      final refreshToken = await _storage.read(key: _refreshTokenKey);
+      if (refreshToken == null) return false;
       final tokens = await _post('/auth/refresh', {
         'refresh_token': refreshToken,
       });
@@ -182,18 +193,19 @@ class AuthRepository {
 
   Future<void> signOut() async {
     _generation++;
-    final refreshToken = await _storage.read(key: _refreshTokenKey);
     final accessToken = _accessToken;
 
-    if (refreshToken != null && accessToken != null) {
-      try {
+    // 서버 무효화가 어떻게 실패하든(응답 본문이 JSON 이 아닌 경우 포함) 로컬 토큰은
+    // 반드시 지운다.
+    try {
+      final refreshToken = await _storage.read(key: _refreshTokenKey);
+      if (refreshToken != null && accessToken != null) {
         await _post('/auth/signout', {
           'refresh_token': refreshToken,
         }, bearer: accessToken);
-      } on DioException catch (e, s) {
-        // 서버 무효화에 실패해도 로컬 토큰은 반드시 지운다.
-        Logger.e('서버 로그아웃 실패', tag: 'Auth', error: e, stackTrace: s);
       }
+    } catch (e, s) {
+      Logger.e('서버 로그아웃 실패', tag: 'Auth', error: e, stackTrace: s);
     }
     await _clear();
   }

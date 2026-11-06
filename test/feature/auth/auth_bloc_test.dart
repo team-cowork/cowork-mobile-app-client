@@ -108,5 +108,15 @@ void main() {
         '로그인에 실패했습니다.',
       );
     });
+    for (final (kind, message) in [
+      (AuthFailureKind.browserFailed, '브라우저 인증에 실패했습니다.'),
+      (AuthFailureKind.stateMismatch, '인증 응답을 신뢰할 수 없어 로그인을 중단했습니다.'),
+      (AuthFailureKind.codeMissing, '인가 코드를 받지 못했습니다.'),
+      (AuthFailureKind.invalidTokenResponse, '토큰 응답 형식이 올바르지 않습니다.'),
+    ]) {
+      test('${kind.name} 는 종류별 기본 문구를 보여 준다', () async {
+        expect(await _signInMessageOf(AuthFailure(kind)), message);
+      });
+    }
   });
 }
