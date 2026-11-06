@@ -54,6 +54,9 @@ class SearchBloc extends Bloc<SearchEvent, SearchState> {
       // 못 읽은 기록은 살릴 수 없다. 이번 화면의 검색어부터 다시 쌓는다.
       Logger.e('최근 검색어 불러오기 실패', tag: 'Search', error: e, stackTrace: s);
     }
+    // 불러오는 사이 화면이 닫혔으면(로그아웃 포함) 저장하지 않는다. 로그아웃이 지운
+    // 기록을 앞 사람의 검색어로 다시 채우게 된다.
+    if (isClosed) return;
     _recentLoaded = true;
     final searched = state.recentSearches;
     final merged = [

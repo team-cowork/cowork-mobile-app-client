@@ -152,6 +152,24 @@ void main() {
     expect(recent.saved[3], ['배포', '회고']);
   });
 
+  test('불러오는 사이 화면이 닫히고 기록이 지워지면 다시 저장하지 않는다', () async {
+    recent.saved[3] = ['회고'];
+    final gate = Completer<void>();
+    recent.loadGate = gate.future;
+
+    bloc
+      ..add(const SearchStarted())
+      ..add(const SearchRequested('배포'));
+    await _settle();
+    // 세션이 만료돼 검색 화면이 닫히고, 로그아웃 처리로 기록이 지워진다.
+    unawaited(bloc.close());
+    await recent.clearAll();
+    gate.complete();
+    await _settle();
+
+    expect(recent.saved, isEmpty);
+  });
+
   test('최근 검색어는 중복 없이 최대 개수까지만 남긴다', () {
     var terms = <String>[];
     for (var i = 0; i < RecentSearchRepository.maxTerms + 2; i++) {

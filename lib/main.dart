@@ -95,30 +95,41 @@ class CoworkApp extends StatelessWidget {
         create: (context) =>
             AuthBloc(repository: context.read<AuthRepository>())
               ..add(const AuthEvent.sessionRestored()),
-        child: BlocListener<AuthBloc, AuthState>(
-          listenWhen: (previous, current) =>
-              (previous is Authenticated) != (current is Authenticated),
-          listener: (context, state) {
-            final notifications = context.read<NotificationRepository>();
-            if (state is Authenticated) {
-              notifications.start();
-            } else {
-              notifications.stop();
-              // 최근 검색어는 사용자 구분 없이 기기에 남으므로, 다음 사람이 보지 않게
-              // 로그아웃(세션 만료 포함)하면 지운다.
-              context.read<RecentSearchRepository>().clearAll().catchError((
-                Object e,
-                StackTrace s,
-              ) {
-                Logger.e(
-                  '최근 검색어 삭제 실패',
-                  tag: 'Search',
-                  error: e,
-                  stackTrace: s,
-                );
-              });
-            }
-          },
+        child: MultiBlocListener(
+          listeners: [
+            BlocListener<AuthBloc, AuthState>(
+              listenWhen: (previous, current) =>
+                  (previous is Authenticated) != (current is Authenticated),
+              listener: (context, state) {
+                final notifications = context.read<NotificationRepository>();
+                if (state is Authenticated) {
+                  notifications.start();
+                } else {
+                  notifications.stop();
+                }
+              },
+            ),
+            // 최근 검색어는 사용자 구분 없이 기기에 남으므로, 다음 사람이 보지 않게
+            // 로그아웃 상태가 되면 지운다. 앱이 꺼진 동안 세션이 끝나 시작하자마자
+            // 로그아웃 상태가 되는 경우(unknown → unauthenticated)도 포함한다.
+            BlocListener<AuthBloc, AuthState>(
+              listenWhen: (previous, current) =>
+                  current is Unauthenticated && previous is! Unauthenticated,
+              listener: (context, _) {
+                context.read<RecentSearchRepository>().clearAll().catchError((
+                  Object e,
+                  StackTrace s,
+                ) {
+                  Logger.e(
+                    '최근 검색어 삭제 실패',
+                    tag: 'Search',
+                    error: e,
+                    stackTrace: s,
+                  );
+                });
+              },
+            ),
+          ],
           child: MaterialApp.router(
             title: 'cowork',
             debugShowCheckedModeBanner: false,
