@@ -10,6 +10,10 @@ sealed class ChannelMessageEvent extends Equatable {
   const factory ChannelMessageEvent.olderRequested() =
       ChannelMessageOlderRequested;
 
+  /// 지금 보이는 것보다 최근 메시지를 불러온다. 과거 위치에서 열었을 때만 쓴다.
+  const factory ChannelMessageEvent.newerRequested() =
+      ChannelMessageNewerRequested;
+
   /// 입력한 메시지를 보낸다.
   const factory ChannelMessageEvent.sent(String text) = ChannelMessageSent;
 
@@ -31,6 +35,10 @@ final class ChannelMessageRequested extends ChannelMessageEvent {
 
 final class ChannelMessageOlderRequested extends ChannelMessageEvent {
   const ChannelMessageOlderRequested();
+}
+
+final class ChannelMessageNewerRequested extends ChannelMessageEvent {
+  const ChannelMessageNewerRequested();
 }
 
 final class ChannelMessageSent extends ChannelMessageEvent {

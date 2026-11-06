@@ -15,8 +15,10 @@ import 'channel_message_test_server.dart';
 void main() {
   Future<void> pumpChannel(
     WidgetTester tester,
-    FakeMessageGateway gateway,
-  ) async {
+    FakeMessageGateway gateway, {
+    String? focusMessageId,
+    FakeChatSocket? socket,
+  }) async {
     await tester.pumpWidget(
       MultiRepositoryProvider(
         providers: [
@@ -32,7 +34,9 @@ void main() {
           RepositoryProvider.value(
             value: ProfileRepository.withDio(messageDio(gateway, 'user')),
           ),
-          RepositoryProvider<ChatSocket>.value(value: FakeChatSocket()),
+          RepositoryProvider<ChatSocket>.value(
+            value: socket ?? FakeChatSocket(),
+          ),
         ],
         child: MaterialApp.router(
           theme: AppTheme.dark(),
@@ -40,7 +44,8 @@ void main() {
             routes: [
               GoRoute(
                 path: '/',
-                builder: (_, _) => const ChannelView(channelId: 10),
+                builder: (_, _) =>
+                    ChannelView(channelId: 10, focusMessageId: focusMessageId),
               ),
               GoRoute(
                 path: '/chat/channel/:channelId/thread',
@@ -152,5 +157,60 @@ void main() {
 
     expect(find.text('기획서.pdf'), findsOneWidget);
     expect(find.text('2.0 KB'), findsOneWidget);
+  });
+
+  group('검색한 메시지로 열면', () {
+    /// m1(가장 오래됨) ~ m200(가장 최근). 서버처럼 최신순이다.
+    FakeMessageGateway twoHundred() => FakeMessageGateway(
+      messages: [for (var i = 200; i > 0; i--) messageJson('m$i', 2, '메시지 $i')],
+    );
+
+    /// 화면에 실제로 보이는 메시지. 목록이 미리 만들어 둔 화면 밖 줄은 뺀다.
+    Finder visible(String text) => messageText(text).hitTestable();
+
+    testWidgets('그 메시지가 화면에 보인다', (tester) async {
+      await pumpChannel(tester, twoHundred(), focusMessageId: 'm100');
+
+      expect(visible('메시지 100'), findsOneWidget);
+      expect(visible('메시지 150'), findsNothing);
+    });
+
+    testWidgets('그 메시지를 못 찾으면 최근 대화로 열었다고 알린다', (tester) async {
+      await pumpChannel(tester, twoHundred(), focusMessageId: 'gone');
+
+      expect(find.text('메시지를 찾을 수 없어 최근 대화를 보여 드려요.'), findsOneWidget);
+      expect(visible('메시지 200'), findsOneWidget);
+    });
+
+    testWidgets('메시지를 고르지 않으면 최근 메시지가 아래에 보인다', (tester) async {
+      await pumpChannel(tester, twoHundred());
+
+      expect(visible('메시지 200'), findsOneWidget);
+      expect(visible('메시지 100'), findsNothing);
+    });
+
+    testWidgets('최근 메시지까지 내리면 새 메시지가 아래 끝에 보인다', (tester) async {
+      final socket = FakeChatSocket();
+      await pumpChannel(
+        tester,
+        twoHundred(),
+        socket: socket,
+        focusMessageId: 'm190',
+      );
+      expect(visible('메시지 190'), findsOneWidget);
+
+      await tester.fling(
+        find.byType(CustomScrollView),
+        const Offset(0, -2000),
+        3000,
+      );
+      await tester.pumpAndSettle();
+      expect(visible('메시지 200'), findsOneWidget);
+
+      socket.push('message', messageJson('m201', 2, '방금 온 메시지'));
+      await tester.pumpAndSettle();
+
+      expect(visible('방금 온 메시지'), findsOneWidget);
+    });
   });
 }

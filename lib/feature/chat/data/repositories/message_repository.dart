@@ -29,23 +29,45 @@ class MessageRepository {
   /// 한 번에 오는 메시지 수의 서버 상한. 이보다 적게 오면 더 이전 메시지가 없다.
   static const pageSize = 100;
 
+  /// [fetchMessages] 의 `around` 가 기준 메시지 쪽(기준 포함 이전)과 이후 쪽에서 각각
+  /// 가져오는 최대 수. 서버가 한 페이지를 반씩 나눈다.
+  static const aroundHalf = pageSize ~/ 2;
+
   /// `/users/batch` 가 한 번에 받는 id 수의 서버 상한.
   static const _userBatchSize = 100;
 
-  /// [before] 메시지보다 이전 메시지를 최신순으로. [before] 가 없으면 가장 최근부터.
+  /// 채널 메시지를 최신순으로. 커서는 하나만 준다(둘 이상이면 서버가 400).
+  ///
+  /// - [before]: 그 메시지보다 이전 메시지.
+  /// - [after]: 그 메시지보다 이후 메시지 중 가장 가까운 것들.
+  /// - [around]: 그 메시지와 이전 메시지(합쳐 [aroundHalf] 개까지), 이후 메시지
+  ///   [aroundHalf] 개까지. 그 메시지가 채널에 없으면 404.
+  /// - 셋 다 없으면 가장 최근부터.
   Future<List<MessageResponse>> fetchMessages(
     int channelId, {
     String? before,
-  }) async => [
-    for (final json in unwrapListPayload(
-      (await _chat.get<String>(
-            '/chat/channels/$channelId/messages',
-            queryParameters: {'before': ?before},
-          )).data ??
-          '',
-    ))
-      MessageResponse.fromJson(json),
-  ];
+    String? after,
+    String? around,
+  }) async {
+    assert(
+      [before, after, around].nonNulls.length <= 1,
+      'before, after, around 는 하나만 줄 수 있다',
+    );
+    return [
+      for (final json in unwrapListPayload(
+        (await _chat.get<String>(
+              '/chat/channels/$channelId/messages',
+              queryParameters: {
+                'before': ?before,
+                'after': ?after,
+                'around': ?around,
+              },
+            )).data ??
+            '',
+      ))
+        MessageResponse.fromJson(json),
+    ];
+  }
 
   /// 메시지를 보낸다. 서버는 큐에 넣고 바로 돌아오고, 저장된 메시지는 소켓으로 온다.
   Future<void> sendMessage(int channelId, SendMessageRequest request) =>

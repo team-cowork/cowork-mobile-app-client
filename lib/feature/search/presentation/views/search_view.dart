@@ -1,31 +1,41 @@
 import 'package:cowork_design_system/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 
-import '../../../../shared/widgets/bloc_scaffold.dart';
+import '../../../../core/utils/async_state.dart';
+import '../../../../shared/widgets/base_scaffold.dart';
+import '../../data/repositories/recent_search_repository.dart';
+import '../../data/repositories/search_repository.dart';
 import '../../domain/enums/avatar_color.dart';
 import '../../domain/search_result.dart';
 import '../blocs/search/search_bloc.dart';
 
+/// [teamId] 팀 안의 채널·사람·메시지를 찾는 화면.
 class SearchView extends StatelessWidget {
-  const SearchView({super.key});
+  const SearchView({required this.teamId, super.key});
+
+  final int teamId;
 
   @override
   Widget build(BuildContext context) {
-    return BlocScaffold<SearchBloc, SearchOverview>(
-      create: (_) => SearchBloc()..add(const SearchRequested()),
-      errorTitle: '검색 결과를 불러오지 못했어요',
-      onRetry: (context) =>
-          context.read<SearchBloc>().add(const SearchRequested()),
-      builder: (context, overview) => _SearchBody(overview: overview),
+    return BlocProvider(
+      create: (context) => SearchBloc(
+        context.read<SearchRepository>(),
+        context.read<RecentSearchRepository>(),
+        teamId: teamId,
+      )..add(const SearchStarted()),
+      child: const BaseScaffold(body: _SearchBody()),
     );
   }
 }
 
+/// 검색창과 결과.
+///
+/// 검색창은 [BlocBuilder] 밖에 둔다. 안에 두면 결과가 로딩으로 바뀔 때마다 검색창이
+/// 새로 만들어져 입력 중인 글자가 지워진다.
 class _SearchBody extends StatefulWidget {
-  const _SearchBody({required this.overview});
-
-  final SearchOverview overview;
+  const _SearchBody();
 
   @override
   State<_SearchBody> createState() => _SearchBodyState();
@@ -34,6 +44,9 @@ class _SearchBody extends StatefulWidget {
 class _SearchBodyState extends State<_SearchBody> {
   final TextEditingController _controller = TextEditingController();
 
+  /// 목록 끝에서 이만큼 남으면 메시지 다음 페이지를 받는다.
+  static const _loadMoreExtent = 200.0;
+
   @override
   void dispose() {
     _controller.dispose();
@@ -41,7 +54,22 @@ class _SearchBodyState extends State<_SearchBody> {
   }
 
   void _search(String query) {
-    context.read<SearchBloc>().add(SearchRequested(query: query));
+    context.read<SearchBloc>().add(SearchRequested(query));
+  }
+
+  void _loadMoreMessages() {
+    context.read<SearchBloc>().add(const SearchMoreMessagesRequested());
+  }
+
+  /// 끝 근처까지 내리면 다음 페이지를 받는다. 받기에 실패했으면 스크롤마다 다시
+  /// 보내지 않고 `다시 시도` 를 누를 때만 보낸다.
+  bool _onScroll(ScrollNotification notification) {
+    if (notification is ScrollUpdateNotification &&
+        notification.metrics.extentAfter < _loadMoreExtent &&
+        !context.read<SearchBloc>().state.moreMessagesFailed) {
+      _loadMoreMessages();
+    }
+    return false;
   }
 
   @override
@@ -53,57 +81,183 @@ class _SearchBodyState extends State<_SearchBody> {
           _SearchHeader(
             controller: _controller,
             onBack: () => Navigator.of(context).maybePop(),
-            onClear: () => setState(() {
+            onClear: () {
               _controller.clear();
               _search('');
-            }),
+            },
             onSubmitted: _search,
           ),
           Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(
-                AppSpacing.s16,
-                AppSpacing.s6,
-                AppSpacing.s16,
-                AppSpacing.s16,
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                spacing: AppSpacing.s20,
-                children: [
-                  _SearchRecentTerms(
-                    terms: widget.overview.recentSearches,
+            child: NotificationListener<ScrollNotification>(
+              onNotification: _onScroll,
+              child: BlocBuilder<SearchBloc, SearchState>(
+                builder: (context, state) => SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.s16,
+                    AppSpacing.s6,
+                    AppSpacing.s16,
+                    AppSpacing.s16,
+                  ),
+                  child: _SearchResults(
+                    state: state,
                     onTapTerm: (term) {
-                      setState(() => _controller.text = term);
+                      _controller.text = term;
                       _search(term);
                     },
+                    onRetry: () => _search(state.query),
+                    onRetryMoreMessages: _loadMoreMessages,
                   ),
-                  if (widget.overview.channels.isNotEmpty)
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      spacing: AppSpacing.s10,
-                      children: [
-                        const _SearchSectionLabel(label: '채널'),
-                        for (final channel in widget.overview.channels)
-                          _SearchChannelResultTile(result: channel),
-                      ],
-                    ),
-                  if (widget.overview.people.isNotEmpty)
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      spacing: AppSpacing.s10,
-                      children: [
-                        const _SearchSectionLabel(label: '사람'),
-                        for (final person in widget.overview.people)
-                          _SearchPersonResultTile(result: person),
-                      ],
-                    ),
-                ],
+                ),
               ),
             ),
           ),
         ],
       ),
+    );
+  }
+}
+
+/// 최근 검색어와 섹션별 결과. 섹션은 따로 로딩·실패한다.
+class _SearchResults extends StatelessWidget {
+  const _SearchResults({
+    required this.state,
+    required this.onTapTerm,
+    required this.onRetry,
+    required this.onRetryMoreMessages,
+  });
+
+  final SearchState state;
+  final ValueChanged<String> onTapTerm;
+  final VoidCallback onRetry;
+  final VoidCallback onRetryMoreMessages;
+
+  @override
+  Widget build(BuildContext context) {
+    final channels = state.channels;
+    final people = state.people;
+    final messages = state.messages;
+    final nothingFound =
+        channels is AsyncSuccess<List<SearchChannelResult>> &&
+        channels.data.isEmpty &&
+        people is AsyncSuccess<List<SearchPersonResult>> &&
+        people.data.isEmpty &&
+        messages is AsyncSuccess<SearchMessagePage> &&
+        messages.data.messages.isEmpty;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      spacing: AppSpacing.s20,
+      children: [
+        if (state.recentSearches.isNotEmpty)
+          _SearchRecentTerms(terms: state.recentSearches, onTapTerm: onTapTerm),
+        if (nothingFound)
+          const CoworkEmptyState(
+            icon: Icons.search_off_rounded,
+            title: '검색 결과가 없어요',
+            description: '다른 검색어로 찾아보세요.',
+          ),
+        if (_shows(channels, (data) => data.isEmpty))
+          _SearchSection(
+            label: '채널',
+            state: channels,
+            onRetry: onRetry,
+            itemsOf: (data) => [
+              for (final channel in data)
+                _SearchChannelResultTile(
+                  result: channel,
+                  onTap: () => context.push('/chat/channel/${channel.id}'),
+                ),
+            ],
+          ),
+        if (_shows(people, (data) => data.isEmpty))
+          _SearchSection(
+            label: '사람',
+            state: people,
+            onRetry: onRetry,
+            itemsOf: (data) => [
+              for (final person in data)
+                _SearchPersonResultTile(result: person),
+            ],
+          ),
+        if (_shows(messages, (data) => data.messages.isEmpty))
+          _SearchSection(
+            label: '메시지',
+            state: messages,
+            onRetry: onRetry,
+            itemsOf: (data) => [
+              for (final message in data.messages)
+                _SearchMessageResultTile(
+                  result: message,
+                  onTap: () => context.push(
+                    '/chat/channel/${message.channelId}?messageId=${message.id}',
+                  ),
+                ),
+              if (state.loadingMoreMessages)
+                const Center(
+                  child: SizedBox.square(
+                    dimension: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                )
+              else if (state.moreMessagesFailed)
+                Center(
+                  child: CoworkButton(
+                    label: '메시지를 더 불러오지 못했어요 · 다시 시도',
+                    variant: CoworkButtonVariant.weak,
+                    color: CoworkButtonColor.neutral,
+                    onPressed: onRetryMoreMessages,
+                  ),
+                ),
+            ],
+          ),
+      ],
+    );
+  }
+
+  /// 검색 전이거나 결과가 비었으면 섹션을 숨긴다. 로딩·실패는 보인다.
+  static bool _shows<T>(AsyncState<T> state, bool Function(T data) isEmpty) =>
+      switch (state) {
+        AsyncInitial<T>() => false,
+        AsyncSuccess<T>(:final data) => !isEmpty(data),
+        AsyncLoading<T>() || AsyncFailure<T>() => true,
+      };
+}
+
+/// 라벨 + 섹션 결과. 로딩이면 스피너, 실패면 재시도 카드를 그 섹션 자리에 둔다.
+class _SearchSection<T> extends StatelessWidget {
+  const _SearchSection({
+    required this.label,
+    required this.state,
+    required this.onRetry,
+    required this.itemsOf,
+  });
+
+  final String label;
+  final AsyncState<T> state;
+  final VoidCallback onRetry;
+  final List<Widget> Function(T data) itemsOf;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      spacing: AppSpacing.s10,
+      children: [
+        _SearchSectionLabel(label: label),
+        ...switch (state) {
+          AsyncSuccess<T>(:final data) => itemsOf(data),
+          AsyncFailure<T>(:final message) => [
+            CoworkErrorState(
+              title: '$label 검색에 실패했어요',
+              description: message ?? '잠시 후 다시 시도해 주세요.',
+              retryLabel: '다시 시도',
+              onRetry: onRetry,
+            ),
+          ],
+          AsyncInitial<T>() ||
+          AsyncLoading<T>() => const [CoworkLoadingPane(height: 96)],
+        },
+      ],
     );
   }
 }
@@ -279,7 +433,7 @@ class _RecentTermChip extends StatelessWidget {
   }
 }
 
-/// "채널", "사람" 같은 검색 결과 섹션 라벨.
+/// "채널", "사람", "메시지" 같은 검색 결과 섹션 라벨.
 class _SearchSectionLabel extends StatelessWidget {
   const _SearchSectionLabel({required this.label});
 
@@ -299,11 +453,7 @@ class _SearchSectionLabel extends StatelessWidget {
 
 /// 검색 결과의 채널 한 행. 해시 아이콘 + 채널명 + 미리보기 텍스트.
 class _SearchChannelResultTile extends StatelessWidget {
-  const _SearchChannelResultTile({
-    required this.result,
-    // ignore: unused_element_parameter -- 결과 탭 이동 미연결. 배선되면 이 줄을 지운다.
-    this.onTap,
-  });
+  const _SearchChannelResultTile({required this.result, this.onTap});
 
   final SearchChannelResult result;
   final VoidCallback? onTap;
@@ -417,3 +567,75 @@ class _SearchPersonResultTile extends StatelessWidget {
     AvatarColor.red => AppColors.red500,
   };
 }
+
+/// 검색 결과의 메시지 한 행. 검색어가 굵게 보이는 본문 조각 + 보낸 날짜.
+class _SearchMessageResultTile extends StatelessWidget {
+  const _SearchMessageResultTile({required this.result, this.onTap});
+
+  final SearchMessageResult result;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final base = AppFont.subtextM.copyWith(color: AppColors.darkOnSurface);
+    final createdAt = result.createdAt.toLocal();
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: AppSpacing.s8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          spacing: 2,
+          children: [
+            Text.rich(
+              TextSpan(
+                children: highlightSpansOf(
+                  result.highlights.firstOrNull ?? result.content,
+                  base: base,
+                  highlight: base.copyWith(
+                    color: AppColors.white,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+            Text(
+              '${createdAt.month}월 ${createdAt.day}일',
+              style: AppFont.subtextS.copyWith(color: AppColors.neutral300),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// 서버가 `<em>키워드</em>` 로 감싼 조각을 [highlight] 스타일 구간으로 나눈다.
+/// 짝이 맞지 않는 태그는 글자 그대로 둔다.
+@visibleForTesting
+List<TextSpan> highlightSpansOf(
+  String snippet, {
+  required TextStyle base,
+  required TextStyle highlight,
+}) {
+  final spans = <TextSpan>[];
+  var start = 0;
+  for (final match in _emTag.allMatches(snippet)) {
+    if (match.start > start) {
+      spans.add(
+        TextSpan(text: snippet.substring(start, match.start), style: base),
+      );
+    }
+    spans.add(TextSpan(text: match.group(1), style: highlight));
+    start = match.end;
+  }
+  if (start < snippet.length) {
+    spans.add(TextSpan(text: snippet.substring(start), style: base));
+  }
+  return spans;
+}
+
+final _emTag = RegExp('<em>(.*?)</em>', dotAll: true);

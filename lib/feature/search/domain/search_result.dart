@@ -49,24 +49,55 @@ class SearchPersonResult extends Equatable {
   List<Object?> get props => [id, name, role, initial, avatarColor];
 }
 
-/// 검색 화면 전체 데이터.
-class SearchOverview extends Equatable {
-  const SearchOverview({
-    required this.query,
-    required this.recentSearches,
-    required this.channels,
-    required this.people,
+/// 검색 결과에 뜨는 메시지 하나.
+class SearchMessageResult extends Equatable {
+  const SearchMessageResult({
+    required this.id,
+    required this.channelId,
+    required this.authorId,
+    required this.content,
+    required this.highlights,
+    required this.createdAt,
   });
 
-  /// 검색창에 표시할 초기 검색어.
-  final String query;
+  final String id;
 
-  /// 최근 검색어 목록.
-  final List<String> recentSearches;
+  /// 메시지가 있는 채널. 결과를 누르면 이 채널로 간다.
+  final int channelId;
 
-  final List<SearchChannelResult> channels;
-  final List<SearchPersonResult> people;
+  /// 시스템·웹훅 메시지면 null.
+  final int? authorId;
+
+  /// 메시지 본문 전체.
+  final String content;
+
+  /// 검색어를 `<em>키워드</em>` 로 감싼 본문 조각. 서버가 못 만들면 빈 목록이다.
+  final List<String> highlights;
+
+  final DateTime createdAt;
 
   @override
-  List<Object?> get props => [query, recentSearches, channels, people];
+  List<Object?> get props => [
+    id,
+    channelId,
+    authorId,
+    content,
+    highlights,
+    createdAt,
+  ];
+}
+
+/// 메시지 검색 한 페이지. 최신순이다.
+class SearchMessagePage extends Equatable {
+  const SearchMessagePage({required this.messages, required this.nextCursor});
+
+  final List<SearchMessageResult> messages;
+
+  /// 다음 페이지를 받을 커서. 마지막 페이지면 null.
+  final String? nextCursor;
+
+  bool get hasMore => nextCursor != null;
+
+  @override
+  List<Object?> get props => [messages, nextCursor];
 }
