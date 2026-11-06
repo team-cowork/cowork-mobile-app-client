@@ -29,6 +29,9 @@ class FakeMessageGateway implements HttpClientAdapter {
   /// 이 커서 파라미터는 모르는 척 무시한다. 아직 배포되지 않은 서버를 흉내 낸다.
   Set<String> ignoredCursors = {};
 
+  /// 커서 이름(`before`, `after`)별로 걸어 두면 그 커서로 온 목록 응답만 붙잡는다.
+  final cursorGates = <String, Future<void>>{};
+
   @override
   Future<ResponseBody> fetch(
     RequestOptions options,
@@ -79,6 +82,9 @@ class FakeMessageGateway implements HttpClientAdapter {
     }
     final page = _page(query);
     await listGate;
+    for (final cursor in query.keys) {
+      await cursorGates[cursor];
+    }
     return _ok(page);
   }
 

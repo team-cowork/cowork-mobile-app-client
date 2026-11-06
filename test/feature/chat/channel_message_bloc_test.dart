@@ -707,6 +707,61 @@ void main() {
       );
     });
 
+    test('이후 메시지를 읽는 사이 보내면 늦게 온 이후 메시지는 버린다', () async {
+      final gateway = twoHundred();
+      final socket = FakeChatSocket();
+      final bloc = await focused(gateway, socket, 'm30');
+      addTearDown(bloc.close);
+      final gate = Completer<void>();
+      gateway.cursorGates['after'] = gate.future;
+
+      bloc.add(const ChannelMessageEvent.newerRequested());
+      await pumpEventQueue();
+      bloc.add(const ChannelMessageEvent.sent('답장'));
+      await pumpEventQueue();
+      gate.complete();
+      await pumpEventQueue();
+
+      // after=m80 응답(m81~m180)이 최근 목록 뒤에 붙지 않는다.
+      expect(_texts(bloc), isNot(contains('메시지 81')));
+      expect(_texts(bloc).sublist(_texts(bloc).length - 2), ['메시지 200', '답장']);
+      expect(_data(bloc).hasNewer, isFalse);
+      expect(_data(bloc).loadingNewer, isFalse);
+
+      // 최근 대화로 왔으니 소켓으로 온 새 메시지는 바로 붙는다.
+      socket.push('message', messageJson('m201', 2, '방금 온 메시지'));
+      await pumpEventQueue();
+      expect(_texts(bloc).last, '방금 온 메시지');
+    });
+
+    test('이전 메시지를 읽는 사이 보내면 늦게 온 이전 메시지는 버린다', () async {
+      final gateway = twoHundred();
+      final bloc = await focused(gateway, FakeChatSocket(), 'm100');
+      addTearDown(bloc.close);
+      final gate = Completer<void>();
+      gateway.cursorGates['before'] = gate.future;
+
+      bloc.add(const ChannelMessageEvent.olderRequested());
+      await pumpEventQueue();
+      bloc.add(const ChannelMessageEvent.sent('답장'));
+      await pumpEventQueue();
+      gate.complete();
+      await pumpEventQueue();
+
+      // before=m51 응답(m1~m50)이 최근 목록(m101~) 위에 붙지 않는다.
+      expect(_texts(bloc).first, '메시지 101');
+      expect(_data(bloc).loadingOlder, isFalse);
+
+      // 다음 이전 메시지 요청은 새 목록의 가장 오래된 메시지 기준이다.
+      gateway.calls.clear();
+      bloc.add(const ChannelMessageEvent.olderRequested());
+      await pumpEventQueue();
+      expect(
+        gateway.calls,
+        contains('GET /chat/chat/channels/10/messages?before=m101'),
+      );
+    });
+
     test('서버가 around 를 무시하면 받은 최근 메시지로 열고 알린다', () async {
       final gateway = twoHundred()..ignoredCursors = {'around'};
       final bloc = await focused(gateway, FakeChatSocket(), 'm10');

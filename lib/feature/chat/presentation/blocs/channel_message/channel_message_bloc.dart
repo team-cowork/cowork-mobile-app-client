@@ -129,6 +129,12 @@ class ChannelMessageBloc
   /// 화면이 맞춰 보여 줄 메시지. 최근 대화로 옮기면 지운다.
   String? _focusId;
 
+  /// 목록을 통째로 바꿀 때(처음 불러오기, 최근 대화로 옮기기) 올린다. 이전·이후
+  /// 메시지 요청은 응답을 받았을 때 번호가 바뀌었으면 결과를 버리고 상태도 건드리지
+  /// 않는다. 이전 목록 기준으로 읽은 메시지가 새 목록에 붙지 않게 한다. 로딩 플래그는
+  /// 번호를 올린 쪽이 정리한다.
+  int _generation = 0;
+
   /// 마지막으로 서버에 알린 읽음 위치.
   String? _lastReadId;
 
@@ -143,11 +149,13 @@ class ChannelMessageBloc
     Emitter<ChannelMessageState> emit,
   ) async {
     emit(const ChannelMessageState.loading());
+    _generation++;
     _header = null;
     _pending.clear();
     _focusId = null;
     _hasNewer = false;
     _loadingNewer = false;
+    _loadingOlder = false;
     var focusMissing = false;
     try {
       final headerRequest = _channelRepository.fetchChannelHeader(channelId);
@@ -239,12 +247,14 @@ class ChannelMessageBloc
     }
     _loadingOlder = true;
     _emit(emit);
+    final generation = _generation;
     try {
       final older = await _messageRepository.fetchMessages(
         channelId,
         before: oldest.id,
       );
       await _fetchAuthors(older);
+      if (generation != _generation) return;
       final known = {for (final message in _messages) message.id};
       _messages.insertAll(0, [
         for (final message in older.reversed)
@@ -255,6 +265,7 @@ class ChannelMessageBloc
       _emit(emit);
     } catch (e, s) {
       Logger.e('이전 메시지 조회 실패', tag: 'Chat', error: e, stackTrace: s);
+      if (generation != _generation) return;
       _loadingOlder = false;
       _emit(emit, error: _reasonOf('이전 메시지를 불러오지 못했어요.', e));
     }
@@ -272,6 +283,7 @@ class ChannelMessageBloc
     }
     _loadingNewer = true;
     _emit(emit);
+    final generation = _generation;
     String? error;
     try {
       final newer = await _messageRepository.fetchMessages(
@@ -279,6 +291,7 @@ class ChannelMessageBloc
         after: newest.id,
       );
       await _fetchAuthors(newer);
+      if (generation != _generation) return;
       final known = {for (final message in _messages) message.id};
       final added = [
         for (final message in newer.reversed)
@@ -291,6 +304,7 @@ class ChannelMessageBloc
           added.isNotEmpty && newer.length >= MessageRepository.pageSize;
     } catch (e, s) {
       Logger.e('이후 메시지 조회 실패', tag: 'Chat', error: e, stackTrace: s);
+      if (generation != _generation) return;
       error = _reasonOf('이후 메시지를 불러오지 못했어요.', e);
     }
     _loadingNewer = false;
@@ -300,8 +314,13 @@ class ChannelMessageBloc
   }
 
   /// 과거 위치를 보는 중이면 최근 메시지 한 페이지로 바꾼다. 실패하면 false.
+  ///
+  /// 번호는 시작할 때와 끝날 때 올린다. 시작 전에 보낸 이후 메시지 요청이 옮기는 도중에
+  /// 끝나 [_loadingNewer] 를 풀지 않게 하고, 옮기는 도중에 보낸 이전 메시지 요청이
+  /// 최근 목록 위에 붙지 않게 한다.
   Future<bool> _jumpToLatest() async {
     if (!_hasNewer) return true;
+    _generation++;
     _loadingNewer = true;
     try {
       await _syncLatest();
@@ -312,7 +331,9 @@ class ChannelMessageBloc
       Logger.e('최근 메시지로 이동 실패', tag: 'Chat', error: e, stackTrace: s);
       return false;
     } finally {
+      _generation++;
       _loadingNewer = false;
+      _loadingOlder = false;
       _applyPending();
     }
   }
