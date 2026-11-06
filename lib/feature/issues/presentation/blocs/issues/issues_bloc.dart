@@ -1,7 +1,10 @@
+import 'package:dio/dio.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../../../core/network/http_error_message.dart';
 import '../../../../../core/utils/async_state.dart';
+import '../../../../../core/utils/logger.dart';
 import '../../../data/issues_store.dart';
 import '../../../domain/issue.dart';
 
@@ -18,8 +21,9 @@ class IssuesBloc extends Bloc<IssuesEvent, IssuesState> {
     emit(const IssuesState.loading());
     try {
       emit(IssuesState.success(IssuesStore.instance.issues));
-    } catch (_) {
-      emit(const IssuesState.failure());
+    } catch (e, s) {
+      Logger.e('이슈 조회 실패', tag: 'Issues', error: e, stackTrace: s);
+      emit(IssuesState.failure(e is DioException ? dioErrorMessage(e) : null));
     }
   }
 

@@ -1,8 +1,11 @@
 import 'dart:async';
 
+import 'package:dio/dio.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../../../core/network/http_error_message.dart';
+import '../../../../../core/utils/logger.dart';
 import '../../../data/auth_repository.dart';
 
 part 'auth_event.dart';
@@ -54,10 +57,23 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     try {
       await _repository.signIn();
       emit(const AuthState.authenticated());
-    } on AuthException catch (e) {
-      emit(AuthState.unauthenticated(message: e.message));
+    } catch (e, s) {
+      Logger.e('로그인 실패', tag: 'Auth', error: e, stackTrace: s);
+      emit(AuthState.unauthenticated(message: _signInErrorMessage(e)));
     }
   }
+
+  static String _signInErrorMessage(Object error) => switch (error) {
+    DioException() => dioErrorMessage(error),
+    AuthFailure(:final kind, :final detail) => switch (kind) {
+      AuthFailureKind.canceled => '로그인이 취소되었습니다.',
+      AuthFailureKind.browserFailed => '브라우저 인증에 실패했습니다.',
+      AuthFailureKind.stateMismatch => '인증 응답을 신뢰할 수 없어 로그인을 중단했습니다.',
+      AuthFailureKind.codeMissing => detail ?? '인가 코드를 받지 못했습니다.',
+      AuthFailureKind.invalidTokenResponse => '토큰 응답 형식이 올바르지 않습니다.',
+    },
+    _ => '로그인에 실패했습니다.',
+  };
 
   Future<void> _onSignOutRequested(
     AuthSignOutRequested event,

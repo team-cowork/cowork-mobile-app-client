@@ -4,8 +4,10 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:cowork_app/core/network/dio_client.dart';
+import 'package:cowork_app/core/network/http_error_message.dart';
 import 'package:cowork_app/feature/auth/data/auth_repository.dart';
 import 'package:dio/dio.dart';
+import 'package:flutter/services.dart' show PlatformException;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -53,6 +55,42 @@ class _OfflineAdapter implements HttpClientAdapter {
 
   @override
   void close({bool force = false}) {}
+}
+
+/// 경로마다 다른 응답을 준다. 로그인(갱신) 뒤 로그아웃처럼 요청이 여럿인 흐름용.
+class _RouteAdapter implements HttpClientAdapter {
+  _RouteAdapter(this.routes);
+
+  /// 경로 끝부분 → (상태 코드, 본문)
+  final Map<String, (int, String)> routes;
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<Uint8List>? requestStream,
+    Future<void>? cancelFuture,
+  ) async {
+    final (status, body) = routes.entries
+        .firstWhere((route) => options.path.endsWith(route.key))
+        .value;
+    return ResponseBody.fromString(
+      body,
+      status,
+      headers: {
+        Headers.contentTypeHeader: [Headers.jsonContentType],
+      },
+    );
+  }
+
+  @override
+  void close({bool force = false}) {}
+}
+
+/// 읽기에 실패하는 secure storage. keystore 가 손상된 기기를 흉내 낸다.
+class _BrokenStorage extends Fake implements FlutterSecureStorage {
+  @override
+  dynamic noSuchMethod(Invocation invocation) =>
+      Future<String?>.error(PlatformException(code: 'keystore'));
 }
 
 /// `createDio()` 와 같은 BaseOptions 의 dio. baseUrl 은 dart-define 없이 비어 있어
@@ -119,12 +157,12 @@ void main() {
       isNotNull,
       reason: 'dio 가 4xx 를 response 없이 던지면 매핑이 무너진다',
     );
-    expect(authExceptionOf(e).message, '(401) Unauthorized');
+    expect(dioErrorMessage(e), '(401) Unauthorized');
   });
 
   test('JSON 이 아닌 오류 본문은 상태 코드 기본 문구로 떨어진다', () async {
     final e = await _postFailure(502, '<html>502 Bad Gateway</html>');
-    expect(authExceptionOf(e).message, '(502) 서버에 연결할 수 없습니다.');
+    expect(dioErrorMessage(e), '(502) 서버에 연결할 수 없습니다.');
   });
 
   test('연결 자체가 실패하면 네트워크 문구를 쓴다', () {
@@ -133,7 +171,7 @@ void main() {
       reason: 'no route to host',
     );
     expect(e.response, isNull);
-    expect(authExceptionOf(e).message, '네트워크에 연결할 수 없습니다.');
+    expect(dioErrorMessage(e), '네트워크에 연결할 수 없습니다.');
   });
 
   group('restoreSession', () {
@@ -229,5 +267,75 @@ void main() {
       expect(await _storedRefreshToken(), 'new');
       expect(expired, isEmpty);
     });
+    test('서버가 400 으로 거절해도 토큰을 지우고 세션 만료를 알린다', () async {
+      final repository = _signedIn(
+        _StubAdapter(400, '{"error":"invalid_grant"}'),
+      );
+      final expired = <void>[];
+      repository.sessionExpired.listen(expired.add);
+
+      expect(await repository.restoreSession(), isFalse);
+      await pumpEventQueue();
+
+      expect(await _storedRefreshToken(), isNull);
+      expect(expired, hasLength(1));
+    });
+
+    for (final (name, body) in [
+      ('토큰이 빠진 응답', '{"access_token":"a"}'),
+      ('JSON 이 아닌 응답', '<html>ok</html>'),
+    ]) {
+      test('200 이어도 $name 이면 예외 없이 false 를 주고 토큰을 남긴다', () async {
+        final repository = _signedIn(_StubAdapter(200, body));
+        final expired = <void>[];
+        repository.sessionExpired.listen(expired.add);
+
+        expect(await repository.restoreSession(), isFalse);
+        await pumpEventQueue();
+
+        expect(await _storedRefreshToken(), 'r');
+        expect(expired, isEmpty);
+      });
+    }
+
+    test('저장소 읽기에 실패해도 예외 없이 false 를 준다', () async {
+      final repository = AuthRepository(
+        dio: _dio(_StubAdapter(200, '')),
+        storage: _BrokenStorage(),
+      );
+
+      expect(await repository.restoreSession(), isFalse);
+    });
+  });
+
+  group('signOut', () {
+    /// 갱신으로 access token 까지 받은, 로그아웃 요청을 보낼 수 있는 상태.
+    Future<AuthRepository> loggedIn((int, String) signout) async {
+      final repository = _signedIn(
+        _RouteAdapter({
+          '/auth/refresh': (
+            200,
+            jsonEncode({'access_token': 'a', 'refresh_token': 'r2'}),
+          ),
+          '/auth/signout': signout,
+        }),
+      );
+      expect(await repository.restoreSession(), isTrue);
+      return repository;
+    }
+
+    for (final (name, signout) in [
+      ('서버가 거절해도(500)', (500, '')),
+      ('응답 본문이 JSON 이 아니어도', (200, '<html>portal</html>')),
+    ]) {
+      test('$name 로컬 토큰을 지운다', () async {
+        final repository = await loggedIn(signout);
+
+        await repository.signOut();
+
+        expect(repository.accessToken, isNull);
+        expect(await _storedRefreshToken(), isNull);
+      });
+    }
   });
 }
