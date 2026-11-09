@@ -135,6 +135,9 @@ class ChannelMessageBloc
   /// 번호를 올린 쪽이 정리한다.
   int _generation = 0;
 
+  /// 진행 중인 최근 대화로 옮기기([_jumpToLatest]).
+  Future<bool>? _jumping;
+
   /// 마지막으로 서버에 알린 읽음 위치.
   String? _lastReadId;
 
@@ -315,11 +318,17 @@ class ChannelMessageBloc
 
   /// 과거 위치를 보는 중이면 최근 메시지 한 페이지로 바꾼다. 실패하면 false.
   ///
+  /// 옮기는 중에 또 보내면 같은 이동을 기다린다. 따로 옮기면 먼저 끝난 쪽이
+  /// [_loadingNewer] 를 풀고 최근 대화도 두 번 읽는다.
+  Future<bool> _jumpToLatest() {
+    if (!_hasNewer) return Future.value(true);
+    return _jumping ??= _moveToLatest().whenComplete(() => _jumping = null);
+  }
+
   /// 번호는 시작할 때와 끝날 때 올린다. 시작 전에 보낸 이후 메시지 요청이 옮기는 도중에
   /// 끝나 [_loadingNewer] 를 풀지 않게 하고, 옮기는 도중에 보낸 이전 메시지 요청이
   /// 최근 목록 위에 붙지 않게 한다.
-  Future<bool> _jumpToLatest() async {
-    if (!_hasNewer) return true;
+  Future<bool> _moveToLatest() async {
     _generation++;
     _loadingNewer = true;
     try {

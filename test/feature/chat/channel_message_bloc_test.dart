@@ -707,6 +707,35 @@ void main() {
       );
     });
 
+    test('옮기는 사이 또 보내면 최근 대화는 한 번만 읽고 보낸 순서대로 붙인다', () async {
+      final gateway = twoHundred();
+      final bloc = await focused(gateway, FakeChatSocket(), 'm100');
+      addTearDown(bloc.close);
+      gateway.calls.clear();
+      final gate = Completer<void>();
+      gateway.listGate = gate.future;
+
+      bloc
+        ..add(const ChannelMessageEvent.sent('하나'))
+        ..add(const ChannelMessageEvent.sent('둘'));
+      await pumpEventQueue();
+      gate.complete();
+      await pumpEventQueue();
+
+      expect(
+        gateway.calls.where(
+          (call) => call == 'GET /chat/chat/channels/10/messages',
+        ),
+        hasLength(1),
+      );
+      expect(_texts(bloc).sublist(_texts(bloc).length - 3), [
+        '메시지 200',
+        '하나',
+        '둘',
+      ]);
+      expect(_data(bloc).loadingNewer, isFalse);
+    });
+
     test('이후 메시지를 읽는 사이 보내면 늦게 온 이후 메시지는 버린다', () async {
       final gateway = twoHundred();
       final socket = FakeChatSocket();
