@@ -149,10 +149,10 @@ class _NoteCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      // 상세에서 편집하면 서버 회의록이 바뀌므로, 돌아오면 목록을 다시 불러온다.
+      // 상세에서 편집했을 때만 고친 회의록이 돌아온다. 그때만 목록을 다시 불러온다.
       onTap: () async {
-        await context.push<void>('/notes/detail', extra: note);
-        if (context.mounted) {
+        final edited = await context.push<Note>('/notes/detail', extra: note);
+        if (edited != null && context.mounted) {
           context.read<NotesBloc>().add(const NotesRequested());
         }
       },
@@ -322,11 +322,16 @@ class _NewNoteSheetState extends State<_NewNoteSheet> {
   }
 
   /// 템플릿 관리 화면을 열고, 돌아오면 고친 템플릿을 다시 읽는다.
+  ///
+  /// 고른 템플릿은 비우지 않는다. 다시 읽은 목록에 남아 있으면 그대로 두고,
+  /// 관리 화면에서 지웠을 때만 [_onTemplatesLoaded] 가 기본 템플릿으로 바꾼다.
   Future<void> _manageTemplates() async {
     final channelId = _channelId;
     if (channelId == null) return;
     await context.push<void>('/notes/templates', extra: channelId);
-    if (mounted) _selectChannel(channelId);
+    if (mounted) {
+      context.read<_LoadTemplates>().add(CommandEvent.run(channelId));
+    }
   }
 
   /// 읽은 템플릿 중 고른 것이 없으면 기본 템플릿을, 그것도 없으면 첫 템플릿을 고른다.

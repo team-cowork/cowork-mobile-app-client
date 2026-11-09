@@ -55,7 +55,23 @@ void main() {
     expect(first.sections.keys, ['요약', '참석자', '안건', '결정 사항', '액션 아이템']);
   });
 
-  test('못 읽는 채널이 있어도 나머지 채널의 회의록은 보여준다', () async {
+  test('일반 채널에는 회의록을 묻지 않는다', () async {
+    final server = FakeNotesServer();
+    await notesRepositoryOf(server).fetchNotes();
+
+    expect(
+      [
+        for (final (_, path, _) in server.requests)
+          if (path.endsWith('/meeting-notes')) path,
+      ],
+      unorderedEquals([
+        '/channel/channels/10/meeting-notes',
+        '/channel/channels/11/meeting-notes',
+      ]),
+    );
+  });
+
+  test('못 읽거나 사라진 채널이 있어도 나머지 채널의 회의록은 보여준다', () async {
     final repository = notesRepositoryOf(
       _Server({
         '/team/teams': (
@@ -67,8 +83,10 @@ void main() {
         '/channel/teams/1/channels': (
           200,
           [
-            {'id': 10},
-            {'id': 11},
+            {'id': 10, 'viewType': 'MEETING_NOTE'},
+            {'id': 11, 'viewType': 'MEETING_NOTE'},
+            // 채널 목록을 읽은 뒤 지워진 채널.
+            {'id': 12, 'viewType': 'MEETING_NOTE'},
           ],
         ),
         '/channel/channels/10/meeting-notes': (
@@ -85,6 +103,7 @@ void main() {
           ],
         ),
         '/channel/channels/11/meeting-notes': (403, null),
+        '/channel/channels/12/meeting-notes': (404, null),
         '/user/users/1': (200, {'id': 1, 'name': '김준혁'}),
       }),
     );
@@ -106,7 +125,7 @@ void main() {
         '/channel/teams/1/channels': (
           200,
           [
-            {'id': 10},
+            {'id': 10, 'viewType': 'MEETING_NOTE'},
           ],
         ),
         '/channel/channels/10/meeting-notes': (500, null),
@@ -147,6 +166,41 @@ void main() {
     expect(note.templateId, 6);
     expect(note.title, '주간 스크럼');
     expect(note.author.name, '김준혁');
+  });
+
+  test('만든 뒤 작성자 응답이 깨져도 만든 회의록을 돌려준다', () async {
+    // 여기서 던지면 서버엔 있는 회의록이 저장 실패로 보여 다시 저장할 때 하나가 더 생긴다.
+    final repository = notesRepositoryOf(
+      _Server({
+        '/channel/channels/10/meeting-notes': (
+          200,
+          {
+            'id': 7,
+            'channelId': 10,
+            'templateId': 6,
+            'title': '주간 스크럼',
+            'content': '{}',
+            'createdBy': 1,
+            'createdAt': '2026-03-12T09:00:00Z',
+          },
+        ),
+        '/user/users/1': (200, {'id': '숫자가 아닌 id'}),
+      }),
+    );
+
+    final note = await repository.createNote(
+      const Note(
+        id: 0,
+        channelId: 10,
+        templateId: 6,
+        title: '주간 스크럼',
+        tags: [],
+        author: NoteAuthor(authorId: 1, name: '', initial: '', date: ''),
+      ),
+    );
+
+    expect(note.id, 7);
+    expect(note.author.name, '알 수 없음');
   });
 
   test('저장한 섹션을 보낸 순서 그대로 다시 읽는다', () async {

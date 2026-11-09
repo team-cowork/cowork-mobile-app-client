@@ -39,13 +39,34 @@ class _NoteDetailViewState extends State<NoteDetailView> {
   bool get _isMine =>
       _note.author.authorId == ProfileStore.instance.currentUserId;
 
+  /// 이 화면에서 편집해 저장했는지. 그랬다면 닫을 때 고친 회의록을 돌려줘서
+  /// 목록이 그때만 다시 읽게 한다.
+  bool _edited = false;
+
   Future<void> _openEditor() async {
     final updated = await context.push<Note>('/notes/edit', extra: _note);
-    if (updated != null) setState(() => _note = updated);
+    if (updated != null) {
+      setState(() {
+        _note = updated;
+        _edited = true;
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    // 뒤로 가기는 결과 없이 닫으므로, 편집했으면 가로채서 고친 회의록을 실어 닫는다.
+    // 편집하지 않았으면 가로채지 않는다. 가로채는 동안은 iOS 밀어서 닫기가 꺼진다.
+    return PopScope<Object?>(
+      canPop: !_edited,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) Navigator.of(context).pop(_note);
+      },
+      child: _buildPage(context),
+    );
+  }
+
+  Widget _buildPage(BuildContext context) {
     final note = _note;
     return BaseScaffold(
       appBar: CoworkAppBar.detail(

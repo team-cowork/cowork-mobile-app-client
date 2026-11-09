@@ -79,6 +79,21 @@ void main() {
     expect(find.text('2026 1분기 킥오프 회의'), findsNothing);
   });
 
+  testWidgets('편집하지 않고 상세에서 돌아오면 목록을 다시 읽지 않는다', (tester) async {
+    final server = FakeNotesServer();
+    await _openNote(tester, '2026 1분기 킥오프 회의', server);
+    int listRequests() => server.requests
+        .where((r) => r.$1 == 'GET' && r.$2.endsWith('/meeting-notes'))
+        .length;
+    final before = listRequests();
+
+    await tester.tap(find.byIcon(AppIcon.back));
+    await tester.pumpAndSettle();
+
+    expect(find.text('2026 1분기 킥오프 회의'), findsOneWidget);
+    expect(listRequests(), before);
+  });
+
   testWidgets('저장하면 템플릿 순서대로 본문을 보내고 템플릿에 없는 섹션도 남긴다', (tester) async {
     tester.view.physicalSize = const Size(400, 1400);
     tester.view.devicePixelRatio = 1.0;

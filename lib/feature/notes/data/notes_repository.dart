@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 
 import '../../../core/network/dio_client.dart';
+import '../../../core/utils/logger.dart';
 import '../../../shared/utils/initial.dart';
 import '../../auth/data/auth_repository.dart';
 import '../../channel/data/repositories/channel_repository.dart';
@@ -15,10 +16,10 @@ import 'meeting_note_response.dart';
 /// channel 서비스의 회의록(`/channels/{channelId}/meeting-notes`) 저장소.
 ///
 /// 서버 회의록은 채널에 속하는데 회의록 탭 목록은 채널을 고르지 않는다. 그래서
-/// 조회는 내 팀의 모든 채널을 훑어 한 목록으로 합친다. 작성은 새 노트 시트에서
-/// 고른 회의록 채널에 쓴다.
+/// 조회는 내 팀의 회의록 채널을 모두 훑어 한 목록으로 합친다. 작성은 새 노트
+/// 시트에서 고른 회의록 채널에 쓴다.
 ///
-/// ponytail: 채널이 많아지면 조회가 채널 수만큼 늘어나는 게 먼저 아플 자리다.
+/// ponytail: 회의록 채널이 많아지면 조회가 채널 수만큼 늘어나는 게 먼저 아플 자리다.
 class NotesRepository {
   NotesRepository(
     AuthRepository auth, {
@@ -48,16 +49,18 @@ class NotesRepository {
   final TeamRepository _teams;
   final ChannelRepository _channels;
 
-  /// 내 팀의 회의록을 최신순으로 모아 온다.
+  /// 내 팀 회의록 채널의 회의록을 최신순으로 모아 온다.
+  ///
+  /// 일반 채널에 물어도 서버는 빈 목록을 주므로, 요청을 아끼려고 회의록 채널만 읽는다.
   Future<List<Note>> fetchNotes() async {
     final ids = [
-      for (final channel in await _myChannels())
+      for (final channel in await fetchNoteChannels())
         if (int.tryParse(channel.id) case final int id) id,
     ];
 
     // 목록에는 못 읽는 채널도 섞여 있다.
     final pages = (await Future.wait(ids.map(_notesOf))).nonNulls;
-    final notes = pages.expand((page) => page.$2).toList()
+    final notes = pages.expand((page) => page).toList()
       ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
     final authors = await _usersOf({for (final note in notes) note.createdBy});
@@ -113,21 +116,19 @@ class NotesRepository {
     return pages.expand((page) => page).toList();
   }
 
-  /// 채널 하나의 (id, 회의록). 못 읽는 채널(비공개 등)은 null 로 빠진다.
+  /// 채널 하나의 회의록. 못 읽는 채널(비공개 등)이나 사라진 채널은 null 로 빠진다.
   ///
   /// 채널 하나가 403 이라고 목록 전체를 실패로 만들면 볼 수 있는 회의록까지 사라진다.
+  /// 404 는 채널 목록을 읽은 뒤 그 채널이나 팀이 지워진 경우라 역시 건너뛴다.
   /// 반대로 401·5xx·네트워크 장애까지 삼키면 장애가 `회의록 없음`으로 보이므로
-  /// 403 만 건너뛰고 나머지는 그대로 던져 화면이 오류로 보여주게 둔다.
-  Future<(int, List<MeetingNoteResponse>)?> _notesOf(int channelId) async {
+  /// 나머지는 그대로 던져 화면이 오류로 보여주게 둔다.
+  Future<List<MeetingNoteResponse>?> _notesOf(int channelId) async {
     try {
-      return (
-        channelId,
-        (await _list(
-          '/channels/$channelId/meeting-notes',
-        )).map(MeetingNoteResponse.fromJson).toList(),
-      );
+      return (await _list(
+        '/channels/$channelId/meeting-notes',
+      )).map(MeetingNoteResponse.fromJson).toList();
     } on DioException catch (e) {
-      if (e.response?.statusCode == 403) return null;
+      if (const {403, 404}.contains(e.response?.statusCode)) return null;
       rethrow;
     }
   }
@@ -144,12 +145,17 @@ class NotesRepository {
   }
 
   /// 사용자 한 명. 이름을 못 읽어도 회의록은 보여줘야 하므로 실패는 삼킨다.
+  ///
+  /// 응답이 깨진 경우(파싱 예외)도 삼킨다. 새 회의록을 만든 직후에도 불리는데,
+  /// 여기서 던지면 서버엔 이미 만들어진 회의록이 저장 실패로 보이고, 다시 저장하면
+  /// 하나가 더 생긴다.
   Future<UserResponse?> _userOf(int id) async {
     try {
       return UserResponse.fromJson(
         unwrapPayload((await _users.get<String>('/users/$id')).data ?? ''),
       );
-    } on DioException {
+    } catch (e, s) {
+      Logger.e('작성자 조회 실패: $id', tag: 'Notes', error: e, stackTrace: s);
       return null;
     }
   }

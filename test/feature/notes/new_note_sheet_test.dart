@@ -186,4 +186,36 @@ void main() {
     expect(find.text('이 채널에는 템플릿이 없어요'), findsNothing);
     expect(cardOf(tester, '1:1 미팅').selected, isTrue);
   });
+
+  testWidgets('관리 화면에 다녀와도 고른 템플릿은 그대로 둔다', (tester) async {
+    await openSheet(tester, FakeNotesServer());
+    await tester.tap(find.text('스프린트 회고'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('관리'));
+    await tester.pumpAndSettle();
+    expect(find.text('회의록 템플릿'), findsOneWidget);
+    await tester.tap(find.byIcon(AppIcon.back));
+    await tester.pumpAndSettle();
+
+    expect(cardOf(tester, '스프린트 회고').selected, isTrue);
+    expect(cardOf(tester, '주간 회의').selected, isFalse);
+  });
+
+  testWidgets('고른 템플릿이 관리 화면에서 지워졌으면 기본 템플릿을 고른다', (tester) async {
+    final server = FakeNotesServer();
+    await openSheet(tester, server);
+    await tester.tap(find.text('스프린트 회고'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('관리'));
+    await tester.pumpAndSettle();
+    // 관리 화면에서 지운 것과 같다. 시트는 돌아오면 서버 목록을 다시 읽는다.
+    server.templates[10]!.removeWhere((t) => t['name'] == '스프린트 회고');
+    await tester.tap(find.byIcon(AppIcon.back));
+    await tester.pumpAndSettle();
+
+    expect(find.text('스프린트 회고'), findsNothing);
+    expect(cardOf(tester, '주간 회의').selected, isTrue);
+  });
 }
