@@ -13,6 +13,7 @@ import 'package:cowork_app/feature/profile/data/repositories/github_repository.d
 import 'package:cowork_app/feature/profile/data/repositories/profile_repository.dart';
 import 'package:cowork_app/feature/search/data/repositories/recent_search_repository.dart';
 import 'package:cowork_app/feature/search/data/repositories/search_repository.dart';
+import 'package:cowork_app/feature/search/presentation/widgets/clear_recent_search_on_logout.dart';
 import 'package:cowork_app/feature/setting/data/preference_repository.dart';
 import 'package:cowork_app/feature/setting/data/push_repository.dart';
 import 'package:cowork_app/feature/team/data/repositories/team_repository.dart';
@@ -109,26 +110,7 @@ class CoworkApp extends StatelessWidget {
                 }
               },
             ),
-            // 최근 검색어는 사용자 구분 없이 기기에 남으므로, 다음 사람이 보지 않게
-            // 로그아웃 상태가 되면 지운다. 앱이 꺼진 동안 세션이 끝나 시작하자마자
-            // 로그아웃 상태가 되는 경우(unknown → unauthenticated)도 포함한다.
-            BlocListener<AuthBloc, AuthState>(
-              listenWhen: (previous, current) =>
-                  current is Unauthenticated && previous is! Unauthenticated,
-              listener: (context, _) {
-                context.read<RecentSearchRepository>().clearAll().catchError((
-                  Object e,
-                  StackTrace s,
-                ) {
-                  Logger.e(
-                    '최근 검색어 삭제 실패',
-                    tag: 'Search',
-                    error: e,
-                    stackTrace: s,
-                  );
-                });
-              },
-            ),
+            const ClearRecentSearchOnLogout(),
           ],
           child: MaterialApp.router(
             title: 'cowork',

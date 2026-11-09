@@ -32,6 +32,9 @@ class RecentSearchRepository {
   /// 모든 팀의 최근 검색어를 지운다. 다른 기능이 저장한 값은 건드리지 않는다.
   Future<void> clearAll() async {
     final keys = await _preferences.getKeys();
+    // allowList 는 null 이면 전부 지운다. 빈 집합은 지금 플랫폼 구현들에선 아무것도
+    // 지우지 않지만, 그 동작에 기대지 않도록 지울 키가 없으면 부르지 않는다.
+    if (!keys.any((key) => key.startsWith(_keyPrefix))) return;
     await _preferences.clear(
       allowList: {
         for (final key in keys)
