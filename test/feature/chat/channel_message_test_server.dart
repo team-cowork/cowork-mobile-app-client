@@ -7,13 +7,19 @@ import 'package:dio/dio.dart';
 /// 채널 대화 테스트용 가짜 게이트웨이. 서비스 prefix(`/chat`, `/channel`, `/user`)로
 /// 요청을 가르고, 받은 요청을 `METHOD 경로` 로 적어 둔다.
 class FakeMessageGateway implements HttpClientAdapter {
-  FakeMessageGateway({List<Map<String, dynamic>>? messages})
-    : messages =
-          messages ??
-          [messageJson('m2', 2, '두 번째'), messageJson('m1', 3, '첫 번째')];
+  FakeMessageGateway({
+    List<Map<String, dynamic>>? messages,
+    List<Map<String, dynamic>>? replies,
+  }) : messages =
+           messages ??
+           [messageJson('m2', 2, '두 번째'), messageJson('m1', 3, '첫 번째')],
+       replies = replies ?? [];
 
   /// 채널 10 의 메시지. 서버처럼 최신순이다.
   final List<Map<String, dynamic>> messages;
+
+  /// `parentMessageId` 로 읽는 스레드 답글. 서버처럼 최신순이다.
+  final List<Map<String, dynamic>> replies;
 
   final users = <int, String>{1: '나', 2: '도윤', 3: '서연', 4: '민재'};
 
@@ -52,9 +58,7 @@ class FakeMessageGateway implements HttpClientAdapter {
         'viewType': 'TEXT',
         'teamId': 1,
       }),
-      'GET /chat/chat/channels/10/messages' => await _list(
-        uri.queryParameters['before'],
-      ),
+      'GET /chat/chat/channels/10/messages' => await _list(uri.queryParameters),
       'POST /chat/chat/channels/10/messages' => _ok({'queued': true}),
       'GET /user/users/me' => _ok({'id': 1, 'name': '나'}),
       'GET /user/users/batch' => _ok({
@@ -67,17 +71,26 @@ class FakeMessageGateway implements HttpClientAdapter {
     };
   }
 
-  Future<ResponseBody> _list(String? before) async {
-    final page = _page(before);
+  Future<ResponseBody> _list(Map<String, String> query) async {
+    // `around` 는 기준 메시지의 앞뒤를 준다. 가짜는 채널 메시지 전부를 준다.
+    final page = query.containsKey('around')
+        ? messages
+        : _page(
+            query.containsKey('parentMessageId') ? replies : messages,
+            query['before'],
+          );
     await listGate;
     return _ok(page);
   }
 
-  List<Map<String, dynamic>> _page(String? before) {
+  List<Map<String, dynamic>> _page(
+    List<Map<String, dynamic>> source,
+    String? before,
+  ) {
     final start = before == null
         ? 0
-        : messages.indexWhere((m) => m['_id'] == before) + 1;
-    return messages.skip(start).take(MessageRepository.pageSize).toList();
+        : source.indexWhere((m) => m['_id'] == before) + 1;
+    return source.skip(start).take(MessageRepository.pageSize).toList();
   }
 
   static ResponseBody _ok(Object data) =>
@@ -103,6 +116,7 @@ Map<String, dynamic> messageJson(
   String content, {
   int channelId = 10,
   String? clientMessageId,
+  String? parentMessageId,
   String type = 'TEXT',
   String createdAt = '2026-10-23T05:00:00.000Z',
 }) => {
@@ -112,7 +126,7 @@ Map<String, dynamic> messageJson(
   'authorId': authorId,
   'content': content,
   'type': type,
-  'parentMessageId': null,
+  'parentMessageId': parentMessageId,
   'clientMessageId': clientMessageId,
   'createdAt': createdAt,
 };

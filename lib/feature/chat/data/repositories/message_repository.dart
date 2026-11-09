@@ -33,19 +33,61 @@ class MessageRepository {
   static const _userBatchSize = 100;
 
   /// [before] 메시지보다 이전 메시지를 최신순으로. [before] 가 없으면 가장 최근부터.
+  ///
+  /// [parentMessageId] 를 주면 그 메시지의 스레드 답글만 준다.
   Future<List<MessageResponse>> fetchMessages(
     int channelId, {
     String? before,
+    String? parentMessageId,
   }) async => [
     for (final json in unwrapListPayload(
       (await _chat.get<String>(
             '/chat/channels/$channelId/messages',
-            queryParameters: {'before': ?before},
+            queryParameters: {
+              'before': ?before,
+              'parentMessageId': ?parentMessageId,
+            },
           )).data ??
           '',
     ))
       MessageResponse.fromJson(json),
   ];
+
+  /// [parentMessageId] 메시지의 스레드 답글 전부를 최신순으로. 한 번에 [pageSize] 개씩
+  /// 오므로, 꽉 찬 동안 더 이전 답글을 이어서 읽는다.
+  Future<List<MessageResponse>> fetchReplies(
+    int channelId,
+    String parentMessageId,
+  ) async {
+    final replies = <MessageResponse>[];
+    String? before;
+    while (true) {
+      final page = await fetchMessages(
+        channelId,
+        before: before,
+        parentMessageId: parentMessageId,
+      );
+      replies.addAll(page);
+      if (page.length < pageSize) return replies;
+      before = page.last.id;
+    }
+  }
+
+  /// [messageId] 메시지 하나. 서버에 단건 조회가 없어, 그 메시지를 기준으로 앞뒤를
+  /// 읽어 그중에서 찾는다.
+  Future<MessageResponse> fetchMessage(int channelId, String messageId) async {
+    final around = [
+      for (final json in unwrapListPayload(
+        (await _chat.get<String>(
+              '/chat/channels/$channelId/messages',
+              queryParameters: {'around': messageId},
+            )).data ??
+            '',
+      ))
+        MessageResponse.fromJson(json),
+    ];
+    return around.firstWhere((message) => message.id == messageId);
+  }
 
   /// 메시지를 보낸다. 서버는 큐에 넣고 바로 돌아오고, 저장된 메시지는 소켓으로 온다.
   Future<void> sendMessage(int channelId, SendMessageRequest request) =>
