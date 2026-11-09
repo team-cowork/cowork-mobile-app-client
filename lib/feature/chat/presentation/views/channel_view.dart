@@ -318,27 +318,34 @@ class _MessageListState extends State<_MessageList> {
     );
   }
 
-  Widget _row(BuildContext context, ChatMessage message) => Padding(
-    padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s4),
-    child: AnimatedContainer(
-      duration: const Duration(milliseconds: 400),
-      decoration: BoxDecoration(
-        color: message.id == _highlightId
-            ? AppColors.amber400.withValues(alpha: 0.16)
-            : AppColors.amber400.withValues(alpha: 0),
-        borderRadius: BorderRadius.circular(8),
+  Widget _row(BuildContext context, ChatMessage message) {
+    final row = ChatMessageRow(
+      message: message,
+      onTap: () => context.push(
+        '/chat/channel/${context.read<ChannelMessageBloc>().channelId}/thread',
       ),
-      child: ChatMessageRow(
-        message: message,
-        onTap: () => context.push(
-          '/chat/channel/${context.read<ChannelMessageBloc>().channelId}/thread',
-        ),
-        onLongPress: message.editable
-            ? () => _showMessageActions(context, message)
-            : null,
-      ),
-    ),
-  );
+      onLongPress: message.editable
+          ? () => _showMessageActions(context, message)
+          : null,
+    );
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s4),
+      // 강조는 고른 메시지 한 줄에만 하므로 그 줄만 감싼다. 강조가 끝나도 감싼 채로
+      // 두어야 배경이 서서히 사라진다.
+      child: message.id == _data.focusMessageId
+          ? AnimatedContainer(
+              duration: const Duration(milliseconds: 400),
+              decoration: BoxDecoration(
+                color: message.id == _highlightId
+                    ? AppColors.amber400.withValues(alpha: 0.16)
+                    : AppColors.amber400.withValues(alpha: 0),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: row,
+            )
+          : row,
+    );
+  }
 
   /// 내 메시지를 길게 눌렀을 때. 고치거나 지울지 고르게 한다.
   static Future<void> _showMessageActions(
