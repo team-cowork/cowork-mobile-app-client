@@ -267,6 +267,7 @@ void main() {
       expect(await _storedRefreshToken(), 'new');
       expect(expired, isEmpty);
     });
+
     test('서버가 400 으로 거절해도 토큰을 지우고 세션 만료를 알린다', () async {
       final repository = _signedIn(
         _StubAdapter(400, '{"error":"invalid_grant"}'),

@@ -108,6 +108,7 @@ void main() {
         '로그인에 실패했습니다.',
       );
     });
+
     for (final (kind, message) in [
       (AuthFailureKind.browserFailed, '브라우저 인증에 실패했습니다.'),
       (AuthFailureKind.stateMismatch, '인증 응답을 신뢰할 수 없어 로그인을 중단했습니다.'),
