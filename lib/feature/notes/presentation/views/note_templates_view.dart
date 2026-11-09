@@ -5,7 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/utils/async_state.dart';
 import '../../../../shared/widgets/bloc_scaffold.dart';
-import '../../data/notes_repository.dart';
+import '../../data/repositories/notes_repository.dart';
 import '../../data/repositories/note_template_repository.dart';
 import '../../domain/note_template.dart';
 import '../blocs/note_templates/note_templates_bloc.dart';

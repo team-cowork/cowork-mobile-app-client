@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:cowork_app/core/utils/async_state.dart';
-import 'package:cowork_app/feature/notes/data/notes_repository.dart';
+import 'package:cowork_app/feature/notes/data/repositories/notes_repository.dart';
 import 'package:cowork_app/feature/notes/domain/note.dart';
 import 'package:cowork_app/feature/notes/presentation/blocs/notes/notes_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';

@@ -5,7 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../shared/widgets/base_scaffold.dart';
 import '../../../profile/data/profile_store.dart';
-import '../../data/notes_repository.dart';
+import '../../data/repositories/notes_repository.dart';
 import '../../data/repositories/note_template_repository.dart';
 import '../../domain/enums/note_section_type.dart';
 import '../../domain/note.dart';

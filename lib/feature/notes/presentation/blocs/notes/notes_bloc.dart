@@ -5,7 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../../core/network/http_error_message.dart';
 import '../../../../../core/utils/async_state.dart';
 import '../../../../../core/utils/logger.dart';
-import '../../../data/notes_repository.dart';
+import '../../../data/repositories/notes_repository.dart';
 import '../../../domain/note.dart';
 
 part 'notes_event.dart';

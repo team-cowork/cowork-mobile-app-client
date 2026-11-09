@@ -1,17 +1,18 @@
 import 'package:dio/dio.dart';
 
-import '../../../core/network/dio_client.dart';
-import '../../../core/utils/logger.dart';
-import '../../../shared/utils/initial.dart';
-import '../../auth/data/auth_repository.dart';
-import '../../channel/data/repositories/channel_repository.dart';
-import '../../channel/domain/channel.dart';
-import '../../channel/domain/enums/channel_type.dart';
-import '../../profile/data/model/responses/user_response.dart';
-import '../../team/data/repositories/team_repository.dart';
-import '../domain/note.dart';
-import 'meeting_note_request.dart';
-import 'meeting_note_response.dart';
+import '../../../../core/network/dio_client.dart';
+import '../../../../core/utils/logger.dart';
+import '../../../../shared/utils/initial.dart';
+import '../../../auth/data/auth_repository.dart';
+import '../../../channel/data/repositories/channel_repository.dart';
+import '../../../channel/domain/channel.dart';
+import '../../../channel/domain/enums/channel_type.dart';
+import '../../../profile/data/model/responses/user_response.dart';
+import '../../../team/data/repositories/team_repository.dart';
+import '../../domain/note.dart';
+import '../model/requests/create_meeting_note_request.dart';
+import '../model/requests/update_meeting_note_request.dart';
+import '../model/responses/meeting_note_response.dart';
 
 /// channel 서비스의 회의록(`/channels/{channelId}/meeting-notes`) 저장소.
 ///
@@ -64,10 +65,7 @@ class NotesRepository {
       ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
     final authors = await _usersOf({for (final note in notes) note.createdBy});
-    return [
-      for (final note in notes)
-        Note.fromMeetingNote(note, author: _authorOf(note, authors)),
-    ];
+    return [for (final note in notes) note.toNote(_authorOf(note, authors))];
   }
 
   /// 내 팀들의 회의록 채널. 새 노트·템플릿 화면이 채널을 고를 때 쓴다.
@@ -95,7 +93,7 @@ class NotesRepository {
       unwrapPayload(response.data ?? ''),
     );
     final authors = await _usersOf({created.createdBy});
-    return Note.fromMeetingNote(created, author: _authorOf(created, authors));
+    return created.toNote(_authorOf(created, authors));
   }
 
   /// 편집한 회의록을 저장한다. 서버는 보낸 필드만 반영한다.

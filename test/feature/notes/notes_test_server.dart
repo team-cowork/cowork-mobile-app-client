@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:cowork_app/feature/channel/data/repositories/channel_repository.dart';
-import 'package:cowork_app/feature/notes/data/notes_repository.dart';
+import 'package:cowork_app/feature/notes/data/repositories/notes_repository.dart';
 import 'package:cowork_app/feature/notes/data/repositories/note_template_repository.dart';
 import 'package:cowork_app/feature/notes/domain/note.dart';
 import 'package:cowork_app/feature/notes/domain/note_draft.dart';

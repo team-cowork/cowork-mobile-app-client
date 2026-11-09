@@ -1,7 +1,5 @@
 import 'package:equatable/equatable.dart';
 
-import '../data/meeting_note_response.dart';
-
 /// 회의록 화면에서 사용하는 도메인 모델.
 ///
 /// UI 색상 등은 위젯 쪽에서 매핑한다. 여기서는 표시할 데이터만 담는다.
@@ -49,20 +47,6 @@ class Note extends Equatable {
   /// 이어 붙인다.
   String get summary =>
       sections['요약'] ?? sections['내용'] ?? sections.values.join(' ').trim();
-
-  /// 서버 회의록을 화면 모델로 옮긴다. 태그·참여자는 서버에 없어 비운다.
-  factory Note.fromMeetingNote(
-    MeetingNoteResponse note, {
-    required NoteAuthor author,
-  }) => Note(
-    id: note.id,
-    channelId: note.channelId,
-    templateId: note.templateId,
-    title: note.title,
-    tags: const [],
-    author: author,
-    sections: note.sections,
-  );
 
   Note copyWith({
     String? title,

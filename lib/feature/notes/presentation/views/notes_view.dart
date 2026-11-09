@@ -8,7 +8,7 @@ import '../../../../core/utils/command_bloc.dart';
 import '../../../../shared/widgets/bloc_scaffold.dart';
 import '../../../../shared/widgets/create_sheet.dart';
 import '../../../channel/domain/channel.dart';
-import '../../data/notes_repository.dart';
+import '../../data/repositories/notes_repository.dart';
 import '../../data/repositories/note_template_repository.dart';
 import '../../domain/note.dart';
 import '../../domain/note_draft.dart';
