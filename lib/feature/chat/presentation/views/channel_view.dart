@@ -175,11 +175,37 @@ class _MessageListState extends State<_MessageList> {
   void didUpdateWidget(_MessageList oldWidget) {
     super.didUpdateWidget(oldWidget);
     final center = _centerId;
-    // 보내려고 최근 대화로 옮겼거나 기준 메시지가 지워졌으면 보통 목록의 아래 끝으로.
-    if (center != null &&
-        (_data.focusMessageId == null || _indexOf(center) == -1)) {
+    if (center == null) return;
+    // 보내려고 최근 대화로 옮겼으면 보통 목록의 아래 끝으로.
+    if (_data.focusMessageId == null) {
       _showLatest();
+      return;
     }
+    // 기준 메시지가 지워졌으면 남은 이웃을 새 기준으로 삼아 보던 자리를 지킨다.
+    if (_indexOf(center) == -1) {
+      final neighbor = _survivingNeighbor(oldWidget.data.messages, center);
+      if (neighbor == null) {
+        _showLatest();
+      } else {
+        _centerId = neighbor;
+      }
+    }
+  }
+
+  /// [before] 에서 [removedId] 와 가장 가까운, 지금 목록에도 남은 메시지. 바로 이전
+  /// 메시지를 먼저 찾는다. 기준선(스크롤 0)이 기준 메시지 바로 아래라, 이전 메시지를
+  /// 기준으로 삼으면 그 아래 최근 메시지는 제자리에 있고 위쪽만 지운 줄만큼 내려온다.
+  /// 보통 목록에서 메시지를 지울 때와 같은 모습이다.
+  String? _survivingNeighbor(List<ChatMessage> before, String removedId) {
+    final index = before.indexWhere((message) => message.id == removedId);
+    if (index == -1) return null;
+    for (var i = index - 1; i >= 0; i--) {
+      if (_indexOf(before[i].id) != -1) return before[i].id;
+    }
+    for (var i = index + 1; i < before.length; i++) {
+      if (_indexOf(before[i].id) != -1) return before[i].id;
+    }
+    return null;
   }
 
   @override

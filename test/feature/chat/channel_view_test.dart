@@ -189,6 +189,33 @@ void main() {
       expect(visible('메시지 100'), findsNothing);
     });
 
+    testWidgets('그 메시지를 지워도 보던 자리에 머문다', (tester) async {
+      final gateway = FakeMessageGateway(
+        messages: [
+          for (var i = 200; i > 0; i--)
+            messageJson('m$i', i == 100 ? 1 : 2, '메시지 $i'),
+        ],
+      );
+      await pumpChannel(tester, gateway, focusMessageId: 'm100');
+      final newerBefore = tester.getTopLeft(messageText('메시지 101'));
+
+      await tester.longPress(messageText('메시지 100'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('메시지 삭제'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('삭제'));
+      await tester.pumpAndSettle();
+
+      expect(visible('메시지 100'), findsNothing);
+      expect(visible('메시지 99'), findsOneWidget);
+      expect(visible('메시지 101'), findsOneWidget);
+      expect(
+        tester.getTopLeft(messageText('메시지 101')),
+        newerBefore,
+        reason: '지운 줄만 빠지고 그 아래 최근 메시지는 움직이지 않는다',
+      );
+    });
+
     testWidgets('최근 메시지까지 내리면 새 메시지가 아래 끝에 보인다', (tester) async {
       final socket = FakeChatSocket();
       await pumpChannel(
