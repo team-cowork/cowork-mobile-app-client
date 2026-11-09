@@ -44,8 +44,10 @@ void main() {
               ),
               GoRoute(
                 path: '/chat/channel/:channelId/thread',
-                builder: (_, state) =>
-                    Text('스레드 ${state.pathParameters['channelId']}'),
+                builder: (_, state) => Text(
+                  '스레드 ${state.pathParameters['channelId']} '
+                  '${state.uri.queryParameters['parentMessageId']}',
+                ),
               ),
             ],
           ),
@@ -126,13 +128,13 @@ void main() {
     expect(find.text('메시지 수정'), findsNothing);
   });
 
-  testWidgets('메시지를 누르면 이 채널의 스레드로 간다', (tester) async {
+  testWidgets('메시지를 누르면 이 채널에서 그 메시지의 스레드로 간다', (tester) async {
     await pumpChannel(tester, FakeMessageGateway(messages: [otherMessage]));
 
     await tester.tap(messageText('남의 메시지'));
     await tester.pumpAndSettle();
 
-    expect(find.text('스레드 10'), findsOneWidget);
+    expect(find.text('스레드 10 m1'), findsOneWidget);
   });
 
   testWidgets('파일 메시지는 첨부파일 이름과 크기를 보여 준다', (tester) async {

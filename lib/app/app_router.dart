@@ -23,7 +23,17 @@ final channelRoute = GoRoute(
   redirect: (context, state) => _channelIdOf(state) == null ? '/' : null,
   builder: (context, state) => ChannelView(channelId: _channelIdOf(state)!),
   routes: [
-    GoRoute(path: 'thread', builder: (context, state) => const ThreadView()),
+    // 스레드는 부모 메시지 id 를 쿼리로 받는다. 없으면 채널로 돌려보낸다.
+    GoRoute(
+      path: 'thread',
+      redirect: (context, state) => _parentMessageIdOf(state) == null
+          ? '/chat/channel/${_channelIdOf(state)}'
+          : null,
+      builder: (context, state) => ThreadView(
+        channelId: _channelIdOf(state)!,
+        parentMessageId: _parentMessageIdOf(state)!,
+      ),
+    ),
     GoRoute(path: 'members', builder: (context, state) => const MembersView()),
     GoRoute(
       path: 'settings',
@@ -35,6 +45,11 @@ final channelRoute = GoRoute(
 
 int? _channelIdOf(GoRouterState state) =>
     int.tryParse(state.pathParameters['channelId'] ?? '');
+
+String? _parentMessageIdOf(GoRouterState state) {
+  final id = state.uri.queryParameters['parentMessageId'];
+  return id == null || id.isEmpty ? null : id;
+}
 
 final GoRouter appRouter = GoRouter(
   initialLocation: '/',

@@ -153,7 +153,11 @@ class _MessageList extends StatelessWidget {
   ) => ChatMessageRow(
     message: message,
     onTap: () => context.push(
-      '/chat/channel/${context.read<ChannelMessageBloc>().channelId}/thread',
+      Uri(
+        path:
+            '/chat/channel/${context.read<ChannelMessageBloc>().channelId}/thread',
+        queryParameters: {'parentMessageId': message.id},
+      ).toString(),
     ),
     onLongPress: message.editable
         ? () => _showMessageActions(context, message)
