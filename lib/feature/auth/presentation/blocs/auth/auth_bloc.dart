@@ -39,13 +39,14 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     AuthSessionRestored event,
     Emitter<AuthState> emit,
   ) async {
+    _profile?.forgetMe();
     final restored = await _repository.restoreSession();
-    if (restored) await _loadMe();
-    emit(
-      restored
-          ? const AuthState.authenticated()
-          : const AuthState.unauthenticated(),
-    );
+    if (!restored) {
+      emit(const AuthState.unauthenticated());
+      return;
+    }
+    emit(const AuthState.authenticated());
+    await _loadMe(emit);
   }
 
   /// 로그인된 동안만 반응한다. 앱 시작 때 복원 실패는 [_onSessionRestored] 가 이미
@@ -62,24 +63,44 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     Emitter<AuthState> emit,
   ) async {
     emit(const AuthState.inProgress());
+    _profile?.forgetMe();
     try {
       await _repository.signIn();
-      await _loadMe();
-      emit(const AuthState.authenticated());
     } on AuthException catch (e) {
       emit(AuthState.unauthenticated(message: e.message));
+      return;
     }
+    emit(const AuthState.authenticated());
+    await _loadMe(emit);
   }
 
   /// 현재 사용자 id 를 [ProfileStore] 에 채운다.
   ///
   /// 회의록의 `내 노트인지` 판별이 여기에 걸려 있어서, 프로필 화면을 한 번도 열지
-  /// 않아도 알고 있어야 한다. 실패해도 로그인 자체는 성공이라 상태는 건드리지 않는다.
-  Future<void> _loadMe() async {
+  /// 않아도 알고 있어야 한다. 화면을 이 응답까지 붙잡지 않도록 로그인 상태를 먼저
+  /// 내보낸 뒤 읽는다. 그동안은 id 를 몰라 내 회의록도 편집 버튼이 안 보인다.
+  ///
+  /// 실패는 원인에 따라 다르게 다룬다.
+  /// - 404: 계정이 없어졌다. 로그인을 유지할 이유가 없어 로그아웃한다.
+  /// - 401: 토큰 갱신은 `AuthInterceptor` 가 맡고, 갱신마저 실패하면
+  ///   [_onSessionExpired] 가 로그아웃시킨다.
+  /// - 그 밖(네트워크·5xx·깨진 응답): 잠깐의 장애일 수 있어 로그인은 유지한다.
+  ///   서버가 흔들릴 때마다 로그인 화면으로 보내면 안 되기 때문이다.
+  Future<void> _loadMe(Emitter<AuthState> emit) async {
     try {
       await _profile?.fetchMe();
     } on DioException catch (e) {
       Logger.e('내 프로필 조회 실패', tag: 'Auth', error: e);
+      if (e.response?.statusCode == 404 && state is Authenticated) {
+        await _repository.signOut();
+        emit(
+          const AuthState.unauthenticated(
+            message: '계정 정보를 찾을 수 없습니다. 다시 로그인해 주세요.',
+          ),
+        );
+      }
+    } catch (e, s) {
+      Logger.e('내 프로필 응답 처리 실패', tag: 'Auth', error: e, stackTrace: s);
     }
   }
 

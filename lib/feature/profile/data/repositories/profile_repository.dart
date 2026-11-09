@@ -106,6 +106,10 @@ class ProfileRepository {
         _ => 'image/jpeg',
       };
 
+  /// 이전 로그인 사용자의 id 를 지운다. 다음 사용자가 [fetchMe] 를 못 읽었을 때
+  /// 이전 사용자의 회의록을 내 것으로 보지 않게 하려는 것이다.
+  void forgetMe() => ProfileStore.instance.currentUserId = null;
+
   /// 회의록 작성자(내 이름·사진·id)를 쓰는 [ProfileStore] 를 최신 응답으로 갱신한다.
   ///
   /// 로그인 직후 [AuthBloc] 이 [fetchMe] 를 한 번 불러 여기서 id 가 채워진다.
