@@ -1,7 +1,10 @@
+import 'package:dio/dio.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../../../core/network/http_error_message.dart';
 import '../../../../../core/utils/async_state.dart';
+import '../../../../../core/utils/logger.dart';
 import '../../../data/direct_message_store.dart';
 import '../../../domain/direct_message_preview.dart';
 import '../../../domain/dm_presence_entry.dart';
@@ -25,8 +28,13 @@ class PersonalChatBloc extends Bloc<PersonalChatEvent, PersonalChatState> {
           recent: store.recent,
         )),
       );
-    } catch (_) {
-      emit(const PersonalChatState.failure());
+    } catch (e, s) {
+      Logger.e('DM 목록 조회 실패', tag: 'PersonalChat', error: e, stackTrace: s);
+      emit(
+        PersonalChatState.failure(
+          e is DioException ? dioErrorMessage(e) : null,
+        ),
+      );
     }
   }
 }

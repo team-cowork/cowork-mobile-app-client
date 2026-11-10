@@ -4,6 +4,7 @@ import 'package:dio/dio.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../../../core/network/http_error_message.dart';
 import '../../../../../core/utils/logger.dart';
 import '../../../../profile/data/repositories/profile_repository.dart';
 import '../../../data/auth_repository.dart';
@@ -66,8 +67,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     _profile?.forgetMe();
     try {
       await _repository.signIn();
-    } on AuthException catch (e) {
-      emit(AuthState.unauthenticated(message: e.message));
+    } catch (e, s) {
+      Logger.e('로그인 실패', tag: 'Auth', error: e, stackTrace: s);
+      emit(AuthState.unauthenticated(message: _signInErrorMessage(e)));
       return;
     }
     emit(const AuthState.authenticated());
@@ -89,8 +91,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   Future<void> _loadMe(Emitter<AuthState> emit) async {
     try {
       await _profile?.fetchMe();
-    } on DioException catch (e) {
-      Logger.e('내 프로필 조회 실패', tag: 'Auth', error: e);
+    } on DioException catch (e, s) {
+      Logger.e('내 프로필 조회 실패', tag: 'Auth', error: e, stackTrace: s);
       if (e.response?.statusCode == 404 && state is Authenticated) {
         await _repository.signOut();
         emit(
@@ -103,6 +105,18 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       Logger.e('내 프로필 응답 처리 실패', tag: 'Auth', error: e, stackTrace: s);
     }
   }
+
+  static String _signInErrorMessage(Object error) => switch (error) {
+    DioException() => dioErrorMessage(error),
+    AuthFailure(:final kind, :final detail) => switch (kind) {
+      AuthFailureKind.canceled => '로그인이 취소되었습니다.',
+      AuthFailureKind.browserFailed => '브라우저 인증에 실패했습니다.',
+      AuthFailureKind.stateMismatch => '인증 응답을 신뢰할 수 없어 로그인을 중단했습니다.',
+      AuthFailureKind.codeMissing => detail ?? '인가 코드를 받지 못했습니다.',
+      AuthFailureKind.invalidTokenResponse => '토큰 응답 형식이 올바르지 않습니다.',
+    },
+    _ => '로그인에 실패했습니다.',
+  };
 
   Future<void> _onSignOutRequested(
     AuthSignOutRequested event,
