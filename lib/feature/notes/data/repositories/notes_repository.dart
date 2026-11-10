@@ -106,25 +106,33 @@ class NotesRepository {
   );
 
   /// 내 모든 팀의 채널. 팀 순서, 팀 안에서는 서버 순서다.
+  ///
+  /// 팀 목록을 읽은 뒤 지워졌거나 권한이 바뀐 팀은 건너뛴다([_unlessGone]).
   Future<List<Channel>> _myChannels() async {
     final teams = await _teams.fetchMyTeams();
     final pages = await Future.wait([
-      for (final team in teams) _channels.fetchChannels(team.id),
+      for (final team in teams)
+        _unlessGone(() => _channels.fetchChannels(team.id)),
     ]);
-    return pages.expand((page) => page).toList();
+    return pages.nonNulls.expand((page) => page).toList();
   }
 
   /// 채널 하나의 회의록. 못 읽는 채널(비공개 등)이나 사라진 채널은 null 로 빠진다.
+  Future<List<MeetingNoteResponse>?> _notesOf(int channelId) => _unlessGone(
+    () async => (await _list(
+      '/channels/$channelId/meeting-notes',
+    )).map(MeetingNoteResponse.fromJson).toList(),
+  );
+
+  /// [read] 가 403·404 로 실패하면 null 을 준다. 그 밖의 실패는 그대로 던진다.
   ///
-  /// 채널 하나가 403 이라고 목록 전체를 실패로 만들면 볼 수 있는 회의록까지 사라진다.
-  /// 404 는 채널 목록을 읽은 뒤 그 채널이나 팀이 지워진 경우라 역시 건너뛴다.
+  /// 팀이나 채널 하나가 403 이라고 목록 전체를 실패로 만들면 볼 수 있는 회의록까지
+  /// 사라진다. 404 는 목록을 읽은 뒤 그 팀이나 채널이 지워진 경우라 역시 건너뛴다.
   /// 반대로 401·5xx·네트워크 장애까지 삼키면 장애가 `회의록 없음`으로 보이므로
   /// 나머지는 그대로 던져 화면이 오류로 보여주게 둔다.
-  Future<List<MeetingNoteResponse>?> _notesOf(int channelId) async {
+  static Future<T?> _unlessGone<T>(Future<T> Function() read) async {
     try {
-      return (await _list(
-        '/channels/$channelId/meeting-notes',
-      )).map(MeetingNoteResponse.fromJson).toList();
+      return await read();
     } on DioException catch (e) {
       if (const {403, 404}.contains(e.response?.statusCode)) return null;
       rethrow;

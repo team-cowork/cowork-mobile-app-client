@@ -113,6 +113,64 @@ void main() {
     ]);
   });
 
+  test('못 읽거나 사라진 팀이 있어도 나머지 팀의 회의록은 보여준다', () async {
+    final repository = notesRepositoryOf(
+      _Server({
+        '/team/teams': (
+          200,
+          [
+            {'id': 1},
+            {'id': 2},
+            {'id': 3},
+          ],
+        ),
+        '/channel/teams/1/channels': (
+          200,
+          [
+            {'id': 10, 'viewType': 'MEETING_NOTE'},
+          ],
+        ),
+        '/channel/teams/2/channels': (403, null),
+        // 팀 목록을 읽은 뒤 지워진 팀.
+        '/channel/teams/3/channels': (404, null),
+        '/channel/channels/10/meeting-notes': (
+          200,
+          [
+            {
+              'id': 1,
+              'channelId': 10,
+              'title': '남은 팀의 회의록',
+              'content': '{}',
+              'createdBy': 1,
+              'createdAt': '2026-03-12T09:00:00Z',
+            },
+          ],
+        ),
+        '/user/users/1': (200, {'id': 1, 'name': '김준혁'}),
+      }),
+    );
+
+    expect((await repository.fetchNotes()).map((note) => note.title), [
+      '남은 팀의 회의록',
+    ]);
+  });
+
+  test('팀 채널을 읽다 403·404 말고 다른 실패가 나면 그대로 던진다', () async {
+    final repository = notesRepositoryOf(
+      _Server({
+        '/team/teams': (
+          200,
+          [
+            {'id': 1},
+          ],
+        ),
+        '/channel/teams/1/channels': (500, null),
+      }),
+    );
+
+    expect(repository.fetchNotes(), throwsA(isA<DioException>()));
+  });
+
   test('못 읽는 채널 말고 다른 실패는 그대로 던진다', () async {
     final repository = notesRepositoryOf(
       _Server({
