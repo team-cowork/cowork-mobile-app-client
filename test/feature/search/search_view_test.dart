@@ -138,6 +138,11 @@ void main() {
 
     expect(find.text('도윤방'), findsOneWidget);
     expect(find.text('사람 검색에 실패했어요'), findsOneWidget);
+    expect(
+      find.text('잠시 후 다시 시도해 주세요.'),
+      findsOneWidget,
+      reason: 'Dio 밖의 실패는 화면 기본 문구를 쓴다',
+    );
     expect(find.text('메시지'), findsNothing, reason: '빈 섹션은 숨긴다');
   });
 

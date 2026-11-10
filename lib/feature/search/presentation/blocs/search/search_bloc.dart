@@ -130,7 +130,12 @@ class SearchBloc extends Bloc<SearchEvent, SearchState> {
       result = AsyncState.success(await load());
     } catch (e, s) {
       Logger.e('$label 실패', tag: 'Search', error: e, stackTrace: s);
-      if (isCurrent()) apply(AsyncState.failure(_messageOf(e)));
+      // Dio 밖의 실패는 보여 줄 사유가 없어 null 로 두고 화면 기본 문구를 쓴다.
+      if (isCurrent()) {
+        apply(
+          AsyncState.failure(e is DioException ? dioErrorMessage(e) : null),
+        );
+      }
       return;
     }
     if (isCurrent()) apply(result);
@@ -185,7 +190,4 @@ class SearchBloc extends Bloc<SearchEvent, SearchState> {
       }),
     );
   }
-
-  static String _messageOf(Object error) =>
-      error is DioException ? dioErrorMessage(error) : '잠시 후 다시 시도해 주세요.';
 }
