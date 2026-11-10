@@ -50,5 +50,13 @@ abstract class MeetingNoteResponse with _$MeetingNoteResponse {
   );
 }
 
-DateTime _createdAtOf(String? raw) =>
-    DateTime.tryParse(raw ?? '') ?? DateTime.fromMillisecondsSinceEpoch(0);
+/// 서버는 UTC 시각을 오프셋 없이(`2026-11-10T01:37:15.155626`) 준다. 그대로
+/// 읽으면 Dart 가 기기 시간으로 보고, 한국 시간 0~9시에 쓴 회의록이 전날로
+/// 보인다. 오프셋이 없으면 UTC 로 읽은 뒤 기기 시간으로 바꾼다.
+DateTime _createdAtOf(String? raw) {
+  final parsed = DateTime.tryParse(raw ?? '');
+  if (parsed == null) return DateTime.fromMillisecondsSinceEpoch(0);
+  if (parsed.isUtc) return parsed.toLocal();
+  // 날짜만 온 경우(`2026-11-10`)는 `Z` 를 붙일 수 없어 그대로 둔다.
+  return DateTime.tryParse('${raw}Z')?.toLocal() ?? parsed;
+}

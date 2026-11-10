@@ -46,6 +46,25 @@ void main() {
     expect(note.createdAt, DateTime.fromMillisecondsSinceEpoch(0));
   });
 
+  test('오프셋 없는 createdAt 은 UTC 로 읽어 기기 시간으로 바꾼다', () {
+    DateTime createdAtOf(String raw) =>
+        MeetingNoteResponse.fromJson({'createdAt': raw}).createdAt;
+
+    // 서버가 실제로 주는 모양. 2026-11-10 01:37:15 UTC 에 저장한 값이다.
+    final plain = createdAtOf('2026-11-10T01:37:15.155626');
+    expect(plain.isUtc, isFalse);
+    expect(plain.toUtc(), DateTime.utc(2026, 11, 10, 1, 37, 15, 155, 626));
+
+    // 오프셋이 붙어 오면 그 오프셋을 따른다.
+    expect(
+      createdAtOf('2026-11-10T10:37:15+09:00').toUtc(),
+      DateTime.utc(2026, 11, 10, 1, 37, 15),
+    );
+
+    // 날짜만 와도 던지지 않는다.
+    expect(createdAtOf('2026-11-10'), DateTime(2026, 11, 10));
+  });
+
   test('요청은 섹션을 JSON 문자열 content 로 보낸다', () {
     const sections = {'안건': '1. 배포'};
 
