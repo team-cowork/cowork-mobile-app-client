@@ -21,8 +21,20 @@ Map<String, String> parseNoteContent(Object? raw) {
   if (decoded is! Map) {
     return decoded == null ? const {} : {'요약': '$decoded'};
   }
-  return {for (final e in decoded.entries) '${e.key}': '${e.value}'};
+  return {for (final e in decoded.entries) '${e.key}': _textOf(e.value)};
 }
+
+/// 섹션 값 하나를 입력 칸에 넣을 글로.
+///
+/// 다른 클라이언트가 배열·객체(예: 참석자 목록)를 저장했을 수 있다. Dart 의
+/// `toString`(`[a, b]`, `{k: v}`)으로 바꾸면 저장할 때 그 모양이 서버에 덮어써져
+/// 원래 값을 되살릴 수 없으므로, JSON 모양 그대로 둔다.
+String _textOf(Object? value) => switch (value) {
+  null => '',
+  String s => s,
+  num() || bool() => '$value',
+  _ => jsonEncode(value),
+};
 
 Object? _tryDecode(String body) {
   try {
