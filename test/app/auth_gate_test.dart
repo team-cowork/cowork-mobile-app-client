@@ -58,9 +58,9 @@ void main() {
     (
       '서버가 거절하면',
       DioException(
-        requestOptions: RequestOptions(path: '/auth/token'),
+        requestOptions: RequestOptions(path: '/auth/callback'),
         response: Response(
-          requestOptions: RequestOptions(path: '/auth/token'),
+          requestOptions: RequestOptions(path: '/auth/callback'),
           statusCode: 503,
         ),
       ),

@@ -1,10 +1,6 @@
 import 'dart:async';
-import 'dart:convert';
-import 'dart:math';
 
-import 'package:crypto/crypto.dart';
 import 'package:dio/dio.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_web_auth_2/flutter_web_auth_2.dart';
@@ -21,8 +17,11 @@ enum AuthFailureKind {
   /// 브라우저 인증 자체가 실패했다.
   browserFailed,
 
-  /// 돌아온 state 가 보낸 값과 달라 응답을 신뢰할 수 없다.
-  stateMismatch,
+  /// 로그인 시작 응답에 인가 URL 이나 로그인 시도 쿠키가 없다.
+  invalidLoginStart,
+
+  /// 콜백에 state 가 없거나 비어 있어 서버가 이 로그인 시도와 맞춰 볼 수 없다.
+  stateMissing,
 
   /// 인가 코드 없이 돌아왔다.
   codeMissing,
@@ -52,20 +51,40 @@ class AuthFailure implements Exception {
   }
 }
 
-/// DataGSM OAuth(PKCE) 로그인과 Cowork 토큰 수명주기를 담당한다.
+/// 인증 브라우저를 열어 [url] 로 보내고, [callbackUrlScheme] 콜백 URL 을 돌려받는다.
+typedef BrowserAuthenticate =
+    Future<String> Function({
+      required String url,
+      required String callbackUrlScheme,
+    });
+
+/// DataGSM 로그인과 Cowork 토큰 수명주기를 담당한다.
 ///
-/// 1. DataGSM `authorize` 를 브라우저로 열어 인가 코드를 받는다.
-/// 2. `code` + `code_verifier` 를 cowork-authorization 에 넘겨 Cowork JWT 쌍을 받는다.
-/// 3. refresh token 만 secure storage 에 남긴다. access token 은 30분짜리라 메모리로 충분하다.
+/// PKCE·state·nonce 는 cowork-authorization 이 만들고 검증한다(서버 관리 OAuth/OIDC).
+/// 1. `/auth/authorize` 로 로그인 시도를 열어 인가 URL 과 로그인 시도 쿠키를 받는다.
+/// 2. 인가 URL 을 브라우저로 열어 DataGSM 콜백을 받는다.
+/// 3. 콜백의 `state`·`code` 를 쿠키와 함께 `/auth/callback` 에 넘겨 Cowork JWT 쌍을 받는다.
+/// 4. refresh token 만 secure storage 에 남긴다. access token 은 30분짜리라 메모리로 충분하다.
 class AuthRepository {
-  AuthRepository({Dio? dio, FlutterSecureStorage? storage})
-    : _dio = dio ?? createDio(ApiService.authorization),
-      _storage = storage ?? const FlutterSecureStorage();
+  AuthRepository({
+    Dio? dio,
+    FlutterSecureStorage? storage,
+    BrowserAuthenticate? authenticate,
+  }) : _dio = dio ?? createDio(ApiService.authorization),
+       _storage = storage ?? const FlutterSecureStorage(),
+       _authenticate = authenticate ?? FlutterWebAuth2.authenticate;
 
   final Dio _dio;
   final FlutterSecureStorage _storage;
+  final BrowserAuthenticate _authenticate;
 
   static const _refreshTokenKey = 'cowork.refresh_token';
+
+  /// `/auth/authorize` 가 내려주는 로그인 시도 쿠키 이름의 앞부분. 서버는 동시 시도가
+  /// 서로 덮어쓰지 않게 뒤에 state 해시를 붙인다(`__Host-cowork_oauth_<hash>`).
+  /// `/auth/callback` 에서 이 쿠키로 서버에 저장된 state·nonce·code_verifier 를 찾는다.
+  /// 1회용이고 10분 뒤 만료된다.
+  static const _loginCookiePrefix = '__Host-cowork_oauth_';
 
   String? _accessToken;
 
@@ -85,26 +104,29 @@ class AuthRepository {
   Stream<void> get sessionExpired => _sessionExpired.stream;
 
   /// 브라우저를 열어 DataGSM 로그인을 수행하고 토큰까지 발급받는다.
+  ///
+  /// 로그인 시도는 성공·실패와 관계없이 한 번 쓰면 서버에서 사라진다. 실패하면 다시
+  /// 부를 때 새 시도를 연다.
   Future<void> signIn() async {
     _generation++;
-    final verifier = createCodeVerifier();
-    final state = createCodeVerifier(16);
-
-    final url = Uri.parse(DgsmOAuthConfig.authorizeEndpoint).replace(
-      queryParameters: {
-        'client_id': DgsmOAuthConfig.clientId,
-        'redirect_uri': DgsmOAuthConfig.redirectUri,
-        'response_type': 'code',
-        'code_challenge': codeChallengeOf(verifier),
-        'code_challenge_method': 'S256',
-        'state': state,
-      },
+    final start = await _dio.post<String>(
+      '/auth/authorize',
+      data: {'redirect_uri': DgsmOAuthConfig.redirectUri},
     );
+    final authorizationUrl = unwrapPayload(
+      start.data ?? '',
+    )['authorization_url'];
+    final cookie = _loginCookieOf(start.headers);
+    // 쿠키 없이는 콜백을 서버가 받아 주지 않는다. 브라우저 로그인을 헛되이 시키지 않게
+    // 여기서 멈춘다.
+    if (authorizationUrl is! String || cookie == null) {
+      throw const AuthFailure(AuthFailureKind.invalidLoginStart);
+    }
 
     final String callback;
     try {
-      callback = await FlutterWebAuth2.authenticate(
-        url: url.toString(),
+      callback = await _authenticate(
+        url: authorizationUrl,
         callbackUrlScheme: DgsmOAuthConfig.callbackUrlScheme,
       );
     } on PlatformException catch (e, s) {
@@ -120,13 +142,18 @@ class AuthRepository {
       );
     }
 
+    // state 는 서버가 쿠키로 찾은 값과 비교한다(CSRF 방어). 앱은 그대로 넘기기만 한다.
+    // 빠져 있으면 서버가 거절할 게 정해져 있으니 보내지 않고 여기서 멈춘다. 거절 알림도
+    // state 없이는 서버가 맞춰 볼 수 없어 보내지 않는다.
     final params = Uri.parse(callback).queryParameters;
-    // CSRF: 우리가 보낸 state 가 그대로 돌아왔을 때만 인가 코드를 신뢰한다.
-    if (params['state'] != state) {
-      throw const AuthFailure(AuthFailureKind.stateMismatch);
+    final state = params['state'];
+    if (state == null || state.isEmpty) {
+      throw const AuthFailure(AuthFailureKind.stateMissing);
     }
     final code = params['code'];
     if (code == null) {
+      final error = params['error'];
+      if (error != null) await _notifyLoginDenied(state, error, cookie);
       throw AuthFailure(
         AuthFailureKind.codeMissing,
         // 빈 사유는 없는 것으로 봐야 Bloc 의 기본 문구가 쓰인다.
@@ -138,12 +165,30 @@ class AuthRepository {
     }
 
     await _saveTokens(
-      await _post('/auth/token', {
+      await _post('/auth/callback', {
+        'state': state,
         'code': code,
-        'code_verifier': verifier,
-        'redirect_uri': DgsmOAuthConfig.redirectUri,
-      }),
+      }, cookie: cookie),
     );
+  }
+
+  /// DataGSM 이 인가 코드 대신 오류를 돌려줬다고 서버에 알려 로그인 시도를 닫는다.
+  ///
+  /// 서버는 이 요청도 실패로 응답한다. 사용자에겐 서버 응답보다 DataGSM 사유가 더
+  /// 정확하므로, 결과는 기다리기만 하고 실패해도 로그만 남긴다.
+  Future<void> _notifyLoginDenied(
+    String state,
+    String error,
+    String cookie,
+  ) async {
+    try {
+      await _post('/auth/callback', {
+        'state': state,
+        'error': error,
+      }, cookie: cookie);
+    } catch (e, s) {
+      Logger.e('로그인 거절 전달 실패', tag: 'Auth', error: e, stackTrace: s);
+    }
   }
 
   /// 저장된 refresh token 으로 세션을 되살린다. 없거나 갱신에 실패하면 false.
@@ -214,15 +259,36 @@ class AuthRepository {
     String path,
     Map<String, String> body, {
     String? bearer,
+    String? cookie,
   }) async {
     final response = await _dio.post<String>(
       path,
       data: body,
-      options: bearer == null
-          ? null
-          : Options(headers: {'Authorization': 'Bearer $bearer'}),
+      options: Options(
+        headers: {
+          if (bearer != null) 'Authorization': 'Bearer $bearer',
+          if (cookie != null) 'Cookie': cookie,
+        },
+      ),
     );
     return unwrapPayload(response.data ?? '');
+  }
+
+  /// 응답의 `Set-Cookie` 들에서 로그인 시도 쿠키를 `이름=값` 그대로 꺼낸다.
+  ///
+  /// ponytail: dio 는 쿠키를 저장하지 않는다. 로그인 한 번에만 쓰는 쿠키라 cookie_jar
+  /// 를 들이지 않고 여기서 직접 넘긴다. 다른 API 도 쿠키가 필요해지면 그때 바꾼다.
+  static String? _loginCookieOf(Headers headers) {
+    for (final header in headers['set-cookie'] ?? const <String>[]) {
+      final pair = header.split(';').first.trim();
+      final separator = pair.indexOf('=');
+      if (pair.startsWith(_loginCookiePrefix) &&
+          separator > _loginCookiePrefix.length &&
+          separator < pair.length - 1) {
+        return pair;
+      }
+    }
+    return null;
   }
 
   Future<void> _saveTokens(Map<String, dynamic> data) async {
@@ -240,18 +306,3 @@ class AuthRepository {
     await _storage.delete(key: _refreshTokenKey);
   }
 }
-
-/// RFC 7636 code_verifier. [bytes] 32개면 43자로 규격(43~128자)에 들어맞는다.
-@visibleForTesting
-String createCodeVerifier([int bytes = 32]) {
-  final random = Random.secure();
-  return _base64UrlNoPad(List<int>.generate(bytes, (_) => random.nextInt(256)));
-}
-
-/// RFC 7636 S256 challenge: base64url(sha256(ascii(verifier))), 패딩 제거.
-@visibleForTesting
-String codeChallengeOf(String verifier) =>
-    _base64UrlNoPad(sha256.convert(ascii.encode(verifier)).bytes);
-
-String _base64UrlNoPad(List<int> bytes) =>
-    base64Url.encode(bytes).replaceAll('=', '');
