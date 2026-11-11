@@ -138,6 +138,9 @@ class ChannelMessageBloc
   /// 진행 중인 최근 대화로 옮기기([_jumpToLatest]).
   Future<bool>? _jumping;
 
+  /// 과거 위치를 보는 중이라 재연결 동기화를 건너뛰었다. 최근까지 내려오면 한 번 맞춘다.
+  bool _resyncSkipped = false;
+
   /// 마지막으로 서버에 알린 읽음 위치.
   String? _lastReadId;
 
@@ -159,6 +162,7 @@ class ChannelMessageBloc
     _hasNewer = false;
     _loadingNewer = false;
     _loadingOlder = false;
+    _resyncSkipped = false;
     var focusMissing = false;
     try {
       final headerRequest = _channelRepository.fetchChannelHeader(channelId);
@@ -309,6 +313,16 @@ class ChannelMessageBloc
       Logger.e('이후 메시지 조회 실패', tag: 'Chat', error: e, stackTrace: s);
       if (generation != _generation) return;
       error = _reasonOf('이후 메시지를 불러오지 못했어요.', e);
+    }
+    // 이 응답을 기다리는 사이 재연결됐으면, 끊긴 동안 저장된 메시지가 응답에도 소켓에도
+    // 없을 수 있다. 최근까지 왔으니 건너뛴 동기화를 지금 한다.
+    if (!_hasNewer && _resyncSkipped) {
+      try {
+        await _syncLatest();
+      } catch (e, s) {
+        Logger.e('재연결 후 메시지 동기화 실패', tag: 'Chat', error: e, stackTrace: s);
+      }
+      if (generation != _generation) return;
     }
     _loadingNewer = false;
     _applyPending();
@@ -480,9 +494,13 @@ class ChannelMessageBloc
     _ChannelMessageResynced event,
     Emitter<ChannelMessageState> emit,
   ) async {
+    if (_header == null) return;
     // 과거 위치를 보는 중이면 최근 메시지로 바꾸지 않는다. 아래로 내리면 이후 메시지를
-    // 새로 읽는다.
-    if (_header == null || _hasNewer) return;
+    // 새로 읽고, 최근까지 오면 그때 맞춘다([_onLoadNewer]).
+    if (_hasNewer) {
+      _resyncSkipped = true;
+      return;
+    }
     try {
       await _syncLatest();
     } catch (e, s) {
@@ -575,6 +593,7 @@ class ChannelMessageBloc
   Future<void> _syncLatest() async {
     final page = await _messageRepository.fetchMessages(channelId);
     await _fetchAuthors(page);
+    _resyncSkipped = false;
 
     final fetchedIds = {for (final message in page) message.id};
     final confirmed = {

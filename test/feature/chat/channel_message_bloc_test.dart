@@ -687,6 +687,33 @@ void main() {
       ]);
     });
 
+    test('이후 메시지를 읽는 사이 재연결되면 최근까지 온 뒤 끊긴 동안 온 메시지를 맞춘다', () async {
+      final gateway = twoHundred();
+      final socket = FakeChatSocket();
+      final bloc = await focused(gateway, socket, 'm140');
+      addTearDown(bloc.close);
+      final gate = Completer<void>();
+      gateway.cursorGates['after'] = gate.future;
+
+      bloc.add(const ChannelMessageEvent.newerRequested());
+      await pumpEventQueue();
+      // 서버는 이미 m191~m200 으로 응답을 만들었다. 그 뒤 소켓이 끊긴 사이 저장된
+      // 메시지라 소켓으로는 오지 않는다.
+      gateway.messages.insert(0, messageJson('m201', 2, '끊긴 동안 온 메시지'));
+      socket.reconnect();
+      await pumpEventQueue();
+      gate.complete();
+      await bloc.stream.firstWhere(
+        (s) => s is AsyncSuccess<ChannelConversation> && !s.data.loadingNewer,
+      );
+
+      expect(_data(bloc).hasNewer, isFalse);
+      expect(_texts(bloc).sublist(_texts(bloc).length - 2), [
+        '메시지 200',
+        '끊긴 동안 온 메시지',
+      ]);
+    });
+
     test('보내면 최근 대화로 옮긴 뒤 보낸다', () async {
       final gateway = twoHundred();
       final bloc = await focused(gateway, FakeChatSocket(), 'm100');
