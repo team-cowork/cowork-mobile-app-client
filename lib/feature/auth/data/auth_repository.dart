@@ -20,6 +20,9 @@ enum AuthFailureKind {
   /// 로그인 시작 응답에 인가 URL 이나 로그인 시도 쿠키가 없다.
   invalidLoginStart,
 
+  /// 콜백에 state 가 없거나 비어 있어 서버가 이 로그인 시도와 맞춰 볼 수 없다.
+  stateMissing,
+
   /// 인가 코드 없이 돌아왔다.
   codeMissing,
 
@@ -140,9 +143,13 @@ class AuthRepository {
     }
 
     // state 는 서버가 쿠키로 찾은 값과 비교한다(CSRF 방어). 앱은 그대로 넘기기만 한다.
-    // 빠져 있으면 빈 값을 보내 서버가 거절하게 둔다.
+    // 빠져 있으면 서버가 거절할 게 정해져 있으니 보내지 않고 여기서 멈춘다. 거절 알림도
+    // state 없이는 서버가 맞춰 볼 수 없어 보내지 않는다.
     final params = Uri.parse(callback).queryParameters;
-    final state = params['state'] ?? '';
+    final state = params['state'];
+    if (state == null || state.isEmpty) {
+      throw const AuthFailure(AuthFailureKind.stateMissing);
+    }
     final code = params['code'];
     if (code == null) {
       final error = params['error'];

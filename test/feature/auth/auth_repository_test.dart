@@ -271,6 +271,36 @@ void main() {
       expect(await _storedRefreshToken(), isNull);
     });
 
+    for (final (name, callback) in [
+      ('state 가 없으면', 'cowork://oauth/callback?code=c1'),
+      ('state 가 비어 있으면', 'cowork://oauth/callback?state=&code=c1'),
+      (
+        'DataGSM 이 거절했는데 state 가 없으면',
+        'cowork://oauth/callback?error=access_denied',
+      ),
+    ]) {
+      test('$name 서버에 콜백을 보내지 않고 실패한다', () async {
+        final adapter = _LoginAdapter({
+          '/auth/authorize': authorizeOk,
+          '/auth/callback': tokensOk,
+        });
+        final (repository, _) = repositoryOf(adapter, callback: callback);
+
+        await expectLater(
+          repository.signIn(),
+          throwsA(
+            isA<AuthFailure>().having(
+              (f) => f.kind,
+              'kind',
+              AuthFailureKind.stateMissing,
+            ),
+          ),
+        );
+        expect(adapter.requests.map((r) => r.path), ['/auth/authorize']);
+        expect(await _storedRefreshToken(), isNull);
+      });
+    }
+
     test('서버가 콜백을 거절하면 DioException 을 그대로 던지고 토큰을 남기지 않는다', () async {
       final adapter = _LoginAdapter({
         '/auth/authorize': authorizeOk,
