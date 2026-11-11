@@ -81,6 +81,20 @@ Future<void> _searchWithResults(
 }
 
 void main() {
+  testWidgets('메시지 결과가 화면을 못 채우면 스크롤하지 않아도 다음 페이지를 받는다', (tester) async {
+    final repository = FakeSearchRepository();
+    await tester.pumpWidget(_app(repository));
+
+    await tester.enterText(find.byType(TextField), '배포');
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await tester.pump();
+    repository.completeAll('배포', nextCursor: 'c1');
+    await tester.pump();
+    await tester.pump();
+
+    expect(repository.messages.keys, contains('배포|c1'));
+  });
+
   testWidgets('채널 결과를 누르면 그 채널 화면으로 간다', (tester) async {
     final repository = FakeSearchRepository();
     await tester.pumpWidget(_routedApp(repository));

@@ -43,6 +43,7 @@ class _SearchBody extends StatefulWidget {
 
 class _SearchBodyState extends State<_SearchBody> {
   final TextEditingController _controller = TextEditingController();
+  final _scroll = ScrollController();
 
   /// 목록 끝에서 이만큼 남으면 메시지 다음 페이지를 받는다.
   static const _loadMoreExtent = 200.0;
@@ -50,6 +51,7 @@ class _SearchBodyState extends State<_SearchBody> {
   @override
   void dispose() {
     _controller.dispose();
+    _scroll.dispose();
     super.dispose();
   }
 
@@ -61,15 +63,29 @@ class _SearchBodyState extends State<_SearchBody> {
     context.read<SearchBloc>().add(const SearchMoreMessagesRequested());
   }
 
-  /// 끝 근처까지 내리면 다음 페이지를 받는다. 받기에 실패했으면 스크롤마다 다시
-  /// 보내지 않고 `다시 시도` 를 누를 때만 보낸다.
+  /// 끝 근처까지 내리면 다음 페이지를 받는다.
   bool _onScroll(ScrollNotification notification) {
-    if (notification is ScrollUpdateNotification &&
-        notification.metrics.extentAfter < _loadMoreExtent &&
+    if (notification is ScrollUpdateNotification) {
+      _loadMoreNearEnd(notification.metrics);
+    }
+    return false;
+  }
+
+  /// 메시지 결과가 바뀌면 그려진 뒤 끝이 가까운지 본다. 결과가 화면을 못 채우면
+  /// 스크롤할 수 없어 [_onScroll] 이 불리지 않기 때문이다.
+  void _onMessagesChanged(BuildContext context, SearchState state) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && _scroll.hasClients) _loadMoreNearEnd(_scroll.position);
+    });
+  }
+
+  /// 받기에 실패했으면 스크롤마다 다시 보내지 않고 `다시 시도` 를 누를 때만 보낸다.
+  /// 받는 중이거나 마지막 페이지면 Bloc 이 무시한다.
+  void _loadMoreNearEnd(ScrollMetrics metrics) {
+    if (metrics.extentAfter < _loadMoreExtent &&
         !context.read<SearchBloc>().state.moreMessagesFailed) {
       _loadMoreMessages();
     }
-    return false;
   }
 
   @override
@@ -88,24 +104,30 @@ class _SearchBodyState extends State<_SearchBody> {
             onSubmitted: _search,
           ),
           Expanded(
-            child: NotificationListener<ScrollNotification>(
-              onNotification: _onScroll,
-              child: BlocBuilder<SearchBloc, SearchState>(
-                builder: (context, state) => SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(
-                    AppSpacing.s16,
-                    AppSpacing.s6,
-                    AppSpacing.s16,
-                    AppSpacing.s16,
-                  ),
-                  child: _SearchResults(
-                    state: state,
-                    onTapTerm: (term) {
-                      _controller.text = term;
-                      _search(term);
-                    },
-                    onRetry: () => _search(state.query),
-                    onRetryMoreMessages: _loadMoreMessages,
+            child: BlocListener<SearchBloc, SearchState>(
+              listenWhen: (previous, current) =>
+                  previous.messages != current.messages,
+              listener: _onMessagesChanged,
+              child: NotificationListener<ScrollNotification>(
+                onNotification: _onScroll,
+                child: BlocBuilder<SearchBloc, SearchState>(
+                  builder: (context, state) => SingleChildScrollView(
+                    controller: _scroll,
+                    padding: const EdgeInsets.fromLTRB(
+                      AppSpacing.s16,
+                      AppSpacing.s6,
+                      AppSpacing.s16,
+                      AppSpacing.s16,
+                    ),
+                    child: _SearchResults(
+                      state: state,
+                      onTapTerm: (term) {
+                        _controller.text = term;
+                        _search(term);
+                      },
+                      onRetry: () => _search(state.query),
+                      onRetryMoreMessages: _loadMoreMessages,
+                    ),
                   ),
                 ),
               ),
