@@ -239,5 +239,36 @@ void main() {
 
       expect(visible('방금 온 메시지'), findsOneWidget);
     });
+
+    testWidgets('채널 처음 근처를 열면 채널 첫 메시지가 위 끝에 붙고 그 위로 더 올라가지 않는다', (
+      tester,
+    ) async {
+      await pumpChannel(tester, twoHundred(), focusMessageId: 'm2');
+      final listTop = tester.getTopLeft(find.byType(CustomScrollView)).dy;
+
+      expect(visible('메시지 2'), findsOneWidget);
+      final firstTop = tester.getTopLeft(messageText('메시지 1')).dy;
+      expect(firstTop - listTop, lessThan(40), reason: '첫 메시지 위가 비지 않는다');
+
+      // 더 오래된 쪽으로 끌어도 첫 메시지는 위 끝에 머문다.
+      await tester.drag(find.byType(CustomScrollView), const Offset(0, 300));
+      await tester.pumpAndSettle();
+      expect(tester.getTopLeft(messageText('메시지 1')).dy, firstTop);
+    });
+
+    testWidgets('메시지가 화면보다 적으면 고른 메시지로 열어도 최근 메시지가 아래 끝에 있다', (tester) async {
+      final gateway = FakeMessageGateway(
+        messages: [for (var i = 3; i > 0; i--) messageJson('m$i', 2, '메시지 $i')],
+      );
+      await pumpChannel(tester, gateway, focusMessageId: 'm1');
+      final listBottom = tester.getBottomLeft(find.byType(CustomScrollView)).dy;
+
+      final lastBottom = tester.getBottomLeft(messageText('메시지 3')).dy;
+      expect(
+        listBottom - lastBottom,
+        lessThan(40),
+        reason: '최근 메시지 아래가 비지 않는다',
+      );
+    });
   });
 }

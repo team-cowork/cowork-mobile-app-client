@@ -3,6 +3,7 @@ import 'dart:math';
 
 import 'package:cowork_design_system/design_system.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart' show RenderSliver;
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
@@ -140,10 +141,15 @@ class _MessageListState extends State<_MessageList> {
   static const _highlightDuration = Duration(seconds: 2);
 
   final _controller = ScrollController();
-  final _centerKey = UniqueKey();
+  /// 기준 메시지 묶음의 키. [_olderExtent] 가 그 높이를 읽는다.
+  final _centerKey = GlobalKey();
 
   /// 이 메시지를 기준으로 배치한다. null 이면 최근 메시지가 아래 끝인 보통 목록이다.
   String? _centerId;
+
+  /// 스크롤 0 의 위치. 화면 높이에 대한 비율이고 아래 끝이 0 이다. 기준 배치에서
+  /// 오래된 쪽이 화면보다 짧을 때만 올린다([_revealFocus]).
+  double _anchor = 0;
 
   /// 강조해 보이는 메시지.
   String? _highlightId;
@@ -220,18 +226,44 @@ class _MessageListState extends State<_MessageList> {
 
   /// 기준 메시지가 화면 아래쪽 1/3 높이에 오도록 최근 쪽으로 조금 내린다. 최근 메시지가
   /// 적으면 아래 끝에서 멈춘다.
+  ///
+  /// 채널 처음 근처를 열면 기준과 그 이전 메시지가 화면보다 짧다. 기준선이 화면 아래
+  /// 끝이면 위로 올릴 수 있는 끝(스크롤 0)에서 그 위가 빈다. 그럴 땐 기준선을 그 길이만큼
+  /// 올려, 스크롤 0 에서 채널 첫 메시지가 화면 위 끝에 오게 한다. 메시지가 모두 화면에
+  /// 들어가면 보통 목록처럼 최근 메시지가 아래 끝에 오게 올린다. 어느 쪽이든 스크롤
+  /// 범위가 보통 목록과 같아져 위·아래로 빈 곳이 생기지 않는다.
   void _revealFocus() {
     if (!mounted || !_controller.hasClients) return;
     final position = _controller.position;
-    _controller.jumpTo(
-      max(position.minScrollExtent, -position.viewportDimension / 3),
-    );
+    final viewport = position.viewportDimension;
+    final older = _olderExtent();
+    if (!_data.hasOlder && older != null && older < viewport) {
+      // 기준선이 아래 끝(0)이면 최소 스크롤 위치가 -(최근 쪽 높이)다.
+      final newer = -position.minScrollExtent;
+      setState(() {
+        _anchor = older + newer <= viewport
+            ? newer / viewport
+            : 1 - older / viewport;
+      });
+      return;
+    }
+    _controller.jumpTo(max(position.minScrollExtent, -viewport / 3));
+  }
+
+  /// 기준 메시지와 그 이전 메시지, 위 여백을 합친 높이. 화면에 다 그려지지 않았으면
+  /// 목록이 추정한 값이다.
+  double? _olderExtent() {
+    final sliver = _centerKey.currentContext?.findRenderObject();
+    if (sliver is! RenderSliver) return null;
+    final extent = sliver.geometry?.scrollExtent;
+    return extent == null ? null : extent + AppSpacing.s16;
   }
 
   /// 기준 배치를 풀고 최근 메시지가 아래 끝인 보통 목록으로 돌아간다. 보통 목록은
   /// 스크롤 0 이 아래 끝이다. 다음 배치에 바로 쓰이도록 알림 없이 위치만 고친다.
   void _showLatest() {
     _centerId = null;
+    _anchor = 0;
     if (_controller.hasClients) _controller.position.correctPixels(0);
   }
 
@@ -273,6 +305,7 @@ class _MessageListState extends State<_MessageList> {
       child: CustomScrollView(
         controller: _controller,
         reverse: true,
+        anchor: _anchor,
         center: center == -1 ? null : _centerKey,
         slivers: center == -1
             ? [
