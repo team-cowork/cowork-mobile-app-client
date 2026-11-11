@@ -33,6 +33,11 @@ part 'channel_message_state.dart';
 /// 다시 읽어 맞춘다.
 ///
 /// 읽음은 앱이 포그라운드일 때만 알린다. 백그라운드에서 받은 메시지는 돌아왔을 때 알린다.
+///
+/// [focusMessageId] 를 주면(검색 결과에서 들어올 때) 그 메시지 앞뒤를 읽어 연다. 이때는
+/// 최근 메시지까지 이어져 있지 않을 수 있어([ChannelConversation.hasNewer]), 이후
+/// 메시지는 아래로 내릴 때 이어 읽는다. 그동안 소켓으로 온 새 메시지는 사이가 비므로
+/// 붙이지 않고, 읽음도 알리지 않는다. 그 상태에서 보내면 최근 대화로 옮긴 뒤 보낸다.
 class ChannelMessageBloc
     extends Bloc<ChannelMessageEvent, ChannelMessageState> {
   ChannelMessageBloc({
@@ -42,6 +47,7 @@ class ChannelMessageBloc
     required ProfileRepository profileRepository,
     required ChatSocket socket,
     Stream<AppLifecycleState>? lifecycle,
+    this.focusMessageId,
     this.confirmTimeout = const Duration(seconds: 10),
   }) : _channelRepository = channelRepository,
        _messageRepository = messageRepository,
@@ -50,6 +56,7 @@ class ChannelMessageBloc
        super(const ChannelMessageState.initial()) {
     on<ChannelMessageRequested>(_onLoad);
     on<ChannelMessageOlderRequested>(_onLoadOlder);
+    on<ChannelMessageNewerRequested>(_onLoadNewer);
     on<ChannelMessageSent>(_onSend);
     on<ChannelMessageEdited>(_onEdit);
     on<ChannelMessageDeleted>(_onDelete);
@@ -76,6 +83,9 @@ class ChannelMessageBloc
   }
 
   final int channelId;
+
+  /// 열 때 보여 줄 메시지. 없으면 최근 메시지부터 연다.
+  final String? focusMessageId;
 
   /// 보낸 메시지가 소켓으로 저장돼 오기를 기다리는 시간.
   final Duration confirmTimeout;
@@ -104,12 +114,32 @@ class ChannelMessageBloc
   /// 이름을 받아 오는 중인 작성자. 같은 사람을 여러 번 묻지 않는다.
   final _resolving = <int>{};
 
-  /// 메시지를 읽는 동안 온 소켓 이벤트. 목록을 받은 뒤 순서대로 반영한다.
+  /// 메시지를 읽는 동안(처음 불러오기, 이후 메시지 읽기) 온 소켓 이벤트. 목록을 받은
+  /// 뒤 순서대로 반영한다. 읽는 사이 저장된 메시지를 응답과 소켓 양쪽에서 놓치지 않는다.
   final _pending = <MessageSocketEvent>[];
 
   int? _myId;
   bool _hasOlder = false;
   bool _loadingOlder = false;
+
+  /// 서버에 지금 목록보다 최근 메시지가 남아 있다. [focusMessageId] 로 열었을 때만 true.
+  bool _hasNewer = false;
+  bool _loadingNewer = false;
+
+  /// 화면이 맞춰 보여 줄 메시지. 최근 대화로 옮기면 지운다.
+  String? _focusId;
+
+  /// 목록을 통째로 바꿀 때(처음 불러오기, 최근 대화로 옮기기) 올린다. 이전·이후
+  /// 메시지 요청은 응답을 받았을 때 번호가 바뀌었으면 결과를 버리고 상태도 건드리지
+  /// 않는다. 이전 목록 기준으로 읽은 메시지가 새 목록에 붙지 않게 한다. 로딩 플래그는
+  /// 번호를 올린 쪽이 정리한다.
+  int _generation = 0;
+
+  /// 진행 중인 최근 대화로 옮기기([_jumpToLatest]).
+  Future<bool>? _jumping;
+
+  /// 과거 위치를 보는 중이라 재연결 동기화를 건너뛰었다. 최근까지 내려오면 한 번 맞춘다.
+  bool _resyncSkipped = false;
 
   /// 마지막으로 서버에 알린 읽음 위치.
   String? _lastReadId;
@@ -125,11 +155,21 @@ class ChannelMessageBloc
     Emitter<ChannelMessageState> emit,
   ) async {
     emit(const ChannelMessageState.loading());
+    _generation++;
     _header = null;
     _pending.clear();
+    _focusId = null;
+    _hasNewer = false;
+    _loadingNewer = false;
+    _loadingOlder = false;
+    _resyncSkipped = false;
+    var focusMissing = false;
     try {
       final headerRequest = _channelRepository.fetchChannelHeader(channelId);
-      final messagesRequest = _messageRepository.fetchMessages(channelId);
+      final messagesRequest = _fetchFirstPage().then((page) {
+        focusMissing = page.focusMissing;
+        return page.messages;
+      });
       // 내 정보는 보낼 때와 수정·삭제 표시에만 쓴다. 실패해도 대화는 보여 준다.
       final meRequest = _loadMe();
       // 채널과 메시지는 같이 보내고, 하나라도 실패하면 그 예외를 그대로 받는다.
@@ -140,7 +180,25 @@ class ChannelMessageBloc
       await _fetchAuthors(messages);
 
       _header = header;
-      _hasOlder = messages.length >= MessageRepository.pageSize;
+      // around 응답에는 기준 메시지가 들어 있어야 한다. 없으면 서버가 around 를 모르고
+      // 최근 메시지를 준 것이라 최근 대화로 연다.
+      final focusIndex = switch (_focusId) {
+        final focus? => messages.indexWhere((message) => message.id == focus),
+        null => -1,
+      };
+      if (_focusId != null && focusIndex == -1) {
+        _focusId = null;
+        focusMissing = true;
+      }
+      if (_focusId != null) {
+        // around 는 기준 메시지 쪽(기준 포함 이전)과 이후 쪽을 반씩 읽는다. 어느 쪽이든
+        // 꽉 찼으면 그 너머에 더 있다.
+        _hasNewer = focusIndex >= MessageRepository.aroundHalf;
+        _hasOlder =
+            messages.length - focusIndex >= MessageRepository.aroundHalf;
+      } else {
+        _hasOlder = messages.length >= MessageRepository.pageSize;
+      }
       _messages
         ..clear()
         ..addAll(messages.reversed);
@@ -154,12 +212,36 @@ class ChannelMessageBloc
       return;
     }
 
-    for (final change in _pending) {
-      _apply(change);
-    }
-    _pending.clear();
-    _emit(emit);
+    _applyPending();
+    _emit(emit, error: focusMissing ? '메시지를 찾을 수 없어 최근 대화를 보여 드려요.' : null);
     _markRead();
+  }
+
+  /// 첫 페이지. [focusMessageId] 가 있으면 그 메시지 앞뒤를 읽는다. 그 메시지가 지워져
+  /// 없으면(404) 최근 메시지로 대신 연다.
+  Future<({List<MessageResponse> messages, bool focusMissing})>
+  _fetchFirstPage() async {
+    final focus = focusMessageId;
+    if (focus == null) {
+      return (
+        messages: await _messageRepository.fetchMessages(channelId),
+        focusMissing: false,
+      );
+    }
+    try {
+      final messages = await _messageRepository.fetchMessages(
+        channelId,
+        around: focus,
+      );
+      _focusId = focus;
+      return (messages: messages, focusMissing: false);
+    } on DioException catch (e) {
+      if (e.response?.statusCode != 404) rethrow;
+      return (
+        messages: await _messageRepository.fetchMessages(channelId),
+        focusMissing: true,
+      );
+    }
   }
 
   Future<void> _onLoadOlder(
@@ -172,12 +254,14 @@ class ChannelMessageBloc
     }
     _loadingOlder = true;
     _emit(emit);
+    final generation = _generation;
     try {
       final older = await _messageRepository.fetchMessages(
         channelId,
         before: oldest.id,
       );
       await _fetchAuthors(older);
+      if (generation != _generation) return;
       final known = {for (final message in _messages) message.id};
       _messages.insertAll(0, [
         for (final message in older.reversed)
@@ -188,8 +272,92 @@ class ChannelMessageBloc
       _emit(emit);
     } catch (e, s) {
       Logger.e('이전 메시지 조회 실패', tag: 'Chat', error: e, stackTrace: s);
+      if (generation != _generation) return;
       _loadingOlder = false;
       _emit(emit, error: _reasonOf('이전 메시지를 불러오지 못했어요.', e));
+    }
+  }
+
+  /// 지금 목록의 가장 최근 메시지 이후를 이어 붙인다. 한 페이지가 덜 차면 최근
+  /// 메시지까지 온 것이다.
+  Future<void> _onLoadNewer(
+    ChannelMessageNewerRequested event,
+    Emitter<ChannelMessageState> emit,
+  ) async {
+    final newest = _messages.where(_isSaved).lastOrNull;
+    if (_header == null || !_hasNewer || _loadingNewer || newest == null) {
+      return;
+    }
+    _loadingNewer = true;
+    _emit(emit);
+    final generation = _generation;
+    String? error;
+    try {
+      final newer = await _messageRepository.fetchMessages(
+        channelId,
+        after: newest.id,
+      );
+      await _fetchAuthors(newer);
+      if (generation != _generation) return;
+      final known = {for (final message in _messages) message.id};
+      final added = [
+        for (final message in newer.reversed)
+          if (!known.contains(message.id)) message,
+      ];
+      _messages.addAll(added);
+      // 꽉 찼는데 새 메시지가 하나도 없으면 서버가 after 를 무시한 것이다. 더 부르면
+      // 같은 응답만 되풀이하므로 멈춘다.
+      _hasNewer =
+          added.isNotEmpty && newer.length >= MessageRepository.pageSize;
+    } catch (e, s) {
+      Logger.e('이후 메시지 조회 실패', tag: 'Chat', error: e, stackTrace: s);
+      if (generation != _generation) return;
+      error = _reasonOf('이후 메시지를 불러오지 못했어요.', e);
+    }
+    // 이 응답을 기다리는 사이 재연결됐으면, 끊긴 동안 저장된 메시지가 응답에도 소켓에도
+    // 없을 수 있다. 최근까지 왔으니 건너뛴 동기화를 지금 한다.
+    if (!_hasNewer && _resyncSkipped) {
+      try {
+        await _syncLatest();
+      } catch (e, s) {
+        Logger.e('재연결 후 메시지 동기화 실패', tag: 'Chat', error: e, stackTrace: s);
+      }
+      if (generation != _generation) return;
+    }
+    _loadingNewer = false;
+    _applyPending();
+    _emit(emit, error: error);
+    _markRead();
+  }
+
+  /// 과거 위치를 보는 중이면 최근 메시지 한 페이지로 바꾼다. 실패하면 false.
+  ///
+  /// 옮기는 중에 또 보내면 같은 이동을 기다린다. 따로 옮기면 먼저 끝난 쪽이
+  /// [_loadingNewer] 를 풀고 최근 대화도 두 번 읽는다.
+  Future<bool> _jumpToLatest() {
+    if (!_hasNewer) return Future.value(true);
+    return _jumping ??= _moveToLatest().whenComplete(() => _jumping = null);
+  }
+
+  /// 번호는 시작할 때와 끝날 때 올린다. 시작 전에 보낸 이후 메시지 요청이 옮기는 도중에
+  /// 끝나 [_loadingNewer] 를 풀지 않게 하고, 옮기는 도중에 보낸 이전 메시지 요청이
+  /// 최근 목록 위에 붙지 않게 한다.
+  Future<bool> _moveToLatest() async {
+    _generation++;
+    _loadingNewer = true;
+    try {
+      await _syncLatest();
+      _hasNewer = false;
+      _focusId = null;
+      return true;
+    } catch (e, s) {
+      Logger.e('최근 메시지로 이동 실패', tag: 'Chat', error: e, stackTrace: s);
+      return false;
+    } finally {
+      _generation++;
+      _loadingNewer = false;
+      _loadingOlder = false;
+      _applyPending();
     }
   }
 
@@ -199,6 +367,11 @@ class ChannelMessageBloc
   ) async {
     final text = event.text.trim();
     if (_header == null || text.isEmpty) return;
+    // 과거 위치를 보는 중이면 사이가 빈 목록 끝에 붙이지 않도록 최근 대화로 옮긴다.
+    if (!await _jumpToLatest()) {
+      _emit(emit, error: '최근 대화를 불러오지 못해 보낼 수 없어요. 다시 보내 주세요.');
+      return;
+    }
     // 들어올 때 내 정보를 못 읽었으면 보내기 전에 한 번 더 읽는다.
     if (_myId == null) await _loadMe();
     final myId = _myId;
@@ -220,6 +393,8 @@ class ChannelMessageBloc
       ),
     );
     _emit(emit);
+    // 과거 위치에서 옮겨 왔으면 이제 최근 메시지를 보고 있다. 보내기가 실패해도 읽었다.
+    _markRead();
 
     try {
       await _messageRepository.sendMessage(
@@ -284,7 +459,7 @@ class ChannelMessageBloc
     Emitter<ChannelMessageState> emit,
   ) {
     if (_closedReason != null) return;
-    if (_header == null) {
+    if (_header == null || _loadingNewer) {
       _pending.add(event.event);
       return;
     }
@@ -322,6 +497,12 @@ class ChannelMessageBloc
     Emitter<ChannelMessageState> emit,
   ) async {
     if (_header == null) return;
+    // 과거 위치를 보는 중이면 최근 메시지로 바꾸지 않는다. 아래로 내리면 이후 메시지를
+    // 새로 읽고, 최근까지 오면 그때 맞춘다([_onLoadNewer]).
+    if (_hasNewer) {
+      _resyncSkipped = true;
+      return;
+    }
     try {
       await _syncLatest();
     } catch (e, s) {
@@ -350,6 +531,14 @@ class ChannelMessageBloc
     if (_header != null) _emit(emit);
   }
 
+  /// 읽는 동안 쌓아 둔 소켓 이벤트를 순서대로 반영한다.
+  void _applyPending() {
+    for (final change in _pending) {
+      _apply(change);
+    }
+    _pending.clear();
+  }
+
   /// 소켓 이벤트를 [_messages] 에 반영한다. 바뀐 게 있으면 true.
   bool _apply(MessageSocketEvent event) {
     switch (event) {
@@ -364,6 +553,8 @@ class ChannelMessageBloc
                   other.id == message.clientMessageId),
         );
         if (index == -1) {
+          // 과거 위치를 보는 중이면 사이가 비어 붙이지 않는다. 이후 메시지를 읽을 때 온다.
+          if (_hasNewer) return false;
           _messages.add(message);
         } else {
           _messages[index] = message;
@@ -404,6 +595,7 @@ class ChannelMessageBloc
   Future<void> _syncLatest() async {
     final page = await _messageRepository.fetchMessages(channelId);
     await _fetchAuthors(page);
+    _resyncSkipped = false;
 
     final fetchedIds = {for (final message in page) message.id};
     final confirmed = {
@@ -502,7 +694,8 @@ class ChannelMessageBloc
 
   /// 가장 최근에 저장된 메시지까지 읽었다고 알린다. 실패해도 화면엔 영향이 없다.
   void _markRead() {
-    if (!_foreground || _closedReason != null) return;
+    // 과거 위치를 보는 중이면 그보다 최근 메시지를 안 읽었으니 알리지 않는다.
+    if (!_foreground || _closedReason != null || _hasNewer) return;
     final latest = _messages.reversed.where(_isSaved).firstOrNull;
     if (latest == null || latest.id == _lastReadId) return;
     _lastReadId = latest.id;
@@ -544,6 +737,9 @@ class ChannelMessageBloc
       ],
       hasOlder: _hasOlder,
       loadingOlder: _loadingOlder,
+      hasNewer: _hasNewer,
+      loadingNewer: _loadingNewer,
+      focusMessageId: _focusId,
       closedReason: _closedReason,
     );
   }

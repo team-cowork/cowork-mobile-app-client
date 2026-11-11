@@ -25,7 +25,11 @@ import 'auth_gate.dart';
 final channelRoute = GoRoute(
   path: '/chat/channel/:channelId',
   redirect: (context, state) => _channelIdOf(state) == null ? '/' : null,
-  builder: (context, state) => ChannelView(channelId: _channelIdOf(state)!),
+  // 검색 결과에서 오면 `messageId` 쿼리로 보여 줄 메시지를 받는다.
+  builder: (context, state) => ChannelView(
+    channelId: _channelIdOf(state)!,
+    focusMessageId: state.uri.queryParameters['messageId'],
+  ),
   routes: [
     GoRoute(path: 'thread', builder: (context, state) => const ThreadView()),
     GoRoute(path: 'members', builder: (context, state) => const MembersView()),
@@ -40,11 +44,19 @@ final channelRoute = GoRoute(
 int? _channelIdOf(GoRouterState state) =>
     int.tryParse(state.pathParameters['channelId'] ?? '');
 
+int? _teamIdOf(GoRouterState state) =>
+    int.tryParse(state.uri.queryParameters['teamId'] ?? '');
+
 final GoRouter appRouter = GoRouter(
   initialLocation: '/',
   routes: [
     GoRoute(path: '/', builder: (context, state) => const AuthGate()),
-    GoRoute(path: '/search', builder: (context, state) => const SearchView()),
+    // 검색은 팀 안으로 범위가 묶여 팀 id 를 쿼리로 받는다. 없으면 홈으로 보낸다.
+    GoRoute(
+      path: '/search',
+      redirect: (context, state) => _teamIdOf(state) == null ? '/' : null,
+      builder: (context, state) => SearchView(teamId: _teamIdOf(state)!),
+    ),
     GoRoute(
       path: '/notifications',
       builder: (context, state) => const NotificationsView(),

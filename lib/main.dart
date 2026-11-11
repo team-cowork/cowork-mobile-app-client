@@ -13,6 +13,9 @@ import 'package:cowork_app/feature/notifications/data/notification_stream.dart';
 import 'package:cowork_app/feature/notifications/data/repositories/notification_repository.dart';
 import 'package:cowork_app/feature/profile/data/repositories/github_repository.dart';
 import 'package:cowork_app/feature/profile/data/repositories/profile_repository.dart';
+import 'package:cowork_app/feature/search/data/repositories/recent_search_repository.dart';
+import 'package:cowork_app/feature/search/data/repositories/search_repository.dart';
+import 'package:cowork_app/feature/search/presentation/widgets/clear_recent_search_on_logout.dart';
 import 'package:cowork_app/feature/setting/data/preference_repository.dart';
 import 'package:cowork_app/feature/setting/data/push_repository.dart';
 import 'package:cowork_app/feature/team/data/repositories/team_repository.dart';
@@ -79,6 +82,10 @@ class CoworkApp extends StatelessWidget {
           create: (context) =>
               MessageRepository(context.read<AuthRepository>()),
         ),
+        RepositoryProvider(
+          create: (context) => SearchRepository(context.read<AuthRepository>()),
+        ),
+        RepositoryProvider(create: (_) => RecentSearchRepository()),
         // 채팅 서버 소켓 연결은 앱에 하나만 두고 화면들이 나눠 쓴다.
         RepositoryProvider(
           create: (context) => ChatSocket(context.read<AuthRepository>()),
@@ -104,17 +111,22 @@ class CoworkApp extends StatelessWidget {
           repository: context.read<AuthRepository>(),
           profile: context.read<ProfileRepository>(),
         )..add(const AuthEvent.sessionRestored()),
-        child: BlocListener<AuthBloc, AuthState>(
-          listenWhen: (previous, current) =>
-              (previous is Authenticated) != (current is Authenticated),
-          listener: (context, state) {
-            final notifications = context.read<NotificationRepository>();
-            if (state is Authenticated) {
-              notifications.start();
-            } else {
-              notifications.stop();
-            }
-          },
+        child: MultiBlocListener(
+          listeners: [
+            BlocListener<AuthBloc, AuthState>(
+              listenWhen: (previous, current) =>
+                  (previous is Authenticated) != (current is Authenticated),
+              listener: (context, state) {
+                final notifications = context.read<NotificationRepository>();
+                if (state is Authenticated) {
+                  notifications.start();
+                } else {
+                  notifications.stop();
+                }
+              },
+            ),
+            const ClearRecentSearchOnLogout(),
+          ],
           child: MaterialApp.router(
             title: 'cowork',
             debugShowCheckedModeBanner: false,

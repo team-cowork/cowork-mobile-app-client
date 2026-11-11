@@ -89,7 +89,7 @@ class ChatView extends StatelessWidget {
                   onCreateChannel: () => _createChannel(context, teamId),
                   onCreateProject: () => NewProjectSheet.show(context),
                 ),
-                onSearchTap: () => context.push('/search'),
+                onSearchTap: () => context.push('/search?teamId=$teamId'),
                 onNotificationTap: () => _openNotifications(context),
               ),
               _ChatShortcutBar(
