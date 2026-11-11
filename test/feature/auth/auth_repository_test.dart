@@ -86,6 +86,38 @@ class _RouteAdapter implements HttpClientAdapter {
   void close({bool force = false}) {}
 }
 
+/// 로그인 흐름용. 경로마다 (상태 코드, 본문, Set-Cookie) 를 주고 보낸 요청을 남긴다.
+class _LoginAdapter implements HttpClientAdapter {
+  _LoginAdapter(this.routes);
+
+  /// 경로 끝부분 → (상태 코드, 본문, Set-Cookie 값들)
+  final Map<String, (int, String, List<String>)> routes;
+  final requests = <RequestOptions>[];
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<Uint8List>? requestStream,
+    Future<void>? cancelFuture,
+  ) async {
+    requests.add(options);
+    final (status, body, cookies) = routes.entries
+        .firstWhere((route) => options.path.endsWith(route.key))
+        .value;
+    return ResponseBody.fromString(
+      body,
+      status,
+      headers: {
+        Headers.contentTypeHeader: [Headers.jsonContentType],
+        'set-cookie': cookies,
+      },
+    );
+  }
+
+  @override
+  void close({bool force = false}) {}
+}
+
 /// 읽기에 실패하는 secure storage. keystore 가 손상된 기기를 흉내 낸다.
 class _BrokenStorage extends Fake implements FlutterSecureStorage {
   @override
@@ -127,18 +159,138 @@ Future<DioException> _postFailure(int status, String body) async {
 }
 
 void main() {
-  test('S256 code_challenge는 RFC 7636 Appendix B 벡터와 일치한다', () {
-    expect(
-      codeChallengeOf('dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk'),
-      'E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM',
-    );
-  });
+  group('signIn', () {
+    const authorizationUrl = 'https://datagsm.test/authorize?state=s1';
+    const loginCookie =
+        '__Host-cowork_oauth_h1=attempt-1; Path=/; Max-Age=600; HttpOnly; Secure; SameSite=None';
 
-  test('code_verifier는 RFC 7636 길이/문자 규격을 지킨다', () {
-    final verifier = createCodeVerifier();
-    expect(verifier.length, inInclusiveRange(43, 128));
-    expect(verifier, matches(r'^[A-Za-z0-9\-._~]+$'));
-    expect(verifier, isNot(createCodeVerifier()));
+    /// 게이트웨이 envelope 으로 감싼 `/auth/authorize` 응답.
+    final authorizeOk = (
+      200,
+      jsonEncode({
+        'data': {'authorization_url': authorizationUrl},
+      }),
+      [loginCookie],
+    );
+    final tokensOk = (
+      200,
+      jsonEncode({'access_token': 'a', 'refresh_token': 'r'}),
+      const <String>[],
+    );
+
+    /// 브라우저 대신 [callback] 을 돌려주고 열려던 URL 을 [opened] 에 남긴다.
+    (AuthRepository, List<String>) repositoryOf(
+      _LoginAdapter adapter, {
+      String callback = 'cowork://oauth/callback?state=s1&code=c1',
+    }) {
+      FlutterSecureStorage.setMockInitialValues({});
+      final opened = <String>[];
+      final repository = AuthRepository(
+        dio: _dio(adapter),
+        storage: const FlutterSecureStorage(),
+        authenticate: ({required url, required callbackUrlScheme}) async {
+          opened.add(url);
+          return callback;
+        },
+      );
+      return (repository, opened);
+    }
+
+    test('서버가 준 인가 URL 을 열고 콜백을 로그인 시도 쿠키와 함께 넘긴다', () async {
+      final adapter = _LoginAdapter({
+        '/auth/authorize': authorizeOk,
+        '/auth/callback': tokensOk,
+      });
+      final (repository, opened) = repositoryOf(adapter);
+
+      await repository.signIn();
+
+      expect(opened, [authorizationUrl]);
+      final [start, callback] = adapter.requests;
+      expect(start.path, '/auth/authorize');
+      expect(start.data, {'redirect_uri': 'cowork://oauth/callback'});
+      expect(callback.path, '/auth/callback');
+      expect(callback.data, {'state': 's1', 'code': 'c1'});
+      expect(callback.headers['Cookie'], '__Host-cowork_oauth_h1=attempt-1');
+      expect(callback.data, isNot(contains('code_verifier')));
+      expect(repository.accessToken, 'a');
+      expect(await _storedRefreshToken(), 'r');
+    });
+
+    for (final (name, authorize) in [
+      (
+        '로그인 시도 쿠키가 없으면',
+        (
+          200,
+          jsonEncode({'authorization_url': authorizationUrl}),
+          const <String>[],
+        ),
+      ),
+      ('인가 URL 이 없으면', (200, '{}', [loginCookie])),
+    ]) {
+      test('$name 브라우저를 열지 않고 실패한다', () async {
+        final adapter = _LoginAdapter({'/auth/authorize': authorize});
+        final (repository, opened) = repositoryOf(adapter);
+
+        await expectLater(
+          repository.signIn(),
+          throwsA(
+            isA<AuthFailure>().having(
+              (f) => f.kind,
+              'kind',
+              AuthFailureKind.invalidLoginStart,
+            ),
+          ),
+        );
+        expect(opened, isEmpty);
+      });
+    }
+
+    test('DataGSM 이 거절하면 서버에 알리고 DataGSM 사유로 실패한다', () async {
+      final adapter = _LoginAdapter({
+        '/auth/authorize': authorizeOk,
+        // 서버는 거절 콜백도 인증 실패로 응답한다.
+        '/auth/callback': (401, '{"error":"authentication failed"}', const []),
+      });
+      final (repository, _) = repositoryOf(
+        adapter,
+        callback: 'cowork://oauth/callback?state=s1&error=access_denied',
+      );
+
+      await expectLater(
+        repository.signIn(),
+        throwsA(
+          isA<AuthFailure>()
+              .having((f) => f.kind, 'kind', AuthFailureKind.codeMissing)
+              .having((f) => f.detail, 'detail', 'access_denied'),
+        ),
+      );
+      final callback = adapter.requests.last;
+      expect(callback.data, {'state': 's1', 'error': 'access_denied'});
+      expect(callback.headers['Cookie'], '__Host-cowork_oauth_h1=attempt-1');
+      expect(await _storedRefreshToken(), isNull);
+    });
+
+    test('서버가 콜백을 거절하면 DioException 을 그대로 던지고 토큰을 남기지 않는다', () async {
+      final adapter = _LoginAdapter({
+        '/auth/authorize': authorizeOk,
+        '/auth/callback': (401, '{"error":"authentication failed"}', const []),
+      });
+      final (repository, _) = repositoryOf(adapter);
+
+      await expectLater(
+        repository.signIn(),
+        throwsA(
+          isA<DioException>().having(
+            (e) => e.response?.statusCode,
+            'status',
+            401,
+          ),
+        ),
+      );
+      expect(repository.accessToken, isNull);
+      expect(await _storedRefreshToken(), isNull);
+    });
   });
 
   test('게이트웨이 envelope과 raw 응답을 모두 벗겨낸다', () {
@@ -255,7 +407,7 @@ void main() {
       final restoring = repository.restoreSession();
       await pumpEventQueue();
       await repository.signOut();
-      // signIn 은 브라우저를 열어서 테스트에서 부를 수 없다. 로그인 결과만 흉내 낸다.
+      // 로그인 결과만 흉내 낸다.
       await const FlutterSecureStorage().write(
         key: 'cowork.refresh_token',
         value: 'new',
