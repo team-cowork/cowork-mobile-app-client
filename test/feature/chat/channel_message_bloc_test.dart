@@ -734,6 +734,21 @@ void main() {
       );
     });
 
+    test('옮겨서 보내면 보내기가 실패해도 최근 메시지까지 읽었다고 알린다', () async {
+      final gateway = twoHundred()
+        ..failing = 'POST /chat/chat/channels/10/messages';
+      final bloc = await focused(gateway, FakeChatSocket(), 'm100');
+      addTearDown(bloc.close);
+
+      bloc.add(const ChannelMessageEvent.sent('답장'));
+      await pumpEventQueue();
+
+      expect(_texts(bloc).last, '메시지 200');
+      expect(gateway.bodies['POST /chat/chat/channels/10/read'], {
+        'lastReadMessageId': 'm200',
+      });
+    });
+
     test('옮기는 사이 또 보내면 최근 대화는 한 번만 읽고 보낸 순서대로 붙인다', () async {
       final gateway = twoHundred();
       final bloc = await focused(gateway, FakeChatSocket(), 'm100');

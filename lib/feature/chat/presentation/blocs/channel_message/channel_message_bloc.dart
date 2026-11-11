@@ -393,6 +393,8 @@ class ChannelMessageBloc
       ),
     );
     _emit(emit);
+    // 과거 위치에서 옮겨 왔으면 이제 최근 메시지를 보고 있다. 보내기가 실패해도 읽었다.
+    _markRead();
 
     try {
       await _messageRepository.sendMessage(
