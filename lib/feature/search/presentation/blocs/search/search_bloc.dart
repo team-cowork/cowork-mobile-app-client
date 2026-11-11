@@ -9,6 +9,7 @@ import '../../../../../core/utils/async_state.dart';
 import '../../../../../core/utils/logger.dart';
 import '../../../data/repositories/recent_search_repository.dart';
 import '../../../data/repositories/search_repository.dart';
+import '../../../domain/enums/search_section.dart';
 import '../../../domain/search_result.dart';
 
 part 'search_event.dart';
@@ -28,6 +29,7 @@ class SearchBloc extends Bloc<SearchEvent, SearchState> {
     on<SearchStarted>(_onStarted);
     on<SearchRequested>(_onRequested);
     on<SearchMoreMessagesRequested>(_onMoreMessagesRequested);
+    on<SearchSectionRetried>(_onSectionRetried);
   }
 
   final SearchRepository _repository;
@@ -96,26 +98,71 @@ class SearchBloc extends Bloc<SearchEvent, SearchState> {
     bool isCurrent() => generation == _generation;
 
     await Future.wait([
-      _section(
-        () => _repository.searchChannels(teamId: teamId, query: query),
-        label: '채널 검색',
-        isCurrent: isCurrent,
-        apply: (result) => emit(state.copyWith(channels: result)),
-      ),
-      _section(
-        () => _repository.searchPeople(teamId: teamId, query: query),
-        label: '사람 검색',
-        isCurrent: isCurrent,
-        apply: (result) => emit(state.copyWith(people: result)),
-      ),
-      _section(
-        () => _repository.searchMessages(teamId: teamId, query: query),
-        label: '메시지 검색',
-        isCurrent: isCurrent,
-        apply: (result) => emit(state.copyWith(messages: result)),
-      ),
+      for (final section in SearchSection.values)
+        _searchSection(section, query, isCurrent: isCurrent, emit: emit),
     ]);
   }
+
+  /// 실패한 섹션 하나만 다시 찾는다. 다른 섹션과 받아 둔 메시지 페이지는 그대로 둔다.
+  Future<void> _onSectionRetried(
+    SearchSectionRetried event,
+    Emitter<SearchState> emit,
+  ) async {
+    final section = event.section;
+    final failed = switch (section) {
+      SearchSection.channels => state.channels is AsyncFailure,
+      SearchSection.people => state.people is AsyncFailure,
+      SearchSection.messages => state.messages is AsyncFailure,
+    };
+    // 이미 다시 찾는 중이면 두 번 보내지 않는다.
+    if (!failed) return;
+
+    final generation = _generation;
+    emit(switch (section) {
+      SearchSection.channels => state.copyWith(
+        channels: const AsyncState.loading(),
+      ),
+      SearchSection.people => state.copyWith(
+        people: const AsyncState.loading(),
+      ),
+      SearchSection.messages => state.copyWith(
+        messages: const AsyncState.loading(),
+      ),
+    });
+    await _searchSection(
+      section,
+      state.query,
+      isCurrent: () => generation == _generation,
+      emit: emit,
+    );
+  }
+
+  /// [section] 을 [query] 로 찾아 그 섹션 상태만 바꾼다.
+  Future<void> _searchSection(
+    SearchSection section,
+    String query, {
+    required bool Function() isCurrent,
+    required Emitter<SearchState> emit,
+  }) => switch (section) {
+    SearchSection.channels => _section(
+      () => _repository.searchChannels(teamId: teamId, query: query),
+      label: '채널 검색',
+      isCurrent: isCurrent,
+      apply: (result) => emit(state.copyWith(channels: result)),
+    ),
+    SearchSection.people => _section(
+      () => _repository.searchPeople(teamId: teamId, query: query),
+      label: '사람 검색',
+      isCurrent: isCurrent,
+      apply: (result) => emit(state.copyWith(people: result)),
+    ),
+    SearchSection.messages => _section(
+      () => _repository.searchMessages(teamId: teamId, query: query),
+      label: '메시지 검색',
+      isCurrent: isCurrent,
+      apply: (result) => emit(state.copyWith(messages: result)),
+    ),
+  };
 
   /// 검색 하나를 돌려 성공/실패를 [apply] 로 넘긴다. 그 사이 새 검색이 시작됐으면
   /// 결과를 버린다. 실패는 여기서 삼켜 다른 섹션 검색을 멈추지 않는다.

@@ -8,6 +8,7 @@ import '../../../../shared/widgets/base_scaffold.dart';
 import '../../data/repositories/recent_search_repository.dart';
 import '../../data/repositories/search_repository.dart';
 import '../../domain/enums/avatar_color.dart';
+import '../../domain/enums/search_section.dart';
 import '../../domain/search_result.dart';
 import '../blocs/search/search_bloc.dart';
 
@@ -125,7 +126,9 @@ class _SearchBodyState extends State<_SearchBody> {
                         _controller.text = term;
                         _search(term);
                       },
-                      onRetry: () => _search(state.query),
+                      onRetry: (section) => context.read<SearchBloc>().add(
+                        SearchSectionRetried(section),
+                      ),
                       onRetryMoreMessages: _loadMoreMessages,
                     ),
                   ),
@@ -150,7 +153,9 @@ class _SearchResults extends StatelessWidget {
 
   final SearchState state;
   final ValueChanged<String> onTapTerm;
-  final VoidCallback onRetry;
+
+  /// 실패한 섹션의 `다시 시도`. 그 섹션만 다시 찾는다.
+  final ValueChanged<SearchSection> onRetry;
   final VoidCallback onRetryMoreMessages;
 
   @override
@@ -182,7 +187,7 @@ class _SearchResults extends StatelessWidget {
           _SearchSection(
             label: '채널',
             state: channels,
-            onRetry: onRetry,
+            onRetry: () => onRetry(SearchSection.channels),
             itemsOf: (data) => [
               for (final channel in data)
                 _SearchChannelResultTile(
@@ -195,7 +200,7 @@ class _SearchResults extends StatelessWidget {
           _SearchSection(
             label: '사람',
             state: people,
-            onRetry: onRetry,
+            onRetry: () => onRetry(SearchSection.people),
             itemsOf: (data) => [
               for (final person in data)
                 _SearchPersonResultTile(result: person),
@@ -205,7 +210,7 @@ class _SearchResults extends StatelessWidget {
           _SearchSection(
             label: '메시지',
             state: messages,
-            onRetry: onRetry,
+            onRetry: () => onRetry(SearchSection.messages),
             itemsOf: (data) => [
               for (final message in data.messages)
                 _SearchMessageResultTile(

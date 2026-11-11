@@ -7,6 +7,8 @@ sealed class SearchEvent extends Equatable {
   const factory SearchEvent.requested(String query) = SearchRequested;
   const factory SearchEvent.moreMessagesRequested() =
       SearchMoreMessagesRequested;
+  const factory SearchEvent.sectionRetried(SearchSection section) =
+      SearchSectionRetried;
 
   @override
   List<Object?> get props => [];
@@ -30,4 +32,14 @@ final class SearchRequested extends SearchEvent {
 /// 메시지 검색 다음 페이지를 이어 붙인다. 받는 중이거나 끝이면 무시한다.
 final class SearchMoreMessagesRequested extends SearchEvent {
   const SearchMoreMessagesRequested();
+}
+
+/// 실패한 [section] 만 지금 검색어로 다시 찾는다. 실패 상태가 아니면 무시한다.
+final class SearchSectionRetried extends SearchEvent {
+  const SearchSectionRetried(this.section);
+
+  final SearchSection section;
+
+  @override
+  List<Object?> get props => [section];
 }

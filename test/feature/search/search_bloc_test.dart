@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:cowork_app/core/utils/async_state.dart';
 import 'package:cowork_app/feature/search/data/repositories/recent_search_repository.dart';
+import 'package:cowork_app/feature/search/domain/enums/search_section.dart';
 import 'package:cowork_app/feature/search/domain/search_result.dart';
 import 'package:cowork_app/feature/search/presentation/blocs/search/search_bloc.dart';
 import 'package:dio/dio.dart';
@@ -108,6 +109,57 @@ void main() {
     expect(bloc.state.loadingMoreMessages, isFalse);
     final page = (bloc.state.messages as AsyncSuccess<SearchMessagePage>).data;
     expect(page.messages, hasLength(1));
+  });
+
+  test('실패한 섹션의 다시 시도는 그 섹션만 다시 찾고 받아 둔 메시지 페이지는 남긴다', () async {
+    bloc.add(const SearchRequested('배포'));
+    await _settle();
+    repository.channels['배포']!.complete([channelNamed('배포')]);
+    repository.people['배포']!.completeError(Exception('down'));
+    repository.messages['배포|null']!.complete(
+      SearchMessagePage(messages: [messageWithId('배포-1')], nextCursor: 'c1'),
+    );
+    await _settle();
+    bloc.add(const SearchMoreMessagesRequested());
+    await _settle();
+    repository.messages['배포|c1']!.complete(
+      SearchMessagePage(messages: [messageWithId('배포-2')], nextCursor: null),
+    );
+    await _settle();
+
+    final states = <SearchState>[];
+    final subscription = bloc.stream.listen(states.add);
+    addTearDown(subscription.cancel);
+    // 가짜 저장소는 같은 검색어 결과를 캐시한다. 비워 둬야 다시 묻는지 알 수 있다.
+    repository.people.remove('배포');
+    bloc.add(const SearchSectionRetried(SearchSection.people));
+    await _settle();
+    repository.people['배포']!.complete([]);
+    await _settle();
+
+    expect(bloc.state.people, isA<AsyncSuccess<List<SearchPersonResult>>>());
+    final page = (bloc.state.messages as AsyncSuccess<SearchMessagePage>).data;
+    expect([for (final m in page.messages) m.id], ['배포-1', '배포-2']);
+    expect(
+      states.where(
+        (s) => s.channels is AsyncLoading || s.messages is AsyncLoading,
+      ),
+      isEmpty,
+      reason: '다른 섹션은 다시 찾지 않는다',
+    );
+  });
+
+  test('실패하지 않은 섹션의 다시 시도는 무시한다', () async {
+    bloc.add(const SearchRequested('배포'));
+    await _settle();
+    repository.completeAll('배포');
+    await _settle();
+    final before = bloc.state;
+
+    bloc.add(const SearchSectionRetried(SearchSection.channels));
+    await _settle();
+
+    expect(bloc.state, before);
   });
 
   test('검색어를 비우면 결과를 비우고 최근 검색어는 최신순으로 남긴다', () async {

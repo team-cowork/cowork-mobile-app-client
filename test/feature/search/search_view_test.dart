@@ -158,6 +158,16 @@ void main() {
       reason: 'Dio 밖의 실패는 화면 기본 문구를 쓴다',
     );
     expect(find.text('메시지'), findsNothing, reason: '빈 섹션은 숨긴다');
+
+    // 가짜 저장소는 같은 검색어 결과를 캐시한다. 비워 둬야 다시 묻는지 알 수 있다.
+    repository.people.remove('도윤');
+    await tester.tap(find.text('다시 시도'));
+    await tester.pump();
+    repository.people['도윤']!.complete([]);
+    await tester.pump();
+
+    expect(find.text('사람 검색에 실패했어요'), findsNothing);
+    expect(find.text('도윤방'), findsOneWidget);
   });
 
   test('<em> 으로 감싼 구간만 강조 스타일이 된다', () {
