@@ -17,6 +17,7 @@ import '../../domain/note.dart';
 import '../../domain/note_draft.dart';
 import '../../domain/note_template.dart';
 import '../blocs/notes/notes_bloc.dart';
+import 'note_detail_view.dart';
 import '../widgets/note_choice_chip.dart';
 
 /// 회의록 목록 화면.
@@ -209,6 +210,7 @@ class _NoteCard extends StatelessWidget {
   final Note note;
 
   /// 서버는 작성자가 아니면 삭제를 403 으로 거절하므로, 내 회의록만 밀 수 있다.
+  /// 밀기는 스크린 리더로 할 수 없어 상세 화면의 삭제 버튼이 같은 일을 한다.
   bool get _isMine =>
       note.author.authorId == ProfileStore.instance.currentUserId;
 
@@ -216,11 +218,21 @@ class _NoteCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final card = GestureDetector(
       behavior: HitTestBehavior.opaque,
-      // 상세에서 편집했을 때만 고친 회의록이 돌아온다. 그때만 목록을 다시 불러온다.
+      // 상세에서 편집하거나 삭제를 확인했을 때만 결과가 돌아온다. 그때만 목록을
+      // 움직인다.
       onTap: () async {
-        final edited = await context.push<Note>('/notes/detail', extra: note);
-        if (edited != null && context.mounted) {
-          context.read<NotesBloc>().add(const NotesRequested());
+        final bloc = context.read<NotesBloc>();
+        final result = await context.push<NoteDetailResult>(
+          '/notes/detail',
+          extra: note,
+        );
+        switch (result) {
+          case NoteDetailResult.edited:
+            bloc.add(const NotesRequested());
+          case NoteDetailResult.deleted:
+            bloc.add(NoteDeleteRequested(note));
+          case null:
+            break;
         }
       },
       child: _card(),

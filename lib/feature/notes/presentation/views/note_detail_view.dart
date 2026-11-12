@@ -7,6 +7,15 @@ import '../../../../shared/widgets/base_scaffold.dart';
 import '../../../profile/data/profile_store.dart';
 import '../../domain/note.dart';
 
+/// 상세 화면을 닫으며 목록에 알리는 결과. 결과가 없으면 목록은 그대로 둔다.
+enum NoteDetailResult {
+  /// 편집해 저장했다. 목록은 다시 읽는다.
+  edited,
+
+  /// 삭제를 확인했다. 목록이 지운다(실패하면 되돌리고 알린다).
+  deleted,
+}
+
 /// 회의록 상세 화면.
 ///
 /// Figma `App / Note Detail (회의록)` 스펙에 맞춘 다크 전용 레이아웃.
@@ -35,13 +44,31 @@ class NoteDetailView extends StatefulWidget {
 class _NoteDetailViewState extends State<NoteDetailView> {
   late Note _note = widget.note;
 
-  /// 내가 작성한 회의록일 때만 편집을 허용한다.
+  /// 내가 작성한 회의록일 때만 편집·삭제를 허용한다.
   bool get _isMine =>
       _note.author.authorId == ProfileStore.instance.currentUserId;
 
-  /// 이 화면에서 편집해 저장했는지. 그랬다면 닫을 때 고친 회의록을 돌려줘서
-  /// 목록이 그때만 다시 읽게 한다.
+  /// 이 화면에서 편집해 저장했는지. 그랬다면 닫을 때 [NoteDetailResult.edited] 를
+  /// 돌려줘서 목록이 그때만 다시 읽게 한다.
   bool _edited = false;
+
+  /// 확인을 받으면 [NoteDetailResult.deleted] 를 실어 닫는다.
+  ///
+  /// 지우는 일은 목록의 `NotesBloc` 이 맡는다. 목록에서 밀어 지울 때와 같은 길이라,
+  /// 먼저 빼고 실패하면 되돌려 알리는 처리를 한곳에 둔다. 밀기는 스크린 리더로
+  /// 할 수 없어서 이 버튼이 그 대신이기도 하다.
+  Future<void> _confirmDelete() async {
+    final confirmed = await CoworkDialog.show(
+      context,
+      title: '회의록을 삭제할까요?',
+      message: '삭제한 회의록은 되돌릴 수 없어요.',
+      confirmLabel: '삭제',
+      cancelLabel: '취소',
+      confirmColor: CoworkButtonColor.danger,
+    );
+    if (confirmed != true || !mounted) return;
+    Navigator.of(context).pop(NoteDetailResult.deleted);
+  }
 
   Future<void> _openEditor() async {
     final updated = await context.push<Note>('/notes/edit', extra: _note);
@@ -55,12 +82,12 @@ class _NoteDetailViewState extends State<NoteDetailView> {
 
   @override
   Widget build(BuildContext context) {
-    // 뒤로 가기는 결과 없이 닫으므로, 편집했으면 가로채서 고친 회의록을 실어 닫는다.
+    // 뒤로 가기는 결과 없이 닫으므로, 편집했으면 가로채서 결과를 실어 닫는다.
     // 편집하지 않았으면 가로채지 않는다. 가로채는 동안은 iOS 밀어서 닫기가 꺼진다.
     return PopScope<Object?>(
       canPop: !_edited,
       onPopInvokedWithResult: (didPop, _) {
-        if (!didPop) Navigator.of(context).pop(_note);
+        if (!didPop) Navigator.of(context).pop(NoteDetailResult.edited);
       },
       child: _buildPage(context),
     );
@@ -89,6 +116,15 @@ class _NoteDetailViewState extends State<NoteDetailView> {
               color: CoworkIconButtonColor.neutral,
               semanticLabel: '편집',
               onPressed: _openEditor,
+            ),
+          if (_isMine)
+            CoworkIconButton(
+              icon: Icons.delete_outline,
+              size: CoworkIconButtonSize.small,
+              variant: CoworkIconButtonVariant.ghost,
+              color: CoworkIconButtonColor.neutral,
+              semanticLabel: '삭제',
+              onPressed: _confirmDelete,
             ),
         ],
       ),
