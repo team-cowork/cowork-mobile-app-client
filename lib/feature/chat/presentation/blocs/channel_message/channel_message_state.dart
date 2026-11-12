@@ -14,6 +14,9 @@ final class ChannelConversation extends Equatable {
     required this.messages,
     this.hasOlder = false,
     this.loadingOlder = false,
+    this.hasNewer = false,
+    this.loadingNewer = false,
+    this.focusMessageId,
     this.errorMessage,
     this.closedReason,
   });
@@ -30,6 +33,15 @@ final class ChannelConversation extends Equatable {
   /// 이전 메시지를 불러오는 중.
   final bool loadingOlder;
 
+  /// 서버에 더 최근 메시지가 남아 있다. 과거 위치(검색 결과)에서 열었을 때만 true.
+  final bool hasNewer;
+
+  /// 이후 메시지를 불러오는 중.
+  final bool loadingNewer;
+
+  /// 화면이 맞춰 보여 줄 메시지(검색 결과에서 고른 것). 최근 대화로 옮기면 null.
+  final String? focusMessageId;
+
   /// 직전 이전 메시지 불러오기·전송이 실패한 사유. 화면이 한 번 보여 준다.
   final String? errorMessage;
 
@@ -42,6 +54,9 @@ final class ChannelConversation extends Equatable {
     messages: messages,
     hasOlder: hasOlder,
     loadingOlder: loadingOlder,
+    hasNewer: hasNewer,
+    loadingNewer: loadingNewer,
+    focusMessageId: focusMessageId,
     errorMessage: message,
     closedReason: closedReason,
   );
@@ -53,6 +68,9 @@ final class ChannelConversation extends Equatable {
     messages,
     hasOlder,
     loadingOlder,
+    hasNewer,
+    loadingNewer,
+    focusMessageId,
     errorMessage,
     closedReason,
   ];

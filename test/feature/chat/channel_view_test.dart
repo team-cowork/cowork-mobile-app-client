@@ -15,8 +15,10 @@ import 'channel_message_test_server.dart';
 void main() {
   Future<void> pumpChannel(
     WidgetTester tester,
-    FakeMessageGateway gateway,
-  ) async {
+    FakeMessageGateway gateway, {
+    String? focusMessageId,
+    FakeChatSocket? socket,
+  }) async {
     await tester.pumpWidget(
       MultiRepositoryProvider(
         providers: [
@@ -32,7 +34,9 @@ void main() {
           RepositoryProvider.value(
             value: ProfileRepository.withDio(messageDio(gateway, 'user')),
           ),
-          RepositoryProvider<ChatSocket>.value(value: FakeChatSocket()),
+          RepositoryProvider<ChatSocket>.value(
+            value: socket ?? FakeChatSocket(),
+          ),
         ],
         child: MaterialApp.router(
           theme: AppTheme.dark(),
@@ -40,7 +44,8 @@ void main() {
             routes: [
               GoRoute(
                 path: '/',
-                builder: (_, _) => const ChannelView(channelId: 10),
+                builder: (_, _) =>
+                    ChannelView(channelId: 10, focusMessageId: focusMessageId),
               ),
               GoRoute(
                 path: '/chat/channel/:channelId/thread',
@@ -154,5 +159,118 @@ void main() {
 
     expect(find.text('기획서.pdf'), findsOneWidget);
     expect(find.text('2.0 KB'), findsOneWidget);
+  });
+
+  group('검색한 메시지로 열면', () {
+    /// m1(가장 오래됨) ~ m200(가장 최근). 서버처럼 최신순이다.
+    FakeMessageGateway twoHundred() => FakeMessageGateway(
+      messages: [for (var i = 200; i > 0; i--) messageJson('m$i', 2, '메시지 $i')],
+    );
+
+    /// 화면에 실제로 보이는 메시지. 목록이 미리 만들어 둔 화면 밖 줄은 뺀다.
+    Finder visible(String text) => messageText(text).hitTestable();
+
+    testWidgets('그 메시지가 화면에 보인다', (tester) async {
+      await pumpChannel(tester, twoHundred(), focusMessageId: 'm100');
+
+      expect(visible('메시지 100'), findsOneWidget);
+      expect(visible('메시지 150'), findsNothing);
+    });
+
+    testWidgets('그 메시지를 못 찾으면 최근 대화로 열었다고 알린다', (tester) async {
+      await pumpChannel(tester, twoHundred(), focusMessageId: 'gone');
+
+      expect(find.text('메시지를 찾을 수 없어 최근 대화를 보여 드려요.'), findsOneWidget);
+      expect(visible('메시지 200'), findsOneWidget);
+    });
+
+    testWidgets('메시지를 고르지 않으면 최근 메시지가 아래에 보인다', (tester) async {
+      await pumpChannel(tester, twoHundred());
+
+      expect(visible('메시지 200'), findsOneWidget);
+      expect(visible('메시지 100'), findsNothing);
+    });
+
+    testWidgets('그 메시지를 지워도 보던 자리에 머문다', (tester) async {
+      final gateway = FakeMessageGateway(
+        messages: [
+          for (var i = 200; i > 0; i--)
+            messageJson('m$i', i == 100 ? 1 : 2, '메시지 $i'),
+        ],
+      );
+      await pumpChannel(tester, gateway, focusMessageId: 'm100');
+      final newerBefore = tester.getTopLeft(messageText('메시지 101'));
+
+      await tester.longPress(messageText('메시지 100'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('메시지 삭제'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('삭제'));
+      await tester.pumpAndSettle();
+
+      expect(visible('메시지 100'), findsNothing);
+      expect(visible('메시지 99'), findsOneWidget);
+      expect(visible('메시지 101'), findsOneWidget);
+      expect(
+        tester.getTopLeft(messageText('메시지 101')),
+        newerBefore,
+        reason: '지운 줄만 빠지고 그 아래 최근 메시지는 움직이지 않는다',
+      );
+    });
+
+    testWidgets('최근 메시지까지 내리면 새 메시지가 아래 끝에 보인다', (tester) async {
+      final socket = FakeChatSocket();
+      await pumpChannel(
+        tester,
+        twoHundred(),
+        socket: socket,
+        focusMessageId: 'm190',
+      );
+      expect(visible('메시지 190'), findsOneWidget);
+
+      await tester.fling(
+        find.byType(CustomScrollView),
+        const Offset(0, -2000),
+        3000,
+      );
+      await tester.pumpAndSettle();
+      expect(visible('메시지 200'), findsOneWidget);
+
+      socket.push('message', messageJson('m201', 2, '방금 온 메시지'));
+      await tester.pumpAndSettle();
+
+      expect(visible('방금 온 메시지'), findsOneWidget);
+    });
+
+    testWidgets('채널 처음 근처를 열면 채널 첫 메시지가 위 끝에 붙고 그 위로 더 올라가지 않는다', (
+      tester,
+    ) async {
+      await pumpChannel(tester, twoHundred(), focusMessageId: 'm2');
+      final listTop = tester.getTopLeft(find.byType(CustomScrollView)).dy;
+
+      expect(visible('메시지 2'), findsOneWidget);
+      final firstTop = tester.getTopLeft(messageText('메시지 1')).dy;
+      expect(firstTop - listTop, lessThan(40), reason: '첫 메시지 위가 비지 않는다');
+
+      // 더 오래된 쪽으로 끌어도 첫 메시지는 위 끝에 머문다.
+      await tester.drag(find.byType(CustomScrollView), const Offset(0, 300));
+      await tester.pumpAndSettle();
+      expect(tester.getTopLeft(messageText('메시지 1')).dy, firstTop);
+    });
+
+    testWidgets('메시지가 화면보다 적으면 고른 메시지로 열어도 최근 메시지가 아래 끝에 있다', (tester) async {
+      final gateway = FakeMessageGateway(
+        messages: [for (var i = 3; i > 0; i--) messageJson('m$i', 2, '메시지 $i')],
+      );
+      await pumpChannel(tester, gateway, focusMessageId: 'm1');
+      final listBottom = tester.getBottomLeft(find.byType(CustomScrollView)).dy;
+
+      final lastBottom = tester.getBottomLeft(messageText('메시지 3')).dy;
+      expect(
+        listBottom - lastBottom,
+        lessThan(40),
+        reason: '최근 메시지 아래가 비지 않는다',
+      );
+    });
   });
 }

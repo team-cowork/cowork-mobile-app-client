@@ -199,10 +199,28 @@ void main() {
       expect(gateway.calls, ['GET /chat/chat/channels/10/messages?around=m1']);
     });
 
-    test('기준 메시지가 응답에 없으면 실패한다', () async {
+    test('기준 메시지가 채널에 없으면 서버가 404 로 거절한다', () async {
       final gateway = FakeMessageGateway();
 
-      expect(repository(gateway).fetchMessage(10, 'nope'), throwsStateError);
+      await expectLater(
+        repository(gateway).fetchMessage(10, 'nope'),
+        throwsA(
+          isA<DioException>().having(
+            (e) => e.response?.statusCode,
+            'status',
+            404,
+          ),
+        ),
+      );
+    });
+
+    test('서버가 around 를 무시해 기준 메시지가 응답에 없으면 StateError 다', () async {
+      final gateway = FakeMessageGateway()..ignoredCursors = {'around'};
+
+      await expectLater(
+        repository(gateway).fetchMessage(10, 'nope'),
+        throwsStateError,
+      );
     });
   });
 

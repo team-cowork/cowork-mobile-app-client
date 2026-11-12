@@ -8,8 +8,12 @@ import '../feature/chat/presentation/views/thread_view.dart';
 import '../feature/issues/domain/issue.dart';
 import '../feature/issues/presentation/views/issue_detail_view.dart';
 import '../feature/notes/domain/note.dart';
+import '../feature/notes/domain/note_draft.dart';
+import '../feature/notes/domain/note_template.dart';
 import '../feature/notes/presentation/views/note_detail_view.dart';
 import '../feature/notes/presentation/views/note_edit_view.dart';
+import '../feature/notes/presentation/views/note_template_edit_view.dart';
+import '../feature/notes/presentation/views/note_templates_view.dart';
 import '../feature/notifications/presentation/views/notifications_view.dart';
 import '../feature/profile/presentation/views/edit_profile_view.dart';
 import '../feature/search/presentation/views/search_view.dart';
@@ -21,7 +25,11 @@ import 'auth_gate.dart';
 final channelRoute = GoRoute(
   path: '/chat/channel/:channelId',
   redirect: (context, state) => _channelIdOf(state) == null ? '/' : null,
-  builder: (context, state) => ChannelView(channelId: _channelIdOf(state)!),
+  // 검색 결과에서 오면 `messageId` 쿼리로 보여 줄 메시지를 받는다.
+  builder: (context, state) => ChannelView(
+    channelId: _channelIdOf(state)!,
+    focusMessageId: state.uri.queryParameters['messageId'],
+  ),
   routes: [
     // 스레드는 부모 메시지 id 를 쿼리로 받는다. 없으면 채널로 돌려보낸다.
     GoRoute(
@@ -51,11 +59,19 @@ String? _parentMessageIdOf(GoRouterState state) {
   return id == null || id.isEmpty ? null : id;
 }
 
+int? _teamIdOf(GoRouterState state) =>
+    int.tryParse(state.uri.queryParameters['teamId'] ?? '');
+
 final GoRouter appRouter = GoRouter(
   initialLocation: '/',
   routes: [
     GoRoute(path: '/', builder: (context, state) => const AuthGate()),
-    GoRoute(path: '/search', builder: (context, state) => const SearchView()),
+    // 검색은 팀 안으로 범위가 묶여 팀 id 를 쿼리로 받는다. 없으면 홈으로 보낸다.
+    GoRoute(
+      path: '/search',
+      redirect: (context, state) => _teamIdOf(state) == null ? '/' : null,
+      builder: (context, state) => SearchView(teamId: _teamIdOf(state)!),
+    ),
     GoRoute(
       path: '/notifications',
       builder: (context, state) => const NotificationsView(),
@@ -67,6 +83,23 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/notes/edit',
       builder: (context, state) => NoteEditView(note: state.extra! as Note),
+    ),
+    // 새 노트 시트에서 고른 값으로 아직 서버에 없는 회의록을 쓴다.
+    GoRoute(
+      path: '/notes/new',
+      builder: (context, state) =>
+          NoteEditView.create(draft: state.extra! as NoteDraft),
+    ),
+    // extra 는 처음 고를 회의록 채널 id. 회의록 탭에서 열면 없다.
+    GoRoute(
+      path: '/notes/templates',
+      builder: (context, state) =>
+          NoteTemplatesView(channelId: state.extra as int?),
+    ),
+    GoRoute(
+      path: '/notes/templates/edit',
+      builder: (context, state) =>
+          NoteTemplateEditView(template: state.extra! as NoteTemplate),
     ),
     GoRoute(
       path: '/profile/edit',

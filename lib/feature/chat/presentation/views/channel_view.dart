@@ -1,5 +1,9 @@
+import 'dart:async';
+import 'dart:math';
+
 import 'package:cowork_design_system/design_system.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart' show RenderSliver;
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
@@ -15,9 +19,12 @@ import '../blocs/channel_message/channel_message_bloc.dart';
 import '../widgets/chat_message_row.dart';
 
 class ChannelView extends StatelessWidget {
-  const ChannelView({required this.channelId, super.key});
+  const ChannelView({required this.channelId, this.focusMessageId, super.key});
 
   final int channelId;
+
+  /// 열 때 보여 줄 메시지(검색 결과에서 고른 것). 없으면 최근 메시지부터 연다.
+  final String? focusMessageId;
 
   @override
   Widget build(BuildContext context) {
@@ -29,6 +36,7 @@ class ChannelView extends StatelessWidget {
         profileRepository: context.read<ProfileRepository>(),
         socket: context.read<ChatSocket>(),
         lifecycle: appLifecycleStates(),
+        focusMessageId: focusMessageId,
       )..add(const ChannelMessageEvent.requested()),
       errorTitle: '채널을 불러오지 못했어요',
       onRetry: (context) => context.read<ChannelMessageBloc>().add(
@@ -40,14 +48,10 @@ class ChannelView extends StatelessWidget {
             listenWhen: (previous, current) =>
                 current is AsyncSuccess<ChannelConversation> &&
                 current.data.errorMessage != null,
-            listener: (context, state) {
-              final message = (state as AsyncSuccess<ChannelConversation>)
-                  .data
-                  .errorMessage!;
-              ScaffoldMessenger.of(context)
-                ..hideCurrentSnackBar()
-                ..showSnackBar(SnackBar(content: Text(message)));
-            },
+            listener: (context, state) => _notify(
+              context,
+              (state as AsyncSuccess<ChannelConversation>).data.errorMessage!,
+            ),
           ),
           BlocListener<ChannelMessageBloc, ChannelMessageState>(
             listenWhen: (previous, current) =>
@@ -90,6 +94,13 @@ class ChannelView extends StatelessWidget {
     );
   }
 
+  /// 실패·안내 사유를 스낵바로 한 번 알린다.
+  static void _notify(BuildContext context, String message) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(message)));
+  }
+
   /// 채널을 더 볼 수 없게 됐다. 사유를 알리고, 위에 열린 스레드·설정까지 걷어 채널
   /// 화면을 닫는다. 채널로 바로 들어와 돌아갈 곳이 없으면 홈으로 간다.
   static void _close(BuildContext context, String reason) {
@@ -107,62 +118,272 @@ class ChannelView extends StatelessWidget {
   }
 }
 
-/// 최신 메시지가 아래에 붙는 대화 목록. 위 끝 근처까지 올리면 이전 메시지를 부른다.
-class _MessageList extends StatelessWidget {
+/// 최신 메시지가 아래에 붙는 대화 목록. 위 끝 근처까지 올리면 이전 메시지를, 과거
+/// 위치에서 열었으면 아래 끝 근처까지 내릴 때 이후 메시지를 부른다.
+///
+/// 검색 결과로 열면 [ChannelConversation.focusMessageId] 메시지를 기준(`center`)으로
+/// 배치한다. 목록이 화면에 보이는 줄만 만들어서, 멀리 있는 줄은 위치를 알 수 없기
+/// 때문이다. 기준 메시지가 스크롤 0 에 오고, 그보다 최근 메시지는 아래로 이어 붙는다.
+class _MessageList extends StatefulWidget {
   const _MessageList({required this.data});
 
   final ChannelConversation data;
 
-  /// 위 끝에서 이만큼 남으면 미리 이전 메시지를 부른다.
-  static const _loadOlderExtent = 400.0;
+  @override
+  State<_MessageList> createState() => _MessageListState();
+}
+
+class _MessageListState extends State<_MessageList> {
+  /// 위·아래 끝에서 이만큼 남으면 미리 다음 메시지를 부른다.
+  static const _loadMoreExtent = 400.0;
+
+  /// 고른 메시지를 강조해 두는 시간.
+  static const _highlightDuration = Duration(seconds: 2);
+
+  final _controller = ScrollController();
+
+  /// 기준 메시지 묶음의 키. [_olderExtent] 가 그 높이를 읽는다.
+  final _centerKey = GlobalKey();
+
+  /// 이 메시지를 기준으로 배치한다. null 이면 최근 메시지가 아래 끝인 보통 목록이다.
+  String? _centerId;
+
+  /// 스크롤 0 의 위치. 화면 높이에 대한 비율이고 아래 끝이 0 이다. 기준 배치에서
+  /// 오래된 쪽이 화면보다 짧을 때만 올린다([_revealFocus]).
+  double _anchor = 0;
+
+  /// 강조해 보이는 메시지.
+  String? _highlightId;
+  Timer? _highlightTimer;
+
+  ChannelConversation get _data => widget.data;
+
+  @override
+  void initState() {
+    super.initState();
+    // 처음 받은 대화에 실린 알림(고른 메시지를 못 찾음)은 BlocListener 가 받지 못한다.
+    // 리스너는 만들어진 뒤에 바뀐 상태만 듣고, 이 목록은 그 상태로 처음 만들어지기 때문이다.
+    if (_data.errorMessage case final message?) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) ChannelView._notify(context, message);
+      });
+    }
+    final focus = _data.focusMessageId;
+    if (focus == null || _indexOf(focus) == -1) return;
+    _centerId = focus;
+    _highlightId = focus;
+    _highlightTimer = Timer(_highlightDuration, () {
+      if (mounted) setState(() => _highlightId = null);
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) => _revealFocus());
+  }
+
+  @override
+  void didUpdateWidget(_MessageList oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final center = _centerId;
+    if (center == null) return;
+    // 보내려고 최근 대화로 옮겼으면 보통 목록의 아래 끝으로.
+    if (_data.focusMessageId == null) {
+      _showLatest();
+      return;
+    }
+    // 기준 메시지가 지워졌으면 남은 이웃을 새 기준으로 삼아 보던 자리를 지킨다.
+    if (_indexOf(center) == -1) {
+      final neighbor = _survivingNeighbor(oldWidget.data.messages, center);
+      if (neighbor == null) {
+        _showLatest();
+      } else {
+        _centerId = neighbor;
+      }
+    }
+  }
+
+  /// [before] 에서 [removedId] 와 가장 가까운, 지금 목록에도 남은 메시지. 바로 이전
+  /// 메시지를 먼저 찾는다. 기준선(스크롤 0)이 기준 메시지 바로 아래라, 이전 메시지를
+  /// 기준으로 삼으면 그 아래 최근 메시지는 제자리에 있고 위쪽만 지운 줄만큼 내려온다.
+  /// 보통 목록에서 메시지를 지울 때와 같은 모습이다.
+  String? _survivingNeighbor(List<ChatMessage> before, String removedId) {
+    final index = before.indexWhere((message) => message.id == removedId);
+    if (index == -1) return null;
+    for (var i = index - 1; i >= 0; i--) {
+      if (_indexOf(before[i].id) != -1) return before[i].id;
+    }
+    for (var i = index + 1; i < before.length; i++) {
+      if (_indexOf(before[i].id) != -1) return before[i].id;
+    }
+    return null;
+  }
+
+  @override
+  void dispose() {
+    _highlightTimer?.cancel();
+    _controller.dispose();
+    super.dispose();
+  }
+
+  int _indexOf(String messageId) =>
+      _data.messages.indexWhere((message) => message.id == messageId);
+
+  /// 기준 메시지가 화면 아래쪽 1/3 높이에 오도록 최근 쪽으로 조금 내린다. 최근 메시지가
+  /// 적으면 아래 끝에서 멈춘다.
+  ///
+  /// 채널 처음 근처를 열면 기준과 그 이전 메시지가 화면보다 짧다. 기준선이 화면 아래
+  /// 끝이면 위로 올릴 수 있는 끝(스크롤 0)에서 그 위가 빈다. 그럴 땐 기준선을 그 길이만큼
+  /// 올려, 스크롤 0 에서 채널 첫 메시지가 화면 위 끝에 오게 한다. 메시지가 모두 화면에
+  /// 들어가면 보통 목록처럼 최근 메시지가 아래 끝에 오게 올린다. 어느 쪽이든 스크롤
+  /// 범위가 보통 목록과 같아져 위·아래로 빈 곳이 생기지 않는다.
+  void _revealFocus() {
+    if (!mounted || !_controller.hasClients) return;
+    final position = _controller.position;
+    final viewport = position.viewportDimension;
+    final older = _olderExtent();
+    if (!_data.hasOlder && older != null && older < viewport) {
+      // 기준선이 아래 끝(0)이면 최소 스크롤 위치가 -(최근 쪽 높이)다.
+      final newer = -position.minScrollExtent;
+      setState(() {
+        _anchor = older + newer <= viewport
+            ? newer / viewport
+            : 1 - older / viewport;
+      });
+      return;
+    }
+    _controller.jumpTo(max(position.minScrollExtent, -viewport / 3));
+  }
+
+  /// 기준 메시지와 그 이전 메시지, 위 여백을 합친 높이. 화면에 다 그려지지 않았으면
+  /// 목록이 추정한 값이다.
+  double? _olderExtent() {
+    final sliver = _centerKey.currentContext?.findRenderObject();
+    if (sliver is! RenderSliver) return null;
+    final extent = sliver.geometry?.scrollExtent;
+    return extent == null ? null : extent + AppSpacing.s16;
+  }
+
+  /// 기준 배치를 풀고 최근 메시지가 아래 끝인 보통 목록으로 돌아간다. 보통 목록은
+  /// 스크롤 0 이 아래 끝이다. 다음 배치에 바로 쓰이도록 알림 없이 위치만 고친다.
+  void _showLatest() {
+    _centerId = null;
+    _anchor = 0;
+    if (_controller.hasClients) _controller.position.correctPixels(0);
+  }
+
+  bool _onScroll(ScrollNotification notification) {
+    final metrics = notification.metrics;
+    final bloc = context.read<ChannelMessageBloc>();
+    if (_data.hasOlder &&
+        !_data.loadingOlder &&
+        metrics.extentAfter < _loadMoreExtent) {
+      bloc.add(const ChannelMessageEvent.olderRequested());
+    }
+    if (_data.hasNewer &&
+        !_data.loadingNewer &&
+        metrics.extentBefore < _loadMoreExtent) {
+      bloc.add(const ChannelMessageEvent.newerRequested());
+    }
+    // 최근 메시지까지 다 읽고 아래 끝에 닿으면 보통 목록으로 바꾼다. 기준 배치에서는
+    // 새 메시지가 화면 아래 밖에 붙어, 아래 끝을 보고 있어도 보이지 않기 때문이다.
+    // 아래 끝에서는 두 배치가 같은 모습이라 바꿔도 화면이 움직이지 않는다.
+    if (_centerId != null &&
+        !_data.hasNewer &&
+        notification is ScrollEndNotification &&
+        metrics.pixels <= metrics.minScrollExtent) {
+      setState(_showLatest);
+    }
+    return false;
+  }
 
   @override
   Widget build(BuildContext context) {
-    final messages = data.messages;
+    final messages = _data.messages;
+    final center = _centerId == null ? -1 : _indexOf(_centerId!);
+    const edge = SliverToBoxAdapter(child: SizedBox(height: AppSpacing.s16));
+    const horizontal = EdgeInsets.symmetric(horizontal: AppSpacing.s12);
+    const gap = SizedBox(height: AppSpacing.s18);
 
     return NotificationListener<ScrollNotification>(
-      onNotification: (notification) {
-        if (data.hasOlder &&
-            !data.loadingOlder &&
-            notification.metrics.extentAfter < _loadOlderExtent) {
-          context.read<ChannelMessageBloc>().add(
-            const ChannelMessageEvent.olderRequested(),
-          );
-        }
-        return false;
-      },
-      child: ListView.separated(
+      onNotification: _onScroll,
+      child: CustomScrollView(
+        controller: _controller,
         reverse: true,
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.s12,
-          vertical: AppSpacing.s16,
-        ),
-        itemCount: messages.length,
-        separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.s18),
-        itemBuilder: (context, index) => Padding(
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s4),
-          child: _messageRow(context, messages[messages.length - 1 - index]),
-        ),
+        anchor: _anchor,
+        center: center == -1 ? null : _centerKey,
+        slivers: center == -1
+            ? [
+                edge,
+                SliverPadding(
+                  padding: horizontal,
+                  sliver: SliverList.separated(
+                    itemCount: messages.length,
+                    separatorBuilder: (_, _) => gap,
+                    itemBuilder: (context, index) =>
+                        _row(context, messages[messages.length - 1 - index]),
+                  ),
+                ),
+                edge,
+              ]
+            : [
+                edge,
+                // 기준보다 최근 메시지. 기준 바로 아래부터 아래로 이어진다.
+                SliverPadding(
+                  padding: horizontal,
+                  sliver: SliverList.builder(
+                    itemCount: messages.length - 1 - center,
+                    itemBuilder: (context, index) => Padding(
+                      padding: const EdgeInsets.only(top: AppSpacing.s18),
+                      child: _row(context, messages[center + 1 + index]),
+                    ),
+                  ),
+                ),
+                // 기준 메시지와 그 이전 메시지. 기준부터 위로 이어진다.
+                SliverPadding(
+                  key: _centerKey,
+                  padding: horizontal,
+                  sliver: SliverList.separated(
+                    itemCount: center + 1,
+                    separatorBuilder: (_, _) => gap,
+                    itemBuilder: (context, index) =>
+                        _row(context, messages[center - index]),
+                  ),
+                ),
+                edge,
+              ],
       ),
     );
   }
 
-  Widget _messageRow(
-    BuildContext context,
-    ChatMessage message,
-  ) => ChatMessageRow(
-    message: message,
-    onTap: () => context.push(
-      Uri(
-        path:
-            '/chat/channel/${context.read<ChannelMessageBloc>().channelId}/thread',
-        queryParameters: {'parentMessageId': message.id},
-      ).toString(),
-    ),
-    onLongPress: message.editable
-        ? () => _showMessageActions(context, message)
-        : null,
-  );
+  Widget _row(BuildContext context, ChatMessage message) {
+    final row = ChatMessageRow(
+      message: message,
+      onTap: () => context.push(
+        Uri(
+          path:
+              '/chat/channel/${context.read<ChannelMessageBloc>().channelId}/thread',
+          queryParameters: {'parentMessageId': message.id},
+        ).toString(),
+      ),
+      onLongPress: message.editable
+          ? () => _showMessageActions(context, message)
+          : null,
+    );
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s4),
+      // 강조는 고른 메시지 한 줄에만 하므로 그 줄만 감싼다. 강조가 끝나도 감싼 채로
+      // 두어야 배경이 서서히 사라진다.
+      child: message.id == _data.focusMessageId
+          ? AnimatedContainer(
+              duration: const Duration(milliseconds: 400),
+              decoration: BoxDecoration(
+                color: message.id == _highlightId
+                    ? AppColors.amber400.withValues(alpha: 0.16)
+                    : AppColors.amber400.withValues(alpha: 0),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: row,
+            )
+          : row,
+    );
+  }
 
   /// 내 메시지를 길게 눌렀을 때. 고치거나 지울지 고르게 한다.
   static Future<void> _showMessageActions(
