@@ -180,6 +180,20 @@ void main() {
       ]);
     });
 
+    test('서버가 before 를 무시해 같은 페이지만 되풀이해도 멈춘다', () async {
+      final gateway = FakeMessageGateway(
+        replies: [
+          for (var i = 150; i > 0; i--)
+            messageJson('r$i', 2, '답글 $i', parentMessageId: 'm1'),
+        ],
+      )..ignoredCursors = {'before'};
+
+      final replies = await repository(gateway).fetchReplies(10, 'm1');
+
+      expect(replies, hasLength(MessageRepository.pageSize));
+      expect(gateway.calls, hasLength(2));
+    });
+
     test('답글이 없으면 한 번만 읽고 빈 목록을 돌려준다', () async {
       final gateway = FakeMessageGateway();
 

@@ -75,11 +75,14 @@ class MessageRepository {
 
   /// [parentMessageId] 메시지의 스레드 답글 전부를 최신순으로. 한 번에 [pageSize] 개씩
   /// 오므로, 꽉 찬 동안 더 이전 답글을 이어서 읽는다.
+  ///
+  /// 서버가 `before` 를 무시해 같은 페이지만 되풀이하면 새 답글이 없는 페이지에서 멈춘다.
   Future<List<MessageResponse>> fetchReplies(
     int channelId,
     String parentMessageId,
   ) async {
     final replies = <MessageResponse>[];
+    final seen = <String>{};
     String? before;
     while (true) {
       final page = await fetchMessages(
@@ -87,17 +90,24 @@ class MessageRepository {
         before: before,
         parentMessageId: parentMessageId,
       );
-      replies.addAll(page);
-      if (page.length < pageSize) return replies;
+      final added = [
+        for (final reply in page)
+          if (seen.add(reply.id)) reply,
+      ];
+      replies.addAll(added);
+      if (page.length < pageSize || added.isEmpty) return replies;
       before = page.last.id;
     }
   }
 
   /// [messageId] 메시지 하나. 서버에 단건 조회가 없어, 그 메시지를 기준으로 앞뒤를
-  /// 읽어 그중에서 찾는다.
+  /// 읽어 그중에서 찾는다. 응답에 없으면 [StateError].
   Future<MessageResponse> fetchMessage(int channelId, String messageId) async {
     final around = await fetchMessages(channelId, around: messageId);
-    return around.firstWhere((message) => message.id == messageId);
+    return around.firstWhere(
+      (message) => message.id == messageId,
+      orElse: () => throw StateError('메시지 $messageId 가 응답에 없다'),
+    );
   }
 
   /// 메시지를 보낸다. 서버는 큐에 넣고 바로 돌아오고, 저장된 메시지는 소켓으로 온다.
