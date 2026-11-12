@@ -11,6 +11,8 @@ class MessageThread extends Equatable {
 
   final String channelName;
   final ChatMessage rootMessage;
+
+  /// 시간 오름차순. 오래된 답글이 앞에 온다.
   final List<ChatMessage> replies;
 
   @override

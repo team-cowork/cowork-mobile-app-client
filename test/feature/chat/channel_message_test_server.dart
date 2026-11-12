@@ -7,13 +7,19 @@ import 'package:dio/dio.dart';
 /// 채널 대화 테스트용 가짜 게이트웨이. 서비스 prefix(`/chat`, `/channel`, `/user`)로
 /// 요청을 가르고, 받은 요청을 `METHOD 경로` 로 적어 둔다.
 class FakeMessageGateway implements HttpClientAdapter {
-  FakeMessageGateway({List<Map<String, dynamic>>? messages})
-    : messages =
-          messages ??
-          [messageJson('m2', 2, '두 번째'), messageJson('m1', 3, '첫 번째')];
+  FakeMessageGateway({
+    List<Map<String, dynamic>>? messages,
+    List<Map<String, dynamic>>? replies,
+  }) : messages =
+           messages ??
+           [messageJson('m2', 2, '두 번째'), messageJson('m1', 3, '첫 번째')],
+       replies = replies ?? [];
 
   /// 채널 10 의 메시지. 서버처럼 최신순이다.
   final List<Map<String, dynamic>> messages;
+
+  /// `parentMessageId` 로 읽는 스레드 답글. 서버처럼 최신순이다.
+  final List<Map<String, dynamic>> replies;
 
   final users = <int, String>{1: '나', 2: '도윤', 3: '서연', 4: '민재'};
 
@@ -80,7 +86,9 @@ class FakeMessageGateway implements HttpClientAdapter {
     if (around != null && _indexOf(around) == -1) {
       return _json({'message': '메시지를 찾을 수 없습니다'}, 404);
     }
-    final page = _page(query);
+    final page = query.containsKey('parentMessageId')
+        ? _repliesPage(query['before'])
+        : _page(query);
     await listGate;
     for (final cursor in query.keys) {
       await cursorGates[cursor];
@@ -89,6 +97,14 @@ class FakeMessageGateway implements HttpClientAdapter {
   }
 
   int _indexOf(String id) => messages.indexWhere((m) => m['_id'] == id);
+
+  /// 스레드 답글 한 페이지. `before` 커서만 안다.
+  List<Map<String, dynamic>> _repliesPage(String? before) {
+    final start = before == null
+        ? 0
+        : replies.indexWhere((m) => m['_id'] == before) + 1;
+    return replies.skip(start).take(MessageRepository.pageSize).toList();
+  }
 
   List<Map<String, dynamic>> _page(Map<String, String> query) {
     const size = MessageRepository.pageSize;
@@ -133,6 +149,7 @@ Map<String, dynamic> messageJson(
   String content, {
   int channelId = 10,
   String? clientMessageId,
+  String? parentMessageId,
   String type = 'TEXT',
   String createdAt = '2026-10-23T05:00:00.000Z',
 }) => {
@@ -142,7 +159,7 @@ Map<String, dynamic> messageJson(
   'authorId': authorId,
   'content': content,
   'type': type,
-  'parentMessageId': null,
+  'parentMessageId': parentMessageId,
   'clientMessageId': clientMessageId,
   'createdAt': createdAt,
 };

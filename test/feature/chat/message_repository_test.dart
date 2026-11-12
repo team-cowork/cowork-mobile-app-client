@@ -7,6 +7,8 @@ import 'package:cowork_app/feature/chat/data/repositories/message_repository.dar
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'channel_message_test_server.dart';
+
 /// 받은 요청을 `METHOD 경로?쿼리` 와 본문으로 적어 두고 빈 성공 응답을 주는 서버.
 class _RecordingServer implements HttpClientAdapter {
   final calls = <String>[];
@@ -78,6 +80,25 @@ void main() {
     });
   });
 
+  test('답글 전송은 부모 메시지 id 를 함께 보낸다', () async {
+    final server = _RecordingServer();
+
+    await _repository(server).sendMessage(
+      10,
+      const SendMessageRequest(
+        content: '답글',
+        clientMessageId: 'c-1',
+        parentMessageId: 'm1',
+      ),
+    );
+
+    expect(server.bodies['POST /chat/chat/channels/10/messages'], {
+      'content': '답글',
+      'clientMessageId': 'c-1',
+      'parentMessageId': 'm1',
+    });
+  });
+
   test('수정은 PATCH 로 바꿀 내용을 보낸다', () async {
     final server = _RecordingServer();
 
@@ -119,6 +140,102 @@ void main() {
       'GET /chat/chat/channels/10/messages',
       'GET /chat/chat/channels/10/messages?before=m5',
     ]);
+  });
+
+  test('답글 목록은 parentMessageId 를 쿼리로 붙인다', () async {
+    final server = _RecordingServer();
+
+    await _repository(
+      server,
+    ).fetchMessages(10, before: 'm5', parentMessageId: 'm1');
+
+    expect(server.calls, [
+      'GET /chat/chat/channels/10/messages?before=m5&parentMessageId=m1',
+    ]);
+  });
+
+  group('스레드', () {
+    MessageRepository repository(FakeMessageGateway gateway) =>
+        MessageRepository.withDio(
+          chat: messageDio(gateway, 'chat'),
+          user: messageDio(gateway, 'user'),
+        );
+
+    test('답글은 한 페이지가 꽉 차는 동안 더 이전 답글을 이어서 읽는다', () async {
+      final gateway = FakeMessageGateway(
+        replies: [
+          for (var i = 150; i > 0; i--)
+            messageJson('r$i', 2, '답글 $i', parentMessageId: 'm1'),
+        ],
+      );
+
+      final replies = await repository(gateway).fetchReplies(10, 'm1');
+
+      expect(replies, hasLength(150));
+      expect(replies.first.id, 'r150');
+      expect(replies.last.id, 'r1');
+      expect(gateway.calls, [
+        'GET /chat/chat/channels/10/messages?parentMessageId=m1',
+        'GET /chat/chat/channels/10/messages?before=r51&parentMessageId=m1',
+      ]);
+    });
+
+    test('서버가 before 를 무시해 같은 페이지만 되풀이해도 멈춘다', () async {
+      final gateway = FakeMessageGateway(
+        replies: [
+          for (var i = 150; i > 0; i--)
+            messageJson('r$i', 2, '답글 $i', parentMessageId: 'm1'),
+        ],
+      )..ignoredCursors = {'before'};
+
+      final replies = await repository(gateway).fetchReplies(10, 'm1');
+
+      expect(replies, hasLength(MessageRepository.pageSize));
+      expect(gateway.calls, hasLength(2));
+    });
+
+    test('답글이 없으면 한 번만 읽고 빈 목록을 돌려준다', () async {
+      final gateway = FakeMessageGateway();
+
+      final replies = await repository(gateway).fetchReplies(10, 'm1');
+
+      expect(replies, isEmpty);
+      expect(gateway.calls, hasLength(1));
+    });
+
+    test('메시지 하나는 그 메시지 기준 앞뒤를 읽어 id 로 찾는다', () async {
+      final gateway = FakeMessageGateway();
+
+      final message = await repository(gateway).fetchMessage(10, 'm1');
+
+      expect(message.id, 'm1');
+      expect(message.content, '첫 번째');
+      expect(gateway.calls, ['GET /chat/chat/channels/10/messages?around=m1']);
+    });
+
+    test('기준 메시지가 채널에 없으면 서버가 404 로 거절한다', () async {
+      final gateway = FakeMessageGateway();
+
+      await expectLater(
+        repository(gateway).fetchMessage(10, 'nope'),
+        throwsA(
+          isA<DioException>().having(
+            (e) => e.response?.statusCode,
+            'status',
+            404,
+          ),
+        ),
+      );
+    });
+
+    test('서버가 around 를 무시해 기준 메시지가 응답에 없으면 StateError 다', () async {
+      final gateway = FakeMessageGateway()..ignoredCursors = {'around'};
+
+      await expectLater(
+        repository(gateway).fetchMessage(10, 'nope'),
+        throwsStateError,
+      );
+    });
   });
 
   test('작성자 이름은 중복을 빼고 100명씩 나눠 읽는다', () async {

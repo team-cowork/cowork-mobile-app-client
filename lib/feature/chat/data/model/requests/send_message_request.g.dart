@@ -10,4 +10,5 @@ Map<String, dynamic> _$SendMessageRequestToJson(_SendMessageRequest instance) =>
     <String, dynamic>{
       'content': instance.content,
       'clientMessageId': instance.clientMessageId,
+      'parentMessageId': ?instance.parentMessageId,
     };
