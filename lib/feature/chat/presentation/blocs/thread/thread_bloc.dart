@@ -1,4 +1,3 @@
-import 'package:dio/dio.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -22,7 +21,7 @@ class ThreadBloc extends Bloc<ThreadEvent, ThreadState> {
       emit(ThreadState.success(ThreadStore.instance.thread));
     } catch (e, s) {
       Logger.e('스레드 조회 실패', tag: 'Thread', error: e, stackTrace: s);
-      emit(ThreadState.failure(e is DioException ? dioErrorMessage(e) : null));
+      emit(ThreadState.failure(failureMessageOf(e)));
     }
   }
 }

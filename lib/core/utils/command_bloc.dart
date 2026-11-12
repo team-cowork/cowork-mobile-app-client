@@ -1,4 +1,3 @@
-import 'package:dio/dio.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -39,7 +38,7 @@ class CommandBloc<A, T> extends Bloc<CommandEvent<A>, AsyncState<T>> {
       emit(AsyncState.success(await _action(event.argument)));
     } catch (e, s) {
       Logger.e('요청 실패', tag: _tag, error: e, stackTrace: s);
-      emit(AsyncState.failure(e is DioException ? dioErrorMessage(e) : null));
+      emit(AsyncState.failure(failureMessageOf(e)));
     }
   }
 }

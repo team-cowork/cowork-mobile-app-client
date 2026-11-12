@@ -1,4 +1,3 @@
-import 'package:dio/dio.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -32,11 +31,7 @@ class ChannelMembersBloc
       );
     } catch (e, s) {
       Logger.e('채널 멤버 조회 실패', tag: 'ChannelMembers', error: e, stackTrace: s);
-      emit(
-        ChannelMembersState.failure(
-          e is DioException ? dioErrorMessage(e) : null,
-        ),
-      );
+      emit(ChannelMembersState.failure(failureMessageOf(e)));
     }
   }
 }

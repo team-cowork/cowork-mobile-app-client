@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:dio/dio.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -179,9 +178,7 @@ class SearchBloc extends Bloc<SearchEvent, SearchState> {
       Logger.e('$label 실패', tag: 'Search', error: e, stackTrace: s);
       // Dio 밖의 실패는 보여 줄 사유가 없어 null 로 두고 화면 기본 문구를 쓴다.
       if (isCurrent()) {
-        apply(
-          AsyncState.failure(e is DioException ? dioErrorMessage(e) : null),
-        );
+        apply(AsyncState.failure(failureMessageOf(e)));
       }
       return;
     }

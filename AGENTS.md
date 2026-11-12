@@ -103,14 +103,14 @@ type(scope): 설명
 - Bloc 주입은 `BlocProvider`로 한다. 별도 DI 컨테이너는 쓰지 않는다.
 - 백엔드 연동 전까지 데이터는 `data/*_store.dart` 인메모리 싱글턴에 둔다. 실제 API 연동 시 이 싱글턴을 리포지토리로 교체한다.
 - 에러 처리: 저장소는 예외를 사용자 문구로 바꾸지 않고 그대로 던진다(`DioException` 등). Dio 밖의 실패는 문구 없이 종류만 담은 예외로 던진다(예: `AuthFailure`). 서버가 준 사유처럼 그대로 보여 줄 값만 필드(예: `AuthFailure.detail`)로 넘기고, 비어 있으면 넘기지 않는다. Bloc 이 잡아 `Logger.e` 로 남긴 뒤 문구로 바꾼다.
-  - `DioException` 문구는 `dioErrorMessage`(`core/network/http_error_message.dart`) 하나로 만든다. Bloc 은 그 밖의 실패에 쓸 화면별 기본 문구만 정한다(`AsyncState` 는 null 이면 화면 기본 문구).
+  - `DioException` 문구는 `dioErrorMessage`(`core/network/http_error_message.dart`) 하나로 만들고, Bloc 은 `failureMessageOf(e, 기본 문구)` 로 부른다. Bloc 은 그 밖의 실패에 쓸 화면별 기본 문구만 정한다(`AsyncState` 는 null 이면 화면 기본 문구). `e is DioException ? ... : ...` 를 Bloc 마다 다시 쓰지 않는다. 예외 종류별로 갈라야 하면(예: `AuthFailure`) `switch` 안에서 `DioException() => dioErrorMessage(e)` 를 쓴다.
   - Bloc 에서 `catch (_)` 로 사유와 로그를 버리지 않는다. 실패를 일부러 무시하는 곳(예: 오류 본문 JSON 파싱)은 주석으로 이유를 남긴다.
   - 예외: Bloc 을 거치지 않는 경로(인터셉터·소켓이 부르는 `AuthRepository.restoreSession` 등)는 저장소에서 로그를 남기고 처리한다.
 
   ```dart
   } catch (e, s) {
     Logger.e('프로필 조회 실패', tag: 'Profile', error: e, stackTrace: s);
-    emit(ProfileState.failure(e is DioException ? dioErrorMessage(e) : null));
+    emit(ProfileState.failure(failureMessageOf(e)));
   }
   ```
 
