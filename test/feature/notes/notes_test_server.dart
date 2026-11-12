@@ -26,7 +26,7 @@ import 'package:go_router/go_router.dart';
 /// 에 회의록 셋을 담아 둔다. 작성·수정·템플릿 변경도 이 목록에 반영해, 화면이 저장한
 /// 뒤 다시 읽어도 같은 서버를 보게 한다. 게이트웨이처럼 서비스 prefix(`/team`,
 /// `/channel`, `/user`)로 요청을 가르고, 모르는 경로는 404 로 답해 다른 서비스로 간
-/// 요청을 드러낸다. 작성 실패는 [failCreate] 로 건다.
+/// 요청을 드러낸다. 작성·삭제 실패는 [failCreate]·[failDelete] 로 건다.
 class FakeNotesServer implements HttpClientAdapter {
   final List<Map<String, dynamic>> notes = _seedNotes();
 
@@ -41,6 +41,9 @@ class FakeNotesServer implements HttpClientAdapter {
 
   /// 걸어 두면 회의록 작성을 이 (상태 코드, 사유)로 거절한다.
   (int, String)? failCreate;
+
+  /// 걸어 두면 회의록 삭제를 이 (상태 코드, 사유)로 거절한다.
+  (int, String)? failDelete;
 
   /// 채널 id → 끝낼 때까지 그 채널의 템플릿 목록 응답을 붙잡아 둘 completer.
   final Map<int, Completer<void>> holdTemplates = {};
@@ -82,7 +85,16 @@ class FakeNotesServer implements HttpClientAdapter {
 
     if (_notesPath.firstMatch(path) case final match?) {
       final channelId = int.parse(match[1]!);
-      if (match[2] case final id?) return _ok(_update(int.parse(id), body));
+      if (match[2] case final id?) {
+        if (method == 'DELETE') {
+          if (failDelete case (final statusCode, final message)) {
+            return _json({'message': message}, statusCode);
+          }
+          notes.removeWhere((note) => note['id'] == int.parse(id));
+          return _noContent();
+        }
+        return _ok(_update(int.parse(id), body));
+      }
       if (method == 'GET') {
         return _ok([
           for (final note in notes)
