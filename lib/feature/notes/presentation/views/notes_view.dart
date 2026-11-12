@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cowork_design_system/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -8,6 +10,7 @@ import '../../../../core/utils/command_bloc.dart';
 import '../../../../shared/widgets/bloc_scaffold.dart';
 import '../../../../shared/widgets/create_sheet.dart';
 import '../../../channel/domain/channel.dart';
+import '../../../profile/data/profile_store.dart';
 import '../../data/repositories/notes_repository.dart';
 import '../../data/repositories/note_template_repository.dart';
 import '../../domain/note.dart';
@@ -40,31 +43,31 @@ class NotesView extends StatelessWidget {
           _NewNoteButton(),
         ],
       ),
-      builder: (context, notes) {
-        if (notes.isEmpty) {
-          return const Center(
-            child: Padding(
-              padding: EdgeInsets.all(AppSpacing.s16),
-              child: CoworkEmptyState(
-                icon: Icons.description_outlined,
-                title: '아직 회의록이 없어요',
-                description: '첫 회의록을 작성해 팀 기록을 남겨보세요.',
+      builder: (context, notes) => _FailureSnackBar(
+        child: notes.isEmpty
+            ? const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(AppSpacing.s16),
+                  child: CoworkEmptyState(
+                    icon: Icons.description_outlined,
+                    title: '아직 회의록이 없어요',
+                    description: '첫 회의록을 작성해 팀 기록을 남겨보세요.',
+                  ),
+                ),
+              )
+            : ListView.separated(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.s16,
+                  AppSpacing.s12,
+                  AppSpacing.s16,
+                  AppSpacing.s16,
+                ),
+                itemCount: notes.length,
+                separatorBuilder: (_, __) =>
+                    const SizedBox(height: AppSpacing.s10),
+                itemBuilder: (_, i) => _NoteCard(note: notes[i]),
               ),
-            ),
-          );
-        }
-        return ListView.separated(
-          padding: const EdgeInsets.fromLTRB(
-            AppSpacing.s16,
-            AppSpacing.s12,
-            AppSpacing.s16,
-            AppSpacing.s16,
-          ),
-          itemCount: notes.length,
-          separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.s10),
-          itemBuilder: (_, i) => _NoteCard(note: notes[i]),
-        );
-      },
+      ),
     );
   }
 }
@@ -136,6 +139,66 @@ class _NewNoteButton extends StatelessWidget {
   }
 }
 
+/// [NotesBloc.failures] 를 SnackBar 로 띄운다. 삭제가 실패해 카드가 되돌아올 때 쓴다.
+///
+/// 마지막 카드를 지우면 목록이 빈 화면으로 바뀌므로, 구독이 끊기지 않게 목록과
+/// 빈 화면을 함께 감싼다.
+class _FailureSnackBar extends StatefulWidget {
+  const _FailureSnackBar({required this.child});
+
+  final Widget child;
+
+  @override
+  State<_FailureSnackBar> createState() => _FailureSnackBarState();
+}
+
+class _FailureSnackBarState extends State<_FailureSnackBar> {
+  late final StreamSubscription<String> _subscription;
+
+  @override
+  void initState() {
+    super.initState();
+    _subscription = context.read<NotesBloc>().failures.listen((message) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
+    });
+  }
+
+  @override
+  void dispose() {
+    _subscription.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
+}
+
+/// 카드를 밀 때 뒤에 드러나는 삭제 배경.
+class _DeleteBackground extends StatelessWidget {
+  const _DeleteBackground();
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Container(
+      alignment: Alignment.centerRight,
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s20),
+      decoration: BoxDecoration(
+        color: colorScheme.error,
+        borderRadius: BorderRadius.circular(AppRadius.r12),
+      ),
+      child: Icon(
+        Icons.delete_outline,
+        color: colorScheme.onError,
+        semanticLabel: '삭제',
+      ),
+    );
+  }
+}
+
 /// 회의록 목록의 카드 한 장.
 ///
 /// 제목 + 태그 배지 / 요약 / 작성자·날짜로 구성된다.
@@ -145,9 +208,13 @@ class _NoteCard extends StatelessWidget {
 
   final Note note;
 
+  /// 서버는 작성자가 아니면 삭제를 403 으로 거절하므로, 내 회의록만 밀 수 있다.
+  bool get _isMine =>
+      note.author.authorId == ProfileStore.instance.currentUserId;
+
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    final card = GestureDetector(
       behavior: HitTestBehavior.opaque,
       // 상세에서 편집했을 때만 고친 회의록이 돌아온다. 그때만 목록을 다시 불러온다.
       onTap: () async {
@@ -157,6 +224,26 @@ class _NoteCard extends StatelessWidget {
         }
       },
       child: _card(),
+    );
+    if (!_isMine) return card;
+
+    // 밀어낸 카드는 곧바로 목록에서 빠져야 한다. 그래서 확인만 받고, 서버 요청은
+    // Bloc 이 목록에서 먼저 뺀 뒤 보낸다(실패하면 되돌린다).
+    return Dismissible(
+      key: ValueKey(note.id),
+      direction: DismissDirection.endToStart,
+      background: const _DeleteBackground(),
+      confirmDismiss: (_) => CoworkDialog.show(
+        context,
+        title: '회의록을 삭제할까요?',
+        message: '삭제한 회의록은 되돌릴 수 없어요.',
+        confirmLabel: '삭제',
+        cancelLabel: '취소',
+        confirmColor: CoworkButtonColor.danger,
+      ),
+      onDismissed: (_) =>
+          context.read<NotesBloc>().add(NoteDeleteRequested(note)),
+      child: card,
     );
   }
 

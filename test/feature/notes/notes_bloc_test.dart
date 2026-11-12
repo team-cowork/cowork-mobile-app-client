@@ -6,14 +6,23 @@ import 'package:cowork_app/feature/notes/domain/note.dart';
 import 'package:cowork_app/feature/notes/presentation/blocs/notes/notes_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-/// 조회마다 completer 를 하나씩 내주고, 언제 어떤 결과로 끝낼지는 테스트가 정한다.
+/// 조회·삭제마다 completer 를 하나씩 내주고, 언제 어떤 결과로 끝낼지는 테스트가
+/// 정한다.
 class _HeldNotes extends Fake implements NotesRepository {
   final List<Completer<List<Note>>> calls = [];
+  final List<Completer<void>> deletes = [];
 
   @override
   Future<List<Note>> fetchNotes() {
     final call = Completer<List<Note>>();
     calls.add(call);
+    return call.future;
+  }
+
+  @override
+  Future<void> deleteNote(Note note) {
+    final call = Completer<void>();
+    deletes.add(call);
     return call.future;
   }
 }
@@ -106,5 +115,71 @@ void main() {
     repository.calls.last.completeError(Exception('네트워크'));
     await pumpEventQueue();
     expect(bloc.state, isA<AsyncFailure<List<Note>>>());
+  });
+
+  group('삭제', () {
+    late List<String> failures;
+
+    setUp(() {
+      failures = [];
+      bloc.failures.listen(failures.add);
+    });
+
+    test('서버 응답을 기다리지 않고 목록에서 먼저 뺀다', () async {
+      await loaded(['하나', '둘', '셋']);
+
+      bloc.add(NoteDeleteRequested(_note('둘')));
+      await pumpEventQueue();
+      expect(_titles(bloc.state), ['하나', '셋']);
+
+      repository.deletes.last.complete();
+      await pumpEventQueue();
+      expect(_titles(bloc.state), ['하나', '셋']);
+      expect(failures, isEmpty);
+    });
+
+    test('지우고 나면 로딩 없이 다시 읽어 서버 목록으로 맞춘다', () async {
+      await loaded(['하나', '둘', '셋']);
+      final readsBefore = repository.calls.length;
+
+      bloc.add(NoteDeleteRequested(_note('둘')));
+      await pumpEventQueue();
+      repository.deletes.last.complete();
+      await pumpEventQueue();
+      expect(repository.calls.length, readsBefore + 1);
+
+      // 그사이 다른 사람이 '넷'을 썼다.
+      repository.calls.last.complete([_note('넷'), _note('하나'), _note('셋')]);
+      await pumpEventQueue();
+
+      expect(states.whereType<AsyncLoading<List<Note>>>(), isEmpty);
+      expect(_titles(bloc.state), ['넷', '하나', '셋']);
+    });
+
+    test('실패하면 원래 자리에 되돌리고 실패를 한 번 알린다', () async {
+      await loaded(['하나', '둘', '셋']);
+
+      bloc.add(NoteDeleteRequested(_note('둘')));
+      await pumpEventQueue();
+      repository.deletes.last.completeError(Exception('네트워크'));
+      await pumpEventQueue();
+
+      expect(_titles(bloc.state), ['하나', '둘', '셋']);
+      expect(failures, ['회의록을 삭제하지 못했어요.']);
+    });
+
+    test('지우기 전에 보낸 조회가 늦게 와도 지운 회의록은 다시 끼어들지 않는다', () async {
+      await loaded(['하나', '둘']);
+
+      bloc.add(const NotesRequested());
+      await pumpEventQueue();
+      bloc.add(NoteDeleteRequested(_note('둘')));
+      await pumpEventQueue();
+      // 삭제 응답보다 먼저 온다. 삭제 전에 읽은 목록이라 지운 회의록이 들어 있다.
+      repository.calls.last.complete([_note('하나'), _note('둘')]);
+      await pumpEventQueue();
+
+      expect(_titles(bloc.state), ['하나']);
+    });
   });
 }
