@@ -204,11 +204,7 @@ class ChannelMessageBloc
         ..addAll(messages.reversed);
     } catch (e, s) {
       Logger.e('채널 메시지 조회 실패', tag: 'Chat', error: e, stackTrace: s);
-      emit(
-        ChannelMessageState.failure(
-          e is DioException ? dioErrorMessage(e) : null,
-        ),
-      );
+      emit(ChannelMessageState.failure(failureMessageOf(e)));
       return;
     }
 
@@ -772,7 +768,7 @@ class ChannelMessageBloc
       message.id != message.clientMessageId;
 
   static String _reasonOf(String fallback, Object error) =>
-      error is DioException ? dioErrorMessage(error) : fallback;
+      failureMessageOf(error) ?? fallback;
 
   /// 멱등성 키로 쓸 UUID v4.
   static String _newClientMessageId() {

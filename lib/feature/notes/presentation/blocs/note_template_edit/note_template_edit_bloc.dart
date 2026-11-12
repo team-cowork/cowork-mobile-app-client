@@ -1,4 +1,3 @@
-import 'package:dio/dio.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -95,11 +94,7 @@ class NoteTemplateEditBloc
       emit(await request());
     } catch (e, s) {
       Logger.e('템플릿 수정 실패', tag: 'NoteTemplates', error: e, stackTrace: s);
-      emit(
-        state.copyWith(
-          error: e is DioException ? dioErrorMessage(e) : '요청을 처리하지 못했어요.',
-        ),
-      );
+      emit(state.copyWith(error: failureMessageOf(e, '요청을 처리하지 못했어요.')));
     }
   }
 }

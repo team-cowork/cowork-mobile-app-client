@@ -1,4 +1,3 @@
-import 'package:dio/dio.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -38,9 +37,7 @@ class EditProfileBloc extends Bloc<EditProfileEvent, EditProfileState> {
       );
     } catch (e, s) {
       Logger.e('프로필 조회 실패', tag: 'Profile', error: e, stackTrace: s);
-      emit(
-        EditProfileState.failure(e is DioException ? dioErrorMessage(e) : null),
-      );
+      emit(EditProfileState.failure(failureMessageOf(e)));
     }
   }
 
@@ -83,11 +80,7 @@ class EditProfileBloc extends Bloc<EditProfileEvent, EditProfileState> {
     } catch (e, s) {
       // 어느 단계에서 엎어졌는지는 로그로만 남기고, 화면엔 사용자 문구만 준다.
       Logger.e('프로필 저장 실패', tag: 'Profile', error: e, stackTrace: s);
-      emit(
-        EditProfileState.failure(
-          e is DioException ? dioErrorMessage(e) : '프로필을 저장하지 못했어요.',
-        ),
-      );
+      emit(EditProfileState.failure(failureMessageOf(e, '프로필을 저장하지 못했어요.')));
     }
   }
 }

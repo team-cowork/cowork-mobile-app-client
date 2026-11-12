@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:dio/dio.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -315,5 +314,5 @@ class ChannelListBloc extends Bloc<ChannelListEvent, ChannelListState> {
 
   /// `팀 목록 조회 실패 · (503) 서비스를 잠시 사용할 수 없습니다.` 꼴의 실패 사유.
   static String _reasonOf(String stage, Object error) =>
-      '$stage · ${error is DioException ? dioErrorMessage(error) : '잠시 후 다시 시도해 주세요.'}';
+      '$stage · ${failureMessageOf(error, '잠시 후 다시 시도해 주세요.')}';
 }

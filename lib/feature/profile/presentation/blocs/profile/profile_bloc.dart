@@ -1,4 +1,3 @@
-import 'package:dio/dio.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -47,7 +46,7 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
       );
     } catch (e, s) {
       Logger.e('프로필 조회 실패', tag: 'Profile', error: e, stackTrace: s);
-      emit(ProfileState.failure(e is DioException ? dioErrorMessage(e) : null));
+      emit(ProfileState.failure(failureMessageOf(e)));
     }
   }
 }

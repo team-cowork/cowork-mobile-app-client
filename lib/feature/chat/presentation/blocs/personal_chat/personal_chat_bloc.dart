@@ -1,4 +1,3 @@
-import 'package:dio/dio.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -30,11 +29,7 @@ class PersonalChatBloc extends Bloc<PersonalChatEvent, PersonalChatState> {
       );
     } catch (e, s) {
       Logger.e('DM 목록 조회 실패', tag: 'PersonalChat', error: e, stackTrace: s);
-      emit(
-        PersonalChatState.failure(
-          e is DioException ? dioErrorMessage(e) : null,
-        ),
-      );
+      emit(PersonalChatState.failure(failureMessageOf(e)));
     }
   }
 }
