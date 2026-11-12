@@ -181,5 +181,20 @@ void main() {
 
       expect(_titles(bloc.state), ['하나']);
     });
+
+    test('지우는 사이 화면이 닫힌 뒤 실패해도 예외 없이 끝낸다', () async {
+      await loaded(['하나', '둘']);
+
+      bloc.add(NoteDeleteRequested(_note('둘')));
+      await pumpEventQueue();
+      // 로그아웃·세션 만료로 셸이 내려가 Bloc 이 닫힌다.
+      final closing = bloc.close();
+      await pumpEventQueue();
+      repository.deletes.last.completeError(Exception('네트워크'));
+      await closing;
+      await pumpEventQueue();
+
+      expect(failures, isEmpty);
+    });
   });
 }

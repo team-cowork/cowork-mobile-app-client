@@ -92,6 +92,9 @@ class NotesBloc extends Bloc<NotesEvent, NotesState> {
       if (!isClosed) add(const NotesRequested());
     } catch (e, s) {
       Logger.e('회의록 삭제 실패', tag: 'Notes', error: e, stackTrace: s);
+      // 기다리는 사이 셸이 내려가(로그아웃·세션 만료) 닫혔으면 [failures] 도 닫혀
+      // 있다. 되돌릴 목록도, 알릴 화면도 없다.
+      if (isClosed) return;
       _deleted.remove(note.id);
       // 기다리는 사이 목록이 바뀌었을 수 있으니(다시 읽기, 다른 삭제) 지금 목록에
       // 이 회의록만 되돌린다. 자리가 줄었으면 끝에 둔다.
