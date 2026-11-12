@@ -8,7 +8,6 @@ import '../../../../core/utils/async_state.dart';
 import '../../../../shared/widgets/bloc_scaffold.dart';
 import '../../../channel/data/repositories/channel_repository.dart';
 import '../../data/repositories/message_repository.dart';
-import '../../domain/message_thread.dart';
 import '../blocs/thread/thread_bloc.dart';
 import '../widgets/chat_message_row.dart';
 
@@ -26,7 +25,7 @@ class ThreadView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocScaffold<ThreadBloc, MessageThread>(
+    return BlocScaffold<ThreadBloc, ThreadConversation>(
       create: (context) => ThreadBloc(
         channelId: channelId,
         parentMessageId: parentMessageId,
@@ -37,14 +36,13 @@ class ThreadView extends StatelessWidget {
       errorTitle: '스레드를 불러오지 못했어요',
       onRetry: (context) =>
           context.read<ThreadBloc>().add(const ThreadEvent.requested()),
-      builder: (context, thread) => BlocListener<ThreadBloc, ThreadState>(
+      builder: (context, conversation) => BlocListener<ThreadBloc, ThreadState>(
         listenWhen: (previous, current) =>
-            current is AsyncSuccess<MessageThread> &&
+            current is AsyncSuccess<ThreadConversation> &&
             current.data.errorMessage != null,
         listener: (context, state) {
-          final message = (state as AsyncSuccess<MessageThread>)
-              .data
-              .errorMessage!;
+          final message =
+              (state as AsyncSuccess<ThreadConversation>).data.errorMessage!;
           ScaffoldMessenger.of(context)
             ..hideCurrentSnackBar()
             ..showSnackBar(SnackBar(content: Text(message)));
@@ -53,7 +51,7 @@ class ThreadView extends StatelessWidget {
           child: Column(
             children: [
               _ThreadHeader(
-                channelName: thread.channelName,
+                channelName: conversation.thread.channelName,
                 onBack: () => context.pop(),
               ),
               Expanded(
@@ -64,7 +62,9 @@ class ThreadView extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(
                         horizontal: AppSpacing.s16,
                       ),
-                      child: ChatMessageRow(message: thread.rootMessage),
+                      child: ChatMessageRow(
+                        message: conversation.thread.rootMessage,
+                      ),
                     ),
                     Padding(
                       padding: const EdgeInsets.fromLTRB(
@@ -76,7 +76,7 @@ class ThreadView extends StatelessWidget {
                       child: Row(
                         children: [
                           Text(
-                            '답글 ${thread.replies.length}개',
+                            '답글 ${conversation.thread.replies.length}개',
                             style: AppFont.labelXs.copyWith(
                               color: AppColors.neutral300,
                             ),
@@ -98,7 +98,7 @@ class ThreadView extends StatelessWidget {
                       child: Column(
                         spacing: AppSpacing.s18,
                         children: [
-                          for (final reply in thread.replies)
+                          for (final reply in conversation.thread.replies)
                             ChatMessageRow(message: reply, avatarSize: 32),
                         ],
                       ),

@@ -80,7 +80,7 @@ class ThreadBloc extends Bloc<ThreadEvent, ThreadState> {
   /// 부모 메시지가 지워졌다. 답글을 달 곳이 없어 화면을 실패로 바꾼다.
   bool _rootDeleted = false;
 
-  /// 보이는 답글. 오래된 것부터 최신 순이다.
+  /// 보이는 답글. 시간 오름차순(오래된 답글이 앞)이다.
   final _replies = <MessageResponse>[];
 
   /// 작성자 id 별 표시 이름.
@@ -95,10 +95,7 @@ class ThreadBloc extends Bloc<ThreadEvent, ThreadState> {
   /// 보낸 답글(`clientMessageId`)별 저장 확인 타이머.
   final _confirmTimers = <String, Timer>{};
 
-  Future<void> _onLoad(
-    ThreadRequested event,
-    Emitter<ThreadState> emit,
-  ) async {
+  Future<void> _onLoad(ThreadRequested event, Emitter<ThreadState> emit) async {
     emit(const ThreadState.loading());
     _root = null;
     _rootDeleted = false;
@@ -340,18 +337,24 @@ class ThreadBloc extends Bloc<ThreadEvent, ThreadState> {
       return;
     }
     final now = DateTime.now();
-    final thread = MessageThread(
-      channelName: channelName,
-      rootMessage: chatMessageOf(root, _authorOf(root), now: now),
-      replies: [
-        for (final reply in _replies)
-          chatMessageOf(reply, _authorOf(reply), now: now),
-      ],
+    final conversation = ThreadConversation(
+      thread: MessageThread(
+        channelName: channelName,
+        rootMessage: chatMessageOf(root, _authorOf(root), now: now),
+        replies: [
+          for (final reply in _replies)
+            chatMessageOf(reply, _authorOf(reply), now: now),
+        ],
+      ),
     );
     // 같은 사유로 연달아 실패하면 상태가 같아 무시된다. 사유 없는 상태를 먼저 내서
     // 화면이 매번 알리게 한다.
-    if (error != null) emit(ThreadState.success(thread));
-    emit(ThreadState.success(error == null ? thread : thread.withError(error)));
+    if (error != null) emit(ThreadState.success(conversation));
+    emit(
+      ThreadState.success(
+        error == null ? conversation : conversation.withError(error),
+      ),
+    );
   }
 
   ProfileEntity _authorOf(MessageResponse message) => message.isSystem

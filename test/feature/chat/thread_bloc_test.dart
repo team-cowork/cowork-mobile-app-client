@@ -40,14 +40,16 @@ Future<ThreadBloc> _loaded(
 }) async {
   final bloc = _bloc(gateway, socket, confirmTimeout: confirmTimeout)
     ..add(const ThreadEvent.requested());
-  await bloc.stream.firstWhere((s) => s is AsyncSuccess<MessageThread>);
+  await bloc.stream.firstWhere((s) => s is AsyncSuccess<ThreadConversation>);
   await pumpEventQueue();
   gateway.calls.clear();
   return bloc;
 }
 
-MessageThread _data(ThreadBloc bloc) =>
-    (bloc.state as AsyncSuccess<MessageThread>).data;
+ThreadConversation _conversation(ThreadBloc bloc) =>
+    (bloc.state as AsyncSuccess<ThreadConversation>).data;
+
+MessageThread _data(ThreadBloc bloc) => _conversation(bloc).thread;
 
 List<String> _replyTexts(ThreadBloc bloc) => [
   for (final reply in _data(bloc).replies) reply.text,
@@ -75,7 +77,7 @@ void main() {
     final socket = FakeChatSocket();
     final bloc = _bloc(gateway, socket)..add(const ThreadEvent.requested());
     addTearDown(bloc.close);
-    await bloc.stream.firstWhere((s) => s is AsyncSuccess<MessageThread>);
+    await bloc.stream.firstWhere((s) => s is AsyncSuccess<ThreadConversation>);
     await pumpEventQueue();
 
     final thread = _data(bloc);
@@ -120,7 +122,12 @@ void main() {
 
     socket.push(
       'message',
-      _reply('r3', 1, '새 답글', clientMessageId: sent['clientMessageId'] as String),
+      _reply(
+        'r3',
+        1,
+        '새 답글',
+        clientMessageId: sent['clientMessageId'] as String,
+      ),
     );
     await pumpEventQueue();
 
@@ -151,7 +158,7 @@ void main() {
     bloc.add(const ThreadEvent.replySent('실패할 답글'));
     await pumpEventQueue();
 
-    expect(_data(bloc).errorMessage, isNotNull);
+    expect(_conversation(bloc).errorMessage, isNotNull);
     expect(_replyTexts(bloc), ['첫 번째 답글', '두 번째 답글']);
   });
 
@@ -216,7 +223,10 @@ void main() {
     socket.push('message:deleted', {'messageId': 'm1'});
     await pumpEventQueue();
 
-    expect(bloc.state, const AsyncFailure<MessageThread>('원본 메시지가 삭제됐어요.'));
+    expect(
+      bloc.state,
+      const AsyncFailure<ThreadConversation>('원본 메시지가 삭제됐어요.'),
+    );
   });
 
   test('보낸 답글이 소켓으로 오지 않으면 다시 읽고, 없으면 알린다', () async {
@@ -230,7 +240,8 @@ void main() {
 
     bloc.add(const ThreadEvent.replySent('사라진 답글'));
     await bloc.stream.firstWhere(
-      (s) => s is AsyncSuccess<MessageThread> && s.data.errorMessage != null,
+      (s) =>
+          s is AsyncSuccess<ThreadConversation> && s.data.errorMessage != null,
     );
 
     expect(
@@ -254,18 +265,15 @@ void main() {
     final id =
         gateway.bodies['POST /chat/chat/channels/10/messages']!['clientMessageId']
             as String;
-    gateway.replies.insert(
-      0,
-      _reply('r3', 1, '늦게 온 답글', clientMessageId: id),
-    );
+    gateway.replies.insert(0, _reply('r3', 1, '늦게 온 답글', clientMessageId: id));
 
     await bloc.stream.firstWhere(
       (s) =>
-          s is AsyncSuccess<MessageThread> &&
-          s.data.replies.any((r) => r.text == '늦게 온 답글'),
+          s is AsyncSuccess<ThreadConversation> &&
+          s.data.thread.replies.any((r) => r.text == '늦게 온 답글'),
     );
 
-    expect(_data(bloc).errorMessage, isNull);
+    expect(_conversation(bloc).errorMessage, isNull);
   });
 
   test('소켓이 끊김 복구 없이 다시 붙으면 답글을 다시 읽는다', () async {
@@ -278,8 +286,8 @@ void main() {
     socket.reconnect();
     await bloc.stream.firstWhere(
       (s) =>
-          s is AsyncSuccess<MessageThread> &&
-          s.data.replies.any((r) => r.text == '끊긴 사이 온 답글'),
+          s is AsyncSuccess<ThreadConversation> &&
+          s.data.thread.replies.any((r) => r.text == '끊긴 사이 온 답글'),
     );
 
     expect(_replyTexts(bloc), ['첫 번째 답글', '두 번째 답글', '끊긴 사이 온 답글']);
@@ -291,7 +299,7 @@ void main() {
       ..add(const ThreadEvent.requested());
     addTearDown(bloc.close);
 
-    await bloc.stream.firstWhere((s) => s is AsyncFailure<MessageThread>);
+    await bloc.stream.firstWhere((s) => s is AsyncFailure<ThreadConversation>);
   });
 
   test('닫으면 채널 방에서 나간다', () async {
