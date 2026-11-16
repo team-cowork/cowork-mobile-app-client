@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 
 import '../../../core/network/dio_client.dart';
 import '../../auth/data/auth_repository.dart';
+import '../domain/enums/notification_level.dart';
 import 'account_preference.dart';
 
 /// preference 서비스의 계정 설정을 다루는 저장소.
@@ -19,14 +20,15 @@ class PreferenceRepository {
   Future<AccountPreference> fetchAccount(int accountId) async =>
       _parse(await _dio.get<String>('/preferences/account/$accountId'));
 
-  /// 서버가 저장된 설정을 그대로 돌려준다.
-  Future<AccountPreference> updateAccount(
+  /// 알림 수준만 보낸다. 서버는 보낸 항목만 바꾸고 나머지는 유지한 뒤 저장된
+  /// 설정을 돌려준다.
+  Future<AccountPreference> updateNotificationLevel(
     int accountId,
-    AccountPreference preference,
+    NotificationLevel level,
   ) async => _parse(
     await _dio.put<String>(
       '/preferences/account/$accountId',
-      data: preference.toJson(),
+      data: {'notification_level': level.value},
     ),
   );
 

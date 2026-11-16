@@ -7,7 +7,6 @@ import '../../../../../core/network/http_error_message.dart';
 import '../../../../../core/utils/async_state.dart';
 import '../../../../../core/utils/logger.dart';
 import '../../../../profile/data/repositories/profile_repository.dart';
-import '../../../data/account_preference.dart';
 import '../../../data/preference_repository.dart';
 import '../../../data/push_repository.dart';
 import '../../../domain/enums/notification_level.dart';
@@ -41,9 +40,6 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
   /// 설정 경로의 계정 id. `/users/me` 에서 얻는다.
   late int _accountId;
 
-  /// 마지막으로 서버와 맞춘 계정 설정. 저장할 때 이걸 바탕으로 바꾼 필드만 덮는다.
-  late AccountPreference _preference;
-
   Future<void> _onLoad(
     SettingsRequested event,
     Emitter<SettingsState> emit,
@@ -52,14 +48,14 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
     try {
       final id = (await _profile.fetchMe()).id;
       if (id == null) throw StateError('내 프로필 응답에 id 가 없다');
-      _preference = await _preferences.fetchAccount(id);
+      final preference = await _preferences.fetchAccount(id);
       _accountId = id;
       emit(
         SettingsState.success(
           SettingsData(
             Settings(
               linkedAccount: 'DataGSM',
-              notificationLevel: _preference.notificationLevel,
+              notificationLevel: preference.notificationLevel,
               commitStreakPublic: true,
               version: '1.0.0',
             ),
@@ -139,15 +135,15 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
         }
         registered = true;
       }
-      _preference = await _preferences.updateAccount(
+      final saved = await _preferences.updateNotificationLevel(
         _accountId,
-        _preference.withNotificationLevel(level),
+        level,
       );
       if (turningOff) await _disablePush();
       emit(
         SettingsState.success(
           SettingsData(
-            current.copyWith(notificationLevel: _preference.notificationLevel),
+            current.copyWith(notificationLevel: saved.notificationLevel),
           ),
         ),
       );
