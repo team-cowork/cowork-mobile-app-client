@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:math';
 
 import 'package:dio/dio.dart';
 import 'package:equatable/equatable.dart';
@@ -11,6 +10,7 @@ import '../../../../../core/network/http_error_message.dart';
 import '../../../../../core/utils/async_state.dart';
 import '../../../../../core/utils/logger.dart';
 import '../../../../../shared/domain/profile_entity.dart';
+import '../../../../../shared/utils/client_message_id.dart';
 import '../../../../channel/data/repositories/channel_repository.dart';
 import '../../../../profile/data/repositories/profile_repository.dart';
 import '../../../data/model/chat_message_mapping.dart';
@@ -204,11 +204,7 @@ class ChannelMessageBloc
         ..addAll(messages.reversed);
     } catch (e, s) {
       Logger.e('채널 메시지 조회 실패', tag: 'Chat', error: e, stackTrace: s);
-      emit(
-        ChannelMessageState.failure(
-          e is DioException ? dioErrorMessage(e) : null,
-        ),
-      );
+      emit(ChannelMessageState.failure(failureMessageOf(e)));
       return;
     }
 
@@ -381,7 +377,7 @@ class ChannelMessageBloc
       return;
     }
 
-    final clientMessageId = _newClientMessageId();
+    final clientMessageId = newClientMessageId();
     _messages.add(
       MessageResponse(
         id: clientMessageId,
@@ -772,16 +768,5 @@ class ChannelMessageBloc
       message.id != message.clientMessageId;
 
   static String _reasonOf(String fallback, Object error) =>
-      error is DioException ? dioErrorMessage(error) : fallback;
-
-  /// 멱등성 키로 쓸 UUID v4.
-  static String _newClientMessageId() {
-    final random = Random.secure();
-    final bytes = List.generate(16, (_) => random.nextInt(256));
-    bytes[6] = (bytes[6] & 0x0f) | 0x40;
-    bytes[8] = (bytes[8] & 0x3f) | 0x80;
-    final hex = bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
-    return '${hex.substring(0, 8)}-${hex.substring(8, 12)}-'
-        '${hex.substring(12, 16)}-${hex.substring(16, 20)}-${hex.substring(20)}';
-  }
+      failureMessageOf(error) ?? fallback;
 }

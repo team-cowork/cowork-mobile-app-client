@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:dio/dio.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -60,7 +59,7 @@ class NotesBloc extends Bloc<NotesEvent, NotesState> {
     } catch (e, s) {
       Logger.e('회의록 조회 실패', tag: 'Notes', error: e, stackTrace: s);
       if (request != _latest || refreshing) return;
-      emit(NotesState.failure(e is DioException ? dioErrorMessage(e) : null));
+      emit(NotesState.failure(failureMessageOf(e)));
     }
   }
 
@@ -107,9 +106,7 @@ class NotesBloc extends Bloc<NotesEvent, NotesState> {
           ),
         );
       }
-      _failures.add(
-        (e is DioException ? dioErrorMessage(e) : null) ?? '회의록을 삭제하지 못했어요.',
-      );
+      _failures.add(failureMessageOf(e) ?? '회의록을 삭제하지 못했어요.');
     }
   }
 

@@ -14,13 +14,22 @@ String dioErrorMessage(DioException e) {
   if (failed == null) return '네트워크에 연결할 수 없습니다.';
   return httpErrorMessage(
     failed.statusCode ?? 0,
-    errorMessageOf(failed.data?.toString() ?? ''),
+    messageOfBody(failed.data?.toString() ?? ''),
   );
 }
 
+/// Bloc 의 `catch` 에서 잡은 오류를 사용자 문구로 바꾼다.
+///
+/// [DioException] 이면 [dioErrorMessage] 문구를, 그 밖의 실패면 [fallback] 을 돌려준다.
+/// [fallback] 이 null 이면 `AsyncState` 가 화면 기본 문구를 쓴다.
+///
+/// 변환 규칙을 Bloc 마다 다시 쓰지 않고 여기 한 곳에서 고치기 위한 도우미다.
+String? failureMessageOf(Object error, [String? fallback]) =>
+    error is DioException ? dioErrorMessage(error) : fallback;
+
 /// DataGSM(`error_description`)과 게이트웨이(`message`) 양쪽 오류 형식을 읽는다.
 @visibleForTesting
-String? errorMessageOf(String body) {
+String? messageOfBody(String body) {
   try {
     final decoded = jsonDecode(body);
     if (decoded is Map) {
