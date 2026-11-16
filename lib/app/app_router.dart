@@ -42,7 +42,10 @@ final channelRoute = GoRoute(
         parentMessageId: _parentMessageIdOf(state)!,
       ),
     ),
-    GoRoute(path: 'members', builder: (context, state) => const MembersView()),
+    GoRoute(
+      path: 'members',
+      builder: (context, state) => MembersView(channelId: _channelIdOf(state)!),
+    ),
     GoRoute(
       path: 'settings',
       builder: (context, state) =>
