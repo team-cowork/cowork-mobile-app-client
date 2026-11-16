@@ -19,9 +19,18 @@ import '../blocs/channel_message/channel_message_bloc.dart';
 import '../widgets/chat_message_row.dart';
 
 class ChannelView extends StatelessWidget {
-  const ChannelView({required this.channelId, this.focusMessageId, super.key});
+  const ChannelView({
+    required this.channelId,
+    this.focusMessageId,
+    this.dmName,
+    super.key,
+  });
 
   final int channelId;
+
+  /// DM 대화면 상대 이름. DM 채널 이름은 서버가 늘 `DM` 으로 정해, 머리에는 이 이름을
+  /// 보이고 채널 멤버·설정 같은 채널 전용 버튼은 숨긴다.
+  final String? dmName;
 
   /// 열 때 보여 줄 메시지(검색 결과에서 고른 것). 없으면 최근 메시지부터 연다.
   final String? focusMessageId;
@@ -69,8 +78,9 @@ class ChannelView extends StatelessWidget {
           child: Column(
             children: [
               _ChannelHeader(
-                name: data.name,
-                description: data.description,
+                name: dmName ?? data.name,
+                description: dmName == null ? data.description : '',
+                isDirect: dmName != null,
                 onBack: () => context.pop(),
                 onMembersTap: () =>
                     context.push('/chat/channel/$channelId/members'),
@@ -609,6 +619,7 @@ class _ChannelHeader extends StatelessWidget {
   const _ChannelHeader({
     required this.name,
     required this.description,
+    this.isDirect = false,
     this.onBack,
     this.onMembersTap,
     // ignore: unused_element_parameter -- 더보기 동작 미연결. 배선되면 이 줄을 지운다.
@@ -617,6 +628,9 @@ class _ChannelHeader extends StatelessWidget {
 
   final String name;
   final String description;
+
+  /// DM 대화의 머리. 채널 아이콘·설명·멤버·설정 버튼을 그리지 않는다.
+  final bool isDirect;
   final VoidCallback? onBack;
   final VoidCallback? onMembersTap;
   final VoidCallback? onMoreTap;
@@ -647,8 +661,10 @@ class _ChannelHeader extends StatelessWidget {
             ),
           ),
           const SizedBox(width: AppSpacing.s6),
-          AppIcon.hash(),
-          const SizedBox(width: AppSpacing.s10),
+          if (!isDirect) ...[
+            AppIcon.hash(),
+            const SizedBox(width: AppSpacing.s10),
+          ],
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -659,18 +675,23 @@ class _ChannelHeader extends StatelessWidget {
                     color: AppColors.darkOnSurface,
                   ),
                 ),
-                Text(
-                  description,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppFont.subtextS.copyWith(color: AppColors.neutral300),
-                ),
+                if (!isDirect)
+                  Text(
+                    description,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppFont.subtextS.copyWith(
+                      color: AppColors.neutral300,
+                    ),
+                  ),
               ],
             ),
           ),
-          GestureDetector(onTap: onMembersTap, child: AppIcon.users()),
-          const SizedBox(width: AppSpacing.s16),
-          GestureDetector(onTap: onMoreTap, child: AppIcon.more()),
+          if (!isDirect) ...[
+            GestureDetector(onTap: onMembersTap, child: AppIcon.users()),
+            const SizedBox(width: AppSpacing.s16),
+            GestureDetector(onTap: onMoreTap, child: AppIcon.more()),
+          ],
         ],
       ),
     );
