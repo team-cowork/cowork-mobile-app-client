@@ -141,6 +141,7 @@ class _MessageListState extends State<_MessageList> {
   static const _highlightDuration = Duration(seconds: 2);
 
   final _controller = ScrollController();
+
   /// 기준 메시지 묶음의 키. [_olderExtent] 가 그 높이를 읽는다.
   final _centerKey = GlobalKey();
 
@@ -355,7 +356,11 @@ class _MessageListState extends State<_MessageList> {
     final row = ChatMessageRow(
       message: message,
       onTap: () => context.push(
-        '/chat/channel/${context.read<ChannelMessageBloc>().channelId}/thread',
+        Uri(
+          path:
+              '/chat/channel/${context.read<ChannelMessageBloc>().channelId}/thread',
+          queryParameters: {'parentMessageId': message.id},
+        ).toString(),
       ),
       onLongPress: message.editable
           ? () => _showMessageActions(context, message)
