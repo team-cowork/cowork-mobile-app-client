@@ -153,7 +153,9 @@ class AuthRepository {
     final code = params['code'];
     if (code == null) {
       final error = params['error'];
-      if (error != null) await _notifyLoginDenied(state, error, cookie);
+      // 보여 줄 사유는 이미 정해졌다. 알림을 기다리면 서버·망이 느릴 때 로그인 화면이
+      // dio 시간 제한(연결 10초 + 수신 20초)만큼 진행 중에 머문다.
+      if (error != null) unawaited(_notifyLoginDenied(state, error, cookie));
       throw AuthFailure(
         AuthFailureKind.codeMissing,
         // 빈 사유는 없는 것으로 봐야 Bloc 의 기본 문구가 쓰인다.
@@ -175,7 +177,8 @@ class AuthRepository {
   /// DataGSM 이 인가 코드 대신 오류를 돌려줬다고 서버에 알려 로그인 시도를 닫는다.
   ///
   /// 서버는 이 요청도 실패로 응답한다. 사용자에겐 서버 응답보다 DataGSM 사유가 더
-  /// 정확하므로, 결과는 기다리기만 하고 실패해도 로그만 남긴다.
+  /// 정확하므로 결과를 기다리지 않는다. 그래서 어떤 실패도 밖으로 던지지 않고 로그만
+  /// 남긴다. 전달이 늦거나 실패해도 서버의 로그인 시도는 10분 뒤 만료된다.
   Future<void> _notifyLoginDenied(
     String state,
     String error,

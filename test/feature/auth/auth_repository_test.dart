@@ -88,10 +88,13 @@ class _RouteAdapter implements HttpClientAdapter {
 
 /// 로그인 흐름용. 경로마다 (상태 코드, 본문, Set-Cookie) 를 주고 보낸 요청을 남긴다.
 class _LoginAdapter implements HttpClientAdapter {
-  _LoginAdapter(this.routes);
+  _LoginAdapter(this.routes, {this.holds = const {}});
 
   /// 경로 끝부분 → (상태 코드, 본문, Set-Cookie 값들)
   final Map<String, (int, String, List<String>)> routes;
+
+  /// 경로 끝부분 → 이게 끝날 때까지 응답하지 않는다. 느린 서버를 흉내 낸다.
+  final Map<String, Future<void>> holds;
   final requests = <RequestOptions>[];
 
   @override
@@ -101,9 +104,11 @@ class _LoginAdapter implements HttpClientAdapter {
     Future<void>? cancelFuture,
   ) async {
     requests.add(options);
-    final (status, body, cookies) = routes.entries
-        .firstWhere((route) => options.path.endsWith(route.key))
-        .value;
+    final route = routes.entries.firstWhere(
+      (route) => options.path.endsWith(route.key),
+    );
+    await holds[route.key];
+    final (status, body, cookies) = route.value;
     return ResponseBody.fromString(
       body,
       status,
@@ -246,17 +251,26 @@ void main() {
       });
     }
 
-    test('DataGSM 이 거절하면 서버에 알리고 DataGSM 사유로 실패한다', () async {
-      final adapter = _LoginAdapter({
-        '/auth/authorize': authorizeOk,
-        // 서버는 거절 콜백도 인증 실패로 응답한다.
-        '/auth/callback': (401, '{"error":"authentication failed"}', const []),
-      });
+    test('DataGSM 이 거절하면 알림 응답을 기다리지 않고 DataGSM 사유로 실패한다', () async {
+      final slowServer = Completer<void>();
+      final adapter = _LoginAdapter(
+        {
+          '/auth/authorize': authorizeOk,
+          // 서버는 거절 콜백도 인증 실패로 응답한다.
+          '/auth/callback': (
+            401,
+            '{"error":"authentication failed"}',
+            const [],
+          ),
+        },
+        holds: {'/auth/callback': slowServer.future},
+      );
       final (repository, _) = repositoryOf(
         adapter,
         callback: 'cowork://oauth/callback?state=s1&error=access_denied',
       );
 
+      // 알림 응답이 아직 안 왔는데도 끝나야 한다.
       await expectLater(
         repository.signIn(),
         throwsA(
@@ -265,9 +279,14 @@ void main() {
               .having((f) => f.detail, 'detail', 'access_denied'),
         ),
       );
+      await pumpEventQueue();
       final callback = adapter.requests.last;
       expect(callback.data, {'state': 's1', 'error': 'access_denied'});
       expect(callback.headers['Cookie'], '__Host-cowork_oauth_h1=attempt-1');
+
+      // 늦게 온 거절 응답도 밖으로 새지 않고 로그로만 끝난다.
+      slowServer.complete();
+      await pumpEventQueue();
       expect(await _storedRefreshToken(), isNull);
     });
 
