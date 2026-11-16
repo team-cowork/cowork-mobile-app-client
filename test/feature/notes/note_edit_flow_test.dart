@@ -44,14 +44,52 @@ void main() {
   // 로그인 직후 AuthBloc 이 채워 두는 값. 가짜 서버의 작성자 1 이 나다.
   setUp(() => ProfileStore.instance.currentUserId = 1);
 
-  testWidgets('남의 회의록 상세에는 수정 아이콘이 없다', (tester) async {
+  testWidgets('남의 회의록 상세에는 수정·삭제 아이콘이 없다', (tester) async {
     await _openNote(tester, '디자인 시스템 리뷰'); // 작성자 도윤 (내 것 아님)
     expect(find.byIcon(Icons.edit_outlined), findsNothing);
+    expect(find.byIcon(Icons.delete_outline), findsNothing);
   });
 
-  testWidgets('내 회의록 상세에는 수정 아이콘이 있다', (tester) async {
+  testWidgets('내 회의록 상세에는 수정·삭제 아이콘이 있다', (tester) async {
     await _openNote(tester, '2026 1분기 킥오프 회의'); // 작성자 user_me
     expect(find.byIcon(Icons.edit_outlined), findsOneWidget);
+    expect(find.byIcon(Icons.delete_outline), findsOneWidget);
+  });
+
+  group('상세에서 삭제', () {
+    testWidgets('확인하면 목록으로 돌아가 카드가 빠지고 서버에 지운다', (tester) async {
+      final server = FakeNotesServer();
+      await _openNote(tester, '2026 1분기 킥오프 회의', server);
+
+      await tester.tap(find.byIcon(Icons.delete_outline));
+      await tester.pumpAndSettle();
+      expect(find.text('회의록을 삭제할까요?'), findsOneWidget);
+      await tester.tap(find.text('삭제'));
+      await tester.pumpAndSettle();
+      // 카드가 빠지면 그릴 프레임이 없어, 삭제 요청이 서버에 닿도록 시간을 더 흘린다.
+      await tester.pump(const Duration(milliseconds: 1));
+      await tester.pumpAndSettle();
+
+      expect(find.text('회의록을 삭제할까요?'), findsNothing);
+      expect(find.text('2026 1분기 킥오프 회의'), findsNothing);
+      expect(find.text('디자인 시스템 리뷰'), findsOneWidget);
+      expect(server.requests.where((r) => r.$1 == 'DELETE').map((r) => r.$2), [
+        '/channel/channels/10/meeting-notes/1',
+      ]);
+    });
+
+    testWidgets('취소하면 상세에 머물고 서버에 묻지 않는다', (tester) async {
+      final server = FakeNotesServer();
+      await _openNote(tester, '2026 1분기 킥오프 회의', server);
+
+      await tester.tap(find.byIcon(Icons.delete_outline));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('취소'));
+      await tester.pumpAndSettle();
+
+      expect(find.byIcon(Icons.delete_outline), findsOneWidget);
+      expect(server.requests.any((r) => r.$1 == 'DELETE'), isFalse);
+    });
   });
 
   testWidgets('수정 아이콘 → 편집 화면에서 제목을 바꿔 저장하면 상세에 반영된다', (tester) async {

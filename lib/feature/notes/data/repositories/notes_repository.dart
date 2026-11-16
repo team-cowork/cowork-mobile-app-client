@@ -105,6 +105,22 @@ class NotesRepository {
     ).toJson(),
   );
 
+  /// 회의록을 지운다. 서버는 작성자가 아니면 403 으로 거절한다.
+  ///
+  /// 404 는 다른 곳에서 이미 지운 경우라 지운 것으로 본다. 목록은 실시간으로
+  /// 갱신되지 않아 이미 지운 회의록이 남아 있을 수 있는데, 이를 실패로 되돌리면
+  /// 다시 밀어도 계속 실패한다. 403 은 그대로 던져야 하므로 [_unlessGone] 은 쓰지
+  /// 않는다.
+  Future<void> deleteNote(Note note) async {
+    try {
+      await _dio.delete<String>(
+        '/channels/${note.channelId}/meeting-notes/${note.id}',
+      );
+    } on DioException catch (e) {
+      if (e.response?.statusCode != 404) rethrow;
+    }
+  }
+
   /// 내 모든 팀의 채널. 팀 순서, 팀 안에서는 서버 순서다.
   ///
   /// 팀 목록을 읽은 뒤 지워졌거나 권한이 바뀐 팀은 건너뛴다([_unlessGone]).
