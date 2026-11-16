@@ -26,6 +26,23 @@ class FakeMessageGateway implements HttpClientAdapter {
   /// `GET /channels/10/members` 로 읽는 채널 10 의 멤버 id.
   final memberIds = <int>[1, 2, 3];
 
+  /// 채널 10. `PATCH /channels/10` 이 보낸 필드만 덮어쓴다.
+  final channel = <String, dynamic>{
+    'id': 10,
+    'name': '백엔드',
+    'description': 'API 논의',
+    'viewType': 'TEXT',
+    'teamId': 1,
+    'isPrivate': false,
+  };
+
+  /// 계정 1 의 채널 10 알림 설정. `PUT` 이 통째로 교체한다.
+  Map<String, dynamic> notification = {
+    'notification': true,
+    'notification_level': 'DEFAULT',
+    'muted_until': null,
+  };
+
   final calls = <String>[];
   final bodies = <String, Map<String, dynamic>>{};
 
@@ -60,13 +77,14 @@ class FakeMessageGateway implements HttpClientAdapter {
     if (call == failing) return _json({'message': '서버 오류'}, 500);
 
     return switch (call) {
-      'GET /channel/channels/10' => _ok({
-        'id': 10,
-        'name': '백엔드',
-        'description': 'API 논의',
-        'viewType': 'TEXT',
-        'teamId': 1,
-      }),
+      'GET /channel/channels/10' => _ok(channel),
+      'PATCH /channel/channels/10' => _ok(channel..addAll(bodies[call]!)),
+      'GET /preference/preferences/account/1/channels/10/notification' => _ok(
+        notification,
+      ),
+      'PUT /preference/preferences/account/1/channels/10/notification' => _ok(
+        notification = {...bodies[call]!, 'notification': true},
+      ),
       'GET /channel/channels/10/members' => _ok([
         for (final id in memberIds) {'channelId': 10, 'userId': id},
       ]),
