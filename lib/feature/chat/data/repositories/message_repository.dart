@@ -43,11 +43,14 @@ class MessageRepository {
   /// - [around]: 그 메시지와 이전 메시지(합쳐 [aroundHalf] 개까지), 이후 메시지
   ///   [aroundHalf] 개까지. 그 메시지가 채널에 없으면 404.
   /// - 셋 다 없으면 가장 최근부터.
+  ///
+  /// [parentMessageId] 를 주면 그 메시지의 스레드 답글만 준다.
   Future<List<MessageResponse>> fetchMessages(
     int channelId, {
     String? before,
     String? after,
     String? around,
+    String? parentMessageId,
   }) async {
     assert(
       [before, after, around].nonNulls.length <= 1,
@@ -61,12 +64,50 @@ class MessageRepository {
                 'before': ?before,
                 'after': ?after,
                 'around': ?around,
+                'parentMessageId': ?parentMessageId,
               },
             )).data ??
             '',
       ))
         MessageResponse.fromJson(json),
     ];
+  }
+
+  /// [parentMessageId] 메시지의 스레드 답글 전부를 최신순으로. 한 번에 [pageSize] 개씩
+  /// 오므로, 꽉 찬 동안 더 이전 답글을 이어서 읽는다.
+  ///
+  /// 서버가 `before` 를 무시해 같은 페이지만 되풀이하면 새 답글이 없는 페이지에서 멈춘다.
+  Future<List<MessageResponse>> fetchReplies(
+    int channelId,
+    String parentMessageId,
+  ) async {
+    final replies = <MessageResponse>[];
+    final seen = <String>{};
+    String? before;
+    while (true) {
+      final page = await fetchMessages(
+        channelId,
+        before: before,
+        parentMessageId: parentMessageId,
+      );
+      final added = [
+        for (final reply in page)
+          if (seen.add(reply.id)) reply,
+      ];
+      replies.addAll(added);
+      if (page.length < pageSize || added.isEmpty) return replies;
+      before = page.last.id;
+    }
+  }
+
+  /// [messageId] 메시지 하나. 서버에 단건 조회가 없어, 그 메시지를 기준으로 앞뒤를
+  /// 읽어 그중에서 찾는다. 응답에 없으면 [StateError].
+  Future<MessageResponse> fetchMessage(int channelId, String messageId) async {
+    final around = await fetchMessages(channelId, around: messageId);
+    return around.firstWhere(
+      (message) => message.id == messageId,
+      orElse: () => throw StateError('메시지 $messageId 가 응답에 없다'),
+    );
   }
 
   /// 메시지를 보낸다. 서버는 큐에 넣고 바로 돌아오고, 저장된 메시지는 소켓으로 온다.
