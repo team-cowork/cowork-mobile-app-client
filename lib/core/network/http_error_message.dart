@@ -14,7 +14,7 @@ String dioErrorMessage(DioException e) {
   if (failed == null) return '네트워크에 연결할 수 없습니다.';
   return httpErrorMessage(
     failed.statusCode ?? 0,
-    errorMessageOf(failed.data?.toString() ?? ''),
+    messageOfBody(failed.data?.toString() ?? ''),
   );
 }
 
@@ -29,7 +29,7 @@ String? failureMessageOf(Object error, [String? fallback]) =>
 
 /// DataGSM(`error_description`)과 게이트웨이(`message`) 양쪽 오류 형식을 읽는다.
 @visibleForTesting
-String? errorMessageOf(String body) {
+String? messageOfBody(String body) {
   try {
     final decoded = jsonDecode(body);
     if (decoded is Map) {

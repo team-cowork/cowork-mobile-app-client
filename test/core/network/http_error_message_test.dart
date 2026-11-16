@@ -19,14 +19,14 @@ void main() {
 
   test('오류 본문에서 사용자 메시지를 뽑는다', () {
     expect(
-      errorMessageOf('{"error":"invalid_grant","error_description":"만료됨"}'),
+      messageOfBody('{"error":"invalid_grant","error_description":"만료됨"}'),
       '만료됨',
     );
     expect(
-      errorMessageOf('{"status":"UNAUTHORIZED","message":"Unauthorized"}'),
+      messageOfBody('{"status":"UNAUTHORIZED","message":"Unauthorized"}'),
       'Unauthorized',
     );
-    expect(errorMessageOf('<html>502</html>'), isNull);
+    expect(messageOfBody('<html>502</html>'), isNull);
   });
 
   group('failureMessageOf', () {
