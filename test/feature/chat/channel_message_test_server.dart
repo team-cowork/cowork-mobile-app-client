@@ -66,6 +66,8 @@ class FakeMessageGateway implements HttpClientAdapter {
       }),
       'GET /chat/chat/channels/10/messages' => await _list(uri.queryParameters),
       'POST /chat/chat/channels/10/messages' => _ok({'queued': true}),
+      'GET /chat/chat/channels/10/messages/m1/attachments/0/download-url' =>
+        _ok({'downloadUrl': 'https://files.test/a.pdf'}),
       'GET /user/users/me' => _ok({'id': 1, 'name': '나'}),
       'GET /user/users/batch' => _ok({
         'users': [

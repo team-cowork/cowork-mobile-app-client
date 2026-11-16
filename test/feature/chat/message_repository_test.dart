@@ -66,6 +66,34 @@ MessageRepository _repository(_RecordingServer server) {
 }
 
 void main() {
+  test('첨부파일 다운로드 주소는 메시지와 첨부 순번으로 요청해 읽는다', () async {
+    final gateway = FakeMessageGateway();
+    final repository = MessageRepository.withDio(
+      chat: messageDio(gateway, 'chat'),
+      user: messageDio(gateway, 'user'),
+    );
+
+    final url = await repository.fetchAttachmentDownloadUrl(10, 'm1', 0);
+
+    expect(url, 'https://files.test/a.pdf');
+    expect(gateway.calls, [
+      'GET /chat/chat/channels/10/messages/m1/attachments/0/download-url',
+    ]);
+  });
+
+  test('다운로드 주소가 응답에 없으면 실패한다', () async {
+    final gateway = FakeMessageGateway();
+    final repository = MessageRepository.withDio(
+      chat: messageDio(gateway, 'chat'),
+      user: messageDio(gateway, 'user'),
+    );
+
+    expect(
+      repository.fetchAttachmentDownloadUrl(10, 'm1', 1),
+      throwsA(isA<Object>()),
+    );
+  });
+
   test('전송은 내용과 clientMessageId 를 보낸다', () async {
     final server = _RecordingServer();
 
