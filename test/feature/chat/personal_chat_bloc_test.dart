@@ -13,19 +13,25 @@ FakeDmGateway _gateway() => FakeDmGateway(
   ],
 );
 
-PersonalChatBloc _bloc(FakeDmGateway gateway, FakeChatSocket socket) =>
-    PersonalChatBloc(
-      dmRepository: dmRepositoryOf(gateway),
-      messageRepository: dmMessageRepositoryOf(gateway),
-      socket: socket,
-    );
+PersonalChatBloc _bloc(
+  FakeDmGateway gateway,
+  FakeChatSocket socket, {
+  Duration retryDelay = const Duration(seconds: 3),
+}) => PersonalChatBloc(
+  dmRepository: dmRepositoryOf(gateway),
+  messageRepository: dmMessageRepositoryOf(gateway),
+  socket: socket,
+  retryDelay: retryDelay,
+);
 
 /// 불러오기까지 마친 Bloc. 이후 요청만 보도록 불러오기 기록은 비운다.
 Future<PersonalChatBloc> _loaded(
   FakeDmGateway gateway,
-  FakeChatSocket socket,
-) async {
-  final bloc = _bloc(gateway, socket)..add(const PersonalChatEvent.requested());
+  FakeChatSocket socket, {
+  Duration retryDelay = const Duration(seconds: 3),
+}) async {
+  final bloc = _bloc(gateway, socket, retryDelay: retryDelay)
+    ..add(const PersonalChatEvent.requested());
   await bloc.stream.firstWhere((s) => s is AsyncSuccess<PersonalChatData>);
   await pumpEventQueue();
   gateway.calls.clear();
@@ -135,6 +141,51 @@ void main() {
     await pumpEventQueue();
 
     expect(_names(bloc), ['서연', '도윤']);
+  });
+
+  test('다시 읽기가 실패하면 이벤트를 기다리지 않고 스스로 다시 읽는다', () async {
+    final gateway = _gateway();
+    final bloc = await _loaded(
+      gateway,
+      FakeChatSocket(),
+      retryDelay: const Duration(milliseconds: 10),
+    );
+    addTearDown(bloc.close);
+    gateway.failing = 'GET /chat/chat/dms';
+
+    bloc.add(const PersonalChatEvent.refreshed());
+    await pumpEventQueue();
+    gateway
+      ..failing = null
+      ..conversations.insert(0, dmJson(13, 4, content: '새 대화'));
+
+    await bloc.stream.firstWhere(
+      (s) =>
+          s is AsyncSuccess<PersonalChatData> &&
+          s.data.conversations.first.channelId == 13,
+    );
+
+    expect(_data(bloc).conversations, hasLength(3));
+  });
+
+  test('다시 읽기가 계속 실패하면 세 번까지만 다시 시도한다', () async {
+    final gateway = _gateway();
+    final bloc = await _loaded(
+      gateway,
+      FakeChatSocket(),
+      retryDelay: const Duration(milliseconds: 5),
+    );
+    addTearDown(bloc.close);
+    gateway.failing = 'GET /chat/chat/dms';
+
+    bloc.add(const PersonalChatEvent.refreshed());
+    await Future<void>.delayed(const Duration(milliseconds: 300));
+
+    // 처음 한 번과 다시 시도 세 번.
+    expect(
+      gateway.calls.where((call) => call == 'GET /chat/chat/dms'),
+      hasLength(4),
+    );
   });
 
   test('숨기면 목록에서 빠지고 서버에 DELETE 를 보낸다', () async {

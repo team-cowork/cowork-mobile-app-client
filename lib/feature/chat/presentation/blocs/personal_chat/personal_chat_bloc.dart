@@ -31,6 +31,7 @@ class PersonalChatBloc extends Bloc<PersonalChatEvent, PersonalChatState> {
     required DmRepository dmRepository,
     required MessageRepository messageRepository,
     required ChatSocket socket,
+    this.retryDelay = const Duration(seconds: 3),
   }) : _dmRepository = dmRepository,
        _messageRepository = messageRepository,
        _socket = socket,
@@ -47,6 +48,11 @@ class PersonalChatBloc extends Bloc<PersonalChatEvent, PersonalChatState> {
   final DmRepository _dmRepository;
   final MessageRepository _messageRepository;
   final ChatSocket _socket;
+
+  /// 조용한 갱신이 실패하면 다시 읽기까지 기다리는 첫 시간. 실패할 때마다 두 배로 늘린다.
+  final Duration retryDelay;
+
+  static const _maxRefreshRetries = 3;
   late final StreamSubscription<SocketEvent> _socketEvents;
   late final StreamSubscription<void> _reconnects;
 
@@ -61,6 +67,10 @@ class PersonalChatBloc extends Bloc<PersonalChatEvent, PersonalChatState> {
 
   /// 숨기는 요청이 오가는 대화. 그사이 시작된 목록 읽기가 되살리지 않게 뺀다.
   final _hiding = <int>{};
+
+  /// 연달아 실패한 갱신 횟수와, 그다음 다시 읽을 타이머.
+  int _refreshFailures = 0;
+  Timer? _retryTimer;
 
   bool _refreshing = false;
   bool _refreshQueued = false;
@@ -99,14 +109,29 @@ class PersonalChatBloc extends Bloc<PersonalChatEvent, PersonalChatState> {
           _conversations = await _fetch();
         } catch (e, s) {
           Logger.e('DM 목록 갱신 실패', tag: 'PersonalChat', error: e, stackTrace: s);
+          _scheduleRetry();
           continue;
         }
         if (isClosed) return;
+        _refreshFailures = 0;
+        _retryTimer?.cancel();
         _emit(emit);
       } while (_refreshQueued && !isClosed);
     } finally {
       _refreshing = false;
     }
+  }
+
+  /// 갱신이 실패하면 새 메시지나 재연결을 기다리지 않고 스스로 다시 읽는다. 조용한 갱신이라
+  /// 실패를 화면에 알리지 않으므로, 이게 없으면 다음 이벤트가 올 때까지 옛 목록이 남는다.
+  /// 실패가 이어지면 간격을 두 배씩 늘려 세 번까지만 다시 시도한다.
+  void _scheduleRetry() {
+    if (isClosed || _refreshFailures >= _maxRefreshRetries) return;
+    _retryTimer?.cancel();
+    _retryTimer = Timer(retryDelay * (1 << _refreshFailures), () {
+      if (!isClosed) add(const PersonalChatEvent.refreshed());
+    });
+    _refreshFailures++;
   }
 
   /// 목록에서 먼저 빼고 서버에 숨긴다. 실패하면 그 대화를 되돌리고 사유를 알린다.
@@ -130,10 +155,7 @@ class PersonalChatBloc extends Bloc<PersonalChatEvent, PersonalChatState> {
       if (isClosed) return;
       _conversations = [..._conversations]
         ..insert(index.clamp(0, _conversations.length), hidden);
-      _emit(
-        emit,
-        error: failureMessageOf(e, 'DM을 숨기지 못했어요.'),
-      );
+      _emit(emit, error: failureMessageOf(e, 'DM을 숨기지 못했어요.'));
     } finally {
       _hiding.remove(event.channelId);
     }
@@ -218,6 +240,7 @@ class PersonalChatBloc extends Bloc<PersonalChatEvent, PersonalChatState> {
 
   @override
   Future<void> close() async {
+    _retryTimer?.cancel();
     await _socketEvents.cancel();
     await _reconnects.cancel();
     for (final id in _rooms) {

@@ -23,14 +23,21 @@ class ChannelView extends StatelessWidget {
     required this.channelId,
     this.focusMessageId,
     this.dmName,
+    this.isDirect = false,
     super.key,
   });
 
   final int channelId;
 
   /// DM 대화면 상대 이름. DM 채널 이름은 서버가 늘 `DM` 으로 정해, 머리에는 이 이름을
-  /// 보이고 채널 멤버·설정 같은 채널 전용 버튼은 숨긴다.
+  /// 보이고 채널 멤버·설정 같은 채널 전용 버튼은 숨긴다. 이름을 모르면 null 이다.
   final String? dmName;
+
+  /// DM 대화인지. [dmName] 이 있으면 DM 이고, 이름을 몰라도 DM 이면 true 로 넘긴다. 이때
+  /// 머리에는 `다이렉트 메시지` 를 보인다.
+  final bool isDirect;
+
+  bool get _isDirect => isDirect || dmName != null;
 
   /// 열 때 보여 줄 메시지(검색 결과에서 고른 것). 없으면 최근 메시지부터 연다.
   final String? focusMessageId;
@@ -78,9 +85,9 @@ class ChannelView extends StatelessWidget {
           child: Column(
             children: [
               _ChannelHeader(
-                name: dmName ?? data.name,
-                description: dmName == null ? data.description : '',
-                isDirect: dmName != null,
+                name: dmName ?? (_isDirect ? '다이렉트 메시지' : data.name),
+                description: _isDirect ? '' : data.description,
+                isDirect: _isDirect,
                 onBack: () => context.pop(),
                 onMembersTap: () =>
                     context.push('/chat/channel/$channelId/members'),

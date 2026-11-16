@@ -25,12 +25,13 @@ import 'auth_gate.dart';
 final channelRoute = GoRoute(
   path: '/chat/channel/:channelId',
   redirect: (context, state) => _channelIdOf(state) == null ? '/' : null,
-  // 검색 결과에서 오면 `messageId` 쿼리로 보여 줄 메시지를, DM 목록에서 오면 `dmName`
-  // 쿼리로 상대 이름을 받는다.
+  // 검색 결과에서 오면 `messageId` 쿼리로 보여 줄 메시지를, DM 목록에서 오면 `dm` 쿼리로
+  // DM 대화임을, 상대 이름을 알면 `dmName` 쿼리로 이름을 받는다.
   builder: (context, state) => ChannelView(
     channelId: _channelIdOf(state)!,
     focusMessageId: state.uri.queryParameters['messageId'],
     dmName: state.uri.queryParameters['dmName'],
+    isDirect: state.uri.queryParameters.containsKey('dm'),
   ),
   routes: [
     // 스레드는 부모 메시지 id 를 쿼리로 받는다. 없으면 채널로 돌려보낸다.

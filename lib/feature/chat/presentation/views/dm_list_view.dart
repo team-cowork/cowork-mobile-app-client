@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/network/chat_socket.dart';
 import '../../../../core/utils/async_state.dart';
 import '../../../../shared/widgets/bloc_scaffold.dart';
+import '../../data/model/chat_message_mapping.dart';
 import '../../data/repositories/dm_repository.dart';
 import '../../data/repositories/message_repository.dart';
 import '../../domain/direct_message_preview.dart';
@@ -87,7 +88,12 @@ class DmListView extends StatelessWidget {
     await context.push(
       Uri(
         path: '/chat/channel/${preview.channelId}',
-        queryParameters: {'dmName': preview.profile.name},
+        queryParameters: {
+          'dm': '1',
+          // 이름을 못 읽은 상대의 '알 수 없음' 이 대화 화면 머리에 굳지 않게 뺀다.
+          if (!isUnknownChatAuthor(preview.profile))
+            'dmName': preview.profile.name,
+        },
       ).toString(),
     );
     if (!bloc.isClosed) bloc.add(const PersonalChatEvent.refreshed());

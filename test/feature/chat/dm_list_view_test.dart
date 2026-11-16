@@ -80,6 +80,16 @@ void main() {
     expect(find.text('대화 11 서연'), findsOneWidget);
   });
 
+  testWidgets('상대 이름을 못 읽었으면 이름 없이 DM 대화로 간다', (tester) async {
+    final server = gateway()..failing = 'GET /user/users/batch';
+    await pumpDmList(tester, server);
+
+    await tester.tap(find.text('알 수 없음').first);
+    await tester.pumpAndSettle();
+
+    expect(find.text('대화 11 null'), findsOneWidget);
+  });
+
   testWidgets('길게 눌러 숨기기를 확인하면 목록에서 빠지고 DELETE 를 보낸다', (tester) async {
     final server = gateway();
     await pumpDmList(tester, server);

@@ -18,6 +18,7 @@ void main() {
     FakeMessageGateway gateway, {
     String? focusMessageId,
     String? dmName,
+    bool isDirect = false,
     FakeChatSocket? socket,
   }) async {
     await tester.pumpWidget(
@@ -49,6 +50,7 @@ void main() {
                   channelId: 10,
                   focusMessageId: focusMessageId,
                   dmName: dmName,
+                  isDirect: isDirect,
                 ),
               ),
               GoRoute(
@@ -154,6 +156,18 @@ void main() {
     );
 
     expect(find.text('서연'), findsOneWidget);
+    expect(find.text('백엔드'), findsNothing);
+    expect(find.text('API 논의'), findsNothing);
+  });
+
+  testWidgets('상대 이름을 모르는 DM 대화는 머리에 다이렉트 메시지를 보인다', (tester) async {
+    await pumpChannel(
+      tester,
+      FakeMessageGateway(messages: [otherMessage]),
+      isDirect: true,
+    );
+
+    expect(find.text('다이렉트 메시지'), findsOneWidget);
     expect(find.text('백엔드'), findsNothing);
     expect(find.text('API 논의'), findsNothing);
   });
