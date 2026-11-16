@@ -142,6 +142,45 @@ void main() {
     expect(find.text('스레드 10 m1'), findsOneWidget);
   });
 
+  testWidgets('메시지 수정 시트를 열면 입력창에 바로 포커스가 간다', (tester) async {
+    await pumpChannel(
+      tester,
+      FakeMessageGateway(messages: [myMessage, otherMessage]),
+    );
+
+    await tester.longPress(messageText('내 메시지'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('메시지 수정'));
+    await tester.pumpAndSettle();
+
+    // 입력창에 포커스가 있으면 키보드(입력 연결)가 열려 있다.
+    expect(tester.testTextInput.isVisible, isTrue);
+  });
+
+  testWidgets('파일만 있는 메시지는 빈 본문 자리를 만들지 않는다', (tester) async {
+    await pumpChannel(
+      tester,
+      FakeMessageGateway(
+        messages: [
+          {
+            ...messageJson('m1', 2, '', type: 'FILE'),
+            'attachments': [
+              {'name': '기획서.pdf', 'size': 2048, 'mimeType': 'application/pdf'},
+            ],
+          },
+          messageJson('m0', 3, '본문이 있는 메시지'),
+        ],
+      ),
+    );
+
+    // 본문이 있는 메시지만 마크다운 본문을 그린다.
+    expect(
+      find.byWidgetPredicate((w) => w.runtimeType.toString() == 'MarkdownBody'),
+      findsOneWidget,
+    );
+    expect(find.text('기획서.pdf'), findsOneWidget);
+  });
+
   testWidgets('파일 메시지는 첨부파일 이름과 크기를 보여 준다', (tester) async {
     await pumpChannel(
       tester,

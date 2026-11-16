@@ -553,7 +553,11 @@ class _EditMessageSheetState extends State<_EditMessageSheet> {
               '메시지 수정',
               style: AppFont.labelM.copyWith(color: AppColors.darkOnSurface),
             ),
-            CoworkTextArea(controller: _controller, minLines: 3),
+            CoworkTextArea(
+              controller: _controller,
+              minLines: 3,
+              autofocus: true,
+            ),
             ValueListenableBuilder(
               valueListenable: _controller,
               builder: (context, value, _) => CoworkButton(

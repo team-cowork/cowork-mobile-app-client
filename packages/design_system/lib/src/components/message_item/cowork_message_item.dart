@@ -43,26 +43,27 @@ class CoworkMessageItem extends StatelessWidget {
                 '$username · $timestamp',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: AppFont.labelXs.copyWith(
-                  color: colors.onSurfaceVariant,
-                ),
+                style: AppFont.labelXs.copyWith(color: colors.onSurfaceVariant),
               ),
-              const SizedBox(height: AppSpacing.s6),
-              MarkdownBody(
-                data: message,
-                shrinkWrap: true,
-                styleSheet: MarkdownStyleSheet(
-                  p: AppFont.subtextL.copyWith(color: colors.onSurface),
-                  code: AppFont.subtextL.copyWith(
-                    color: colors.onSurface,
-                    fontFamily: 'monospace',
-                    backgroundColor: colors.surfaceContainerHigh,
-                  ),
-                  codeblockDecoration: BoxDecoration(
-                    color: colors.surfaceContainerHigh,
+              // 파일만 보낸 메시지는 본문이 비어 있어, 자리를 만들지 않는다.
+              if (message.trim().isNotEmpty) ...[
+                const SizedBox(height: AppSpacing.s6),
+                MarkdownBody(
+                  data: message,
+                  shrinkWrap: true,
+                  styleSheet: MarkdownStyleSheet(
+                    p: AppFont.subtextL.copyWith(color: colors.onSurface),
+                    code: AppFont.subtextL.copyWith(
+                      color: colors.onSurface,
+                      fontFamily: 'monospace',
+                      backgroundColor: colors.surfaceContainerHigh,
+                    ),
+                    codeblockDecoration: BoxDecoration(
+                      color: colors.surfaceContainerHigh,
+                    ),
                   ),
                 ),
-              ),
+              ],
             ],
           ),
         ),
