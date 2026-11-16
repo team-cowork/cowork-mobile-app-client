@@ -1,5 +1,6 @@
 import '../../../../shared/domain/profile_entity.dart';
 import '../../domain/direct_message_preview.dart';
+import '../../domain/enums/dm_presence.dart';
 import 'chat_message_mapping.dart';
 import 'responses/dm_conversation_response.dart';
 import 'responses/dm_last_message_response.dart';
@@ -18,6 +19,8 @@ DirectMessagePreview directMessagePreviewOf(
     channelId: conversation.channelId,
     profile: other,
     avatarColor: chatAvatarColorOf(other.id),
+    // 서버에 접속 상태가 없다. 모르는 값은 접속 안 함으로 둔다.
+    presence: DmPresence.offline,
     lastMessage: last == null ? '아직 메시지가 없어요' : _previewOf(last, myId),
     timestamp: last == null ? '' : dmTimestampOf(last.createdAt, now: now),
     unreadCount: conversation.unreadCount,

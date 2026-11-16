@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 
 import '../../../../shared/extensions/chat_avatar_color_mapping.dart';
 import '../../domain/direct_message_preview.dart';
+import '../../domain/enums/dm_presence.dart';
+import 'chat_color_mapping.dart';
 
 class DmListTile extends StatelessWidget {
   const DmListTile({
@@ -19,7 +21,9 @@ class DmListTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final hasUnread = preview.unreadCount > 0;
-    final messageColor = hasUnread
+    final messageColor = preview.isTyping
+        ? AppColors.green500
+        : hasUnread
         ? AppColors.darkOnSurface
         : AppColors.neutral300;
 
@@ -36,11 +40,37 @@ class DmListTile extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           spacing: AppSpacing.s10,
           children: [
-            CoworkAvatar(
-              initials: preview.profile.avatarInitial,
-              size: 40,
-              backgroundColor: preview.avatarColor.toColor(),
-              foregroundColor: AppColors.white,
+            SizedBox(
+              width: 40,
+              height: 40,
+              child: Stack(
+                children: [
+                  CoworkAvatar(
+                    initials: preview.profile.avatarInitial,
+                    size: 40,
+                    backgroundColor: preview.avatarColor.toColor(),
+                    foregroundColor: AppColors.white,
+                  ),
+                  // 서버에 접속 상태가 없어 모르는 상대는 점을 그리지 않는다.
+                  if (preview.presence != DmPresence.offline)
+                    Positioned(
+                      right: 0,
+                      bottom: 0,
+                      child: Container(
+                        width: 13,
+                        height: 13,
+                        decoration: BoxDecoration(
+                          color: preview.presence.toColor(),
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: AppColors.neutral850,
+                            width: 2.5,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
             ),
             Expanded(
               child: Column(
@@ -94,7 +124,9 @@ class DmListTile extends StatelessWidget {
                         color: AppColors.white,
                       ),
                     ),
-                  ),
+                  )
+                else if (preview.isMuted)
+                  AppIcon.muted(),
               ],
             ),
           ],

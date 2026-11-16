@@ -1,5 +1,6 @@
 import 'package:cowork_app/feature/chat/data/model/dm_preview_mapping.dart';
 import 'package:cowork_app/feature/chat/data/model/responses/dm_conversation_response.dart';
+import 'package:cowork_app/feature/chat/domain/enums/dm_presence.dart';
 import 'package:cowork_app/shared/domain/profile_entity.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -66,6 +67,19 @@ void main() {
       expect(file.lastMessage, '파일을 보냈어요');
       expect(empty.lastMessage, '아직 메시지가 없어요');
       expect(empty.timestamp, '');
+    });
+
+    test('서버에 없는 접속 상태·고정·음소거·입력 중은 기본값으로 둔다', () {
+      final preview = directMessagePreviewOf(
+        conversation(dmJson(11, 2)),
+        other,
+        now: now,
+      );
+
+      expect(preview.presence, DmPresence.offline);
+      expect(preview.isPinned, isFalse);
+      expect(preview.isMuted, isFalse);
+      expect(preview.isTyping, isFalse);
     });
 
     test('채널 id, 읽지 않은 수, 상대를 그대로 옮긴다', () {
