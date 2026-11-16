@@ -251,6 +251,32 @@ void main() {
       });
     }
 
+    test('여러 Set-Cookie 중 값이 있는 로그인 시도 쿠키만 골라 넘긴다', () async {
+      final adapter = _LoginAdapter({
+        '/auth/authorize': (
+          200,
+          jsonEncode({'authorization_url': authorizationUrl}),
+          [
+            // 접두어만 다른 쿠키. 이름이 접두어보다 길어 길이 검사로는 걸러지지 않는다.
+            '__Host-cowork_session=s1; Path=/',
+            // 지난 시도를 지우는 쿠키. 접두어는 같지만 값이 비어 있다.
+            '__Host-cowork_oauth_old=; Path=/; Max-Age=0',
+            loginCookie,
+            'after=1; Path=/',
+          ],
+        ),
+        '/auth/callback': tokensOk,
+      });
+      final (repository, _) = repositoryOf(adapter);
+
+      await repository.signIn();
+
+      expect(
+        adapter.requests.last.headers['Cookie'],
+        '__Host-cowork_oauth_h1=attempt-1',
+      );
+    });
+
     test('DataGSM 이 거절하면 알림 응답을 기다리지 않고 DataGSM 사유로 실패한다', () async {
       final slowServer = Completer<void>();
       final adapter = _LoginAdapter(
