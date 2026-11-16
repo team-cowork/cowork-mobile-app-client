@@ -1,14 +1,14 @@
 import 'package:equatable/equatable.dart';
 
 import 'channel_member.dart';
+import 'channel_notification.dart';
 
 class ChannelSettings extends Equatable {
   const ChannelSettings({
     required this.name,
     required this.description,
     required this.isPrivate,
-    required this.notificationLabel,
-    required this.isMuted,
+    required this.notification,
     required this.memberPreview,
     required this.memberCount,
   });
@@ -16,20 +16,25 @@ class ChannelSettings extends Equatable {
   final String name;
   final String description;
   final bool isPrivate;
-  final String notificationLabel;
-  final bool isMuted;
+
+  /// 이 채널에 내가 정해 둔 알림 설정.
+  final ChannelNotification notification;
 
   /// 멤버 목록 행에 겹쳐 보여줄 아바타 미리보기 (최대 4명).
   final List<ChannelMember> memberPreview;
   final int memberCount;
 
-  ChannelSettings copyWith({bool? isPrivate, bool? isMuted}) {
+  ChannelSettings copyWith({
+    String? name,
+    String? description,
+    bool? isPrivate,
+    ChannelNotification? notification,
+  }) {
     return ChannelSettings(
-      name: name,
-      description: description,
+      name: name ?? this.name,
+      description: description ?? this.description,
       isPrivate: isPrivate ?? this.isPrivate,
-      notificationLabel: notificationLabel,
-      isMuted: isMuted ?? this.isMuted,
+      notification: notification ?? this.notification,
       memberPreview: memberPreview,
       memberCount: memberCount,
     );
@@ -40,8 +45,7 @@ class ChannelSettings extends Equatable {
     name,
     description,
     isPrivate,
-    notificationLabel,
-    isMuted,
+    notification,
     memberPreview,
     memberCount,
   ];
