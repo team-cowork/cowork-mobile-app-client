@@ -23,6 +23,9 @@ class FakeMessageGateway implements HttpClientAdapter {
 
   final users = <int, String>{1: '나', 2: '도윤', 3: '서연', 4: '민재'};
 
+  /// `GET /channels/10/members` 로 읽는 채널 10 의 멤버 id.
+  final memberIds = <int>[1, 2, 3];
+
   final calls = <String>[];
   final bodies = <String, Map<String, dynamic>>{};
 
@@ -64,6 +67,9 @@ class FakeMessageGateway implements HttpClientAdapter {
         'viewType': 'TEXT',
         'teamId': 1,
       }),
+      'GET /channel/channels/10/members' => _ok([
+        for (final id in memberIds) {'channelId': 10, 'userId': id},
+      ]),
       'GET /chat/chat/channels/10/messages' => await _list(uri.queryParameters),
       'POST /chat/chat/channels/10/messages' => _ok({'queued': true}),
       'GET /user/users/me' => _ok({'id': 1, 'name': '나'}),
