@@ -62,3 +62,8 @@ final class _ChannelListSocketEventReceived extends ChannelListEvent {
   @override
   List<Object?> get props => [event];
 }
+
+/// 소켓이 끊김 복구 없이 다시 붙었다. 화면이 아니라 Bloc 이 스스로 넣는다.
+final class _ChannelListReconnected extends ChannelListEvent {
+  const _ChannelListReconnected();
+}

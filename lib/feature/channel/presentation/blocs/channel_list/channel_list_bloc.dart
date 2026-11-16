@@ -38,17 +38,22 @@ class ChannelListBloc extends Bloc<ChannelListEvent, ChannelListState> {
     on<ChannelListTeamCreated>(_onTeamCreated);
     on<ChannelListChannelAdded>(_onChannelAdded);
     on<_ChannelListSocketEventReceived>(_onSocketEvent);
+    on<_ChannelListReconnected>(_onReconnected);
 
     _socketEvents = _socket.events
         .map(ChannelSocketEvent.from)
         .where((event) => event != null)
         .listen((event) => add(_ChannelListSocketEventReceived(event!)));
+    _reconnects = _socket.reconnected.listen(
+      (_) => add(const _ChannelListReconnected()),
+    );
   }
 
   final TeamRepository _teamRepository;
   final ChannelRepository _channelRepository;
   final ChatSocket _socket;
   late final StreamSubscription<ChannelSocketEvent?> _socketEvents;
+  late final StreamSubscription<void> _reconnects;
 
   /// 마지막으로 읽은 팀 목록. 팀을 바꿀 때는 다시 읽지 않고 여기서 고른다.
   List<TeamSummaryResponse> _teams = const [];
@@ -159,6 +164,31 @@ class ChannelListBloc extends Bloc<ChannelListEvent, ChannelListState> {
       case TeamAccessRevoked(:final teamId):
         await _leaveTeam(teamId, emit);
     }
+  }
+
+  /// 소켓이 끊김 복구(2분) 없이 다시 붙었다. 끊긴 동안 생기거나 바뀌거나 지워진 채널은
+  /// 이벤트로 오지 않으므로, 보고 있는 팀의 채널 목록을 다시 읽어 맞춘다.
+  ///
+  /// 화면을 로딩으로 바꾸지 않고 목록만 갈아 끼운다. 목록이 없거나(읽는 중·실패) 다시
+  /// 읽는 사이 다른 팀으로 옮겼다면 하지 않는다. 읽기에 실패하면 보던 목록을 둔다.
+  Future<void> _onReconnected(
+    _ChannelListReconnected event,
+    Emitter<ChannelListState> emit,
+  ) async {
+    final team = _currentTeam();
+    if (state is! AsyncSuccess<ChannelListData> || team == null) return;
+
+    final List<Channel> channels;
+    try {
+      channels = await _channelRepository.fetchChannels(team.id);
+    } catch (e, s) {
+      Logger.e('재연결 후 채널 목록 조회 실패', tag: 'Chat', error: e, stackTrace: s);
+      return;
+    }
+    if (isClosed || team.id != _teamId) return;
+    if (state is! AsyncSuccess<ChannelListData>) return;
+
+    emit(ChannelListState.success(_homeOf(team, channels)));
   }
 
   void _apply(ChannelListChange change, Emitter<ChannelListState> emit) {
@@ -293,6 +323,7 @@ class ChannelListBloc extends Bloc<ChannelListEvent, ChannelListState> {
     // 방 구독부터 끊는다. 구독 취소(cancel)는 비동기라 기다리는 동안 이벤트가 더 온다.
     _follow(null);
     await _socketEvents.cancel();
+    await _reconnects.cancel();
     return super.close();
   }
 
