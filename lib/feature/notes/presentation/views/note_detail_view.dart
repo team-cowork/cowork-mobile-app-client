@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../shared/widgets/base_scaffold.dart';
 import '../../../profile/data/profile_store.dart';
 import '../../domain/note.dart';
+import '../widgets/delete_note_dialog.dart';
 
 /// 상세 화면을 닫으며 목록에 알리는 결과. 결과가 없으면 목록은 그대로 둔다.
 enum NoteDetailResult {
@@ -58,15 +59,7 @@ class _NoteDetailViewState extends State<NoteDetailView> {
   /// 먼저 빼고 실패하면 되돌려 알리는 처리를 한곳에 둔다. 밀기는 스크린 리더로
   /// 할 수 없어서 이 버튼이 그 대신이기도 하다.
   Future<void> _confirmDelete() async {
-    final confirmed = await CoworkDialog.show(
-      context,
-      title: '회의록을 삭제할까요?',
-      message: '삭제한 회의록은 되돌릴 수 없어요.',
-      confirmLabel: '삭제',
-      cancelLabel: '취소',
-      confirmColor: CoworkButtonColor.danger,
-    );
-    if (confirmed != true || !mounted) return;
+    if (!await confirmDeleteNote(context) || !mounted) return;
     Navigator.of(context).pop(NoteDetailResult.deleted);
   }
 

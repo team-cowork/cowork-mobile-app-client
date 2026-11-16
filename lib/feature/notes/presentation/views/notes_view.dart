@@ -18,6 +18,7 @@ import '../../domain/note_draft.dart';
 import '../../domain/note_template.dart';
 import '../blocs/notes/notes_bloc.dart';
 import 'note_detail_view.dart';
+import '../widgets/delete_note_dialog.dart';
 import '../widgets/note_choice_chip.dart';
 
 /// 회의록 목록 화면.
@@ -245,14 +246,7 @@ class _NoteCard extends StatelessWidget {
       key: ValueKey(note.id),
       direction: DismissDirection.endToStart,
       background: const _DeleteBackground(),
-      confirmDismiss: (_) => CoworkDialog.show(
-        context,
-        title: '회의록을 삭제할까요?',
-        message: '삭제한 회의록은 되돌릴 수 없어요.',
-        confirmLabel: '삭제',
-        cancelLabel: '취소',
-        confirmColor: CoworkButtonColor.danger,
-      ),
+      confirmDismiss: (_) => confirmDeleteNote(context),
       onDismissed: (_) =>
           context.read<NotesBloc>().add(NoteDeleteRequested(note)),
       child: card,
