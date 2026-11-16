@@ -18,6 +18,7 @@ void main() {
     FakeMessageGateway gateway, {
     String? focusMessageId,
     FakeChatSocket? socket,
+    UrlOpener? openUrl,
   }) async {
     await tester.pumpWidget(
       MultiRepositoryProvider(
@@ -44,8 +45,11 @@ void main() {
             routes: [
               GoRoute(
                 path: '/',
-                builder: (_, _) =>
-                    ChannelView(channelId: 10, focusMessageId: focusMessageId),
+                builder: (_, _) => ChannelView(
+                  channelId: 10,
+                  focusMessageId: focusMessageId,
+                  openUrl: openUrl ?? (_) async => true,
+                ),
               ),
               GoRoute(
                 path: '/chat/channel/:channelId/thread',
@@ -159,6 +163,77 @@ void main() {
 
     expect(find.text('기획서.pdf'), findsOneWidget);
     expect(find.text('2.0 KB'), findsOneWidget);
+  });
+
+  group('첨부파일을 누르면', () {
+    FakeMessageGateway withAttachment() => FakeMessageGateway(
+      messages: [
+        {
+          ...messageJson('m1', 2, '', type: 'FILE'),
+          'attachments': [
+            {'name': '기획서.pdf', 'size': 2048, 'mimeType': 'application/pdf'},
+          ],
+        },
+      ],
+    );
+
+    testWidgets('임시 주소를 새로 받아 바로 연다', (tester) async {
+      final opened = <Uri>[];
+      final gateway = withAttachment();
+      await pumpChannel(
+        tester,
+        gateway,
+        openUrl: (url) async {
+          opened.add(url);
+          return true;
+        },
+      );
+
+      await tester.tap(find.text('기획서.pdf'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('기획서.pdf'));
+      await tester.pumpAndSettle();
+
+      expect(opened, [
+        Uri.parse('https://files.test/a.pdf'),
+        Uri.parse('https://files.test/a.pdf'),
+      ]);
+      // 주소는 저장하지 않고 누를 때마다 새로 받는다.
+      expect(
+        gateway.calls.where((c) => c.endsWith('/download-url')),
+        hasLength(2),
+      );
+    });
+
+    testWidgets('주소를 받지 못하면 안내하고 열지 않는다', (tester) async {
+      final opened = <Uri>[];
+      final gateway = withAttachment()
+        ..failing =
+            'GET /chat/chat/channels/10/messages/m1/attachments/0/download-url';
+      await pumpChannel(
+        tester,
+        gateway,
+        openUrl: (url) async {
+          opened.add(url);
+          return true;
+        },
+      );
+
+      await tester.tap(find.text('기획서.pdf'));
+      await tester.pumpAndSettle();
+
+      expect(opened, isEmpty);
+      expect(find.byType(SnackBar), findsOneWidget);
+    });
+
+    testWidgets('열 수 있는 앱이 없으면 안내한다', (tester) async {
+      await pumpChannel(tester, withAttachment(), openUrl: (_) async => false);
+
+      await tester.tap(find.text('기획서.pdf'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('파일을 열 수 있는 앱이 없어요.'), findsOneWidget);
+    });
   });
 
   group('검색한 메시지로 열면', () {

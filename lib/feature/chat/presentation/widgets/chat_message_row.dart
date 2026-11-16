@@ -11,6 +11,7 @@ class ChatMessageRow extends StatelessWidget {
     this.avatarSize = AppSize.componentMedium,
     this.onTap,
     this.onLongPress,
+    this.onAttachmentTap,
     super.key,
   });
 
@@ -18,6 +19,9 @@ class ChatMessageRow extends StatelessWidget {
   final double avatarSize;
   final VoidCallback? onTap;
   final VoidCallback? onLongPress;
+
+  /// 첨부파일 카드를 눌렀다. 몇 번째 첨부인지 넘긴다.
+  final ValueChanged<int>? onAttachmentTap;
 
   @override
   Widget build(BuildContext context) {
@@ -48,11 +52,14 @@ class ChatMessageRow extends StatelessWidget {
             child: Column(
               spacing: AppSpacing.s8,
               children: [
-                for (final attachment in message.attachments)
+                for (final (index, attachment) in message.attachments.indexed)
                   CoworkAttachmentCard(
                     filename: attachment.name,
                     subtitle: _sizeLabel(attachment.size),
                     icon: _iconFor(attachment),
+                    onTap: onAttachmentTap == null
+                        ? null
+                        : () => onAttachmentTap!(index),
                   ),
               ],
             ),

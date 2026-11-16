@@ -6,8 +6,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show RenderSliver;
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../core/network/chat_socket.dart';
+import '../../../../core/network/http_error_message.dart';
 import '../../../../core/utils/app_lifecycle.dart';
 import '../../../../core/utils/async_state.dart';
 import '../../../../shared/widgets/bloc_scaffold.dart';
@@ -18,10 +20,24 @@ import '../../domain/chat_message.dart';
 import '../blocs/channel_message/channel_message_bloc.dart';
 import '../widgets/chat_message_row.dart';
 
+/// 받은 주소를 기기의 외부 앱·브라우저로 연다. 열 수 없으면 false.
+typedef UrlOpener = Future<bool> Function(Uri url);
+
+Future<bool> _launchExternally(Uri url) =>
+    launchUrl(url, mode: LaunchMode.externalApplication);
+
 class ChannelView extends StatelessWidget {
-  const ChannelView({required this.channelId, this.focusMessageId, super.key});
+  const ChannelView({
+    required this.channelId,
+    this.focusMessageId,
+    this.openUrl = _launchExternally,
+    super.key,
+  });
 
   final int channelId;
+
+  /// 첨부파일 주소를 여는 방법. 테스트에서 바꾼다.
+  final UrlOpener openUrl;
 
   /// 열 때 보여 줄 메시지(검색 결과에서 고른 것). 없으면 최근 메시지부터 연다.
   final String? focusMessageId;
@@ -77,7 +93,9 @@ class ChannelView extends StatelessWidget {
                 onMoreTap: () =>
                     context.push('/chat/channel/$channelId/settings'),
               ),
-              Expanded(child: _MessageList(data: data)),
+              Expanded(
+                child: _MessageList(data: data, openUrl: openUrl),
+              ),
               const Padding(
                 padding: EdgeInsets.fromLTRB(
                   AppSpacing.s12,
@@ -125,9 +143,10 @@ class ChannelView extends StatelessWidget {
 /// 배치한다. 목록이 화면에 보이는 줄만 만들어서, 멀리 있는 줄은 위치를 알 수 없기
 /// 때문이다. 기준 메시지가 스크롤 0 에 오고, 그보다 최근 메시지는 아래로 이어 붙는다.
 class _MessageList extends StatefulWidget {
-  const _MessageList({required this.data});
+  const _MessageList({required this.data, required this.openUrl});
 
   final ChannelConversation data;
+  final UrlOpener openUrl;
 
   @override
   State<_MessageList> createState() => _MessageListState();
@@ -365,6 +384,7 @@ class _MessageListState extends State<_MessageList> {
       onLongPress: message.editable
           ? () => _showMessageActions(context, message)
           : null,
+      onAttachmentTap: (index) => _openAttachment(context, message, index),
     );
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s4),
@@ -383,6 +403,40 @@ class _MessageListState extends State<_MessageList> {
             )
           : row,
     );
+  }
+
+  bool _opening = false;
+
+  /// 첨부파일을 누르면 그때마다 서버에서 임시 주소(60초)를 새로 받아 바로 연다. 주소를
+  /// 저장해 두면 만료되므로 들고 있지 않는다. 받는 동안 같은 카드를 다시 눌러도 요청이
+  /// 겹치지 않게 한다.
+  Future<void> _openAttachment(
+    BuildContext context,
+    ChatMessage message,
+    int index,
+  ) async {
+    if (_opening) return;
+    _opening = true;
+    final repository = context.read<MessageRepository>();
+    final channelId = context.read<ChannelMessageBloc>().channelId;
+    String? failure;
+    try {
+      final url = await repository.fetchAttachmentDownloadUrl(
+        channelId,
+        message.id,
+        index,
+      );
+      if (!await widget.openUrl(Uri.parse(url))) {
+        failure = '파일을 열 수 있는 앱이 없어요.';
+      }
+    } on Object catch (e) {
+      failure = failureMessageOf(e, '파일을 열지 못했어요.');
+    } finally {
+      _opening = false;
+    }
+    if (failure != null && context.mounted) {
+      ChannelView._notify(context, failure);
+    }
   }
 
   /// 내 메시지를 길게 눌렀을 때. 고치거나 지울지 고르게 한다.
