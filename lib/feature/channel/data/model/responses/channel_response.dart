@@ -27,6 +27,9 @@ abstract class ChannelResponse with _$ChannelResponse {
 
     /// 채널이 속한 팀. DM 채널이면 없다.
     int? teamId,
+
+    /// 초대된 사람만 볼 수 있는 채널인지.
+    @Default(false) bool isPrivate,
   }) = _ChannelResponse;
 
   factory ChannelResponse.fromJson(Map<String, dynamic> json) =>

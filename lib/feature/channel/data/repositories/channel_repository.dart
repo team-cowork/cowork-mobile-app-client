@@ -4,6 +4,7 @@ import '../../../../core/network/dio_client.dart';
 import '../../../auth/data/auth_repository.dart';
 import '../../domain/channel.dart';
 import '../model/requests/create_channel_request.dart';
+import '../model/requests/update_channel_request.dart';
 import '../model/responses/channel_member_response.dart';
 import '../model/responses/channel_response.dart';
 
@@ -40,6 +41,28 @@ class ChannelRepository {
       teamId: channel.teamId,
     );
   }
+
+  /// 채널 하나의 응답 그대로. 채널 설정 화면이 이름·설명·공개 여부를 읽을 때 쓴다.
+  Future<ChannelResponse> fetchChannel(int channelId) async =>
+      ChannelResponse.fromJson(
+        unwrapPayload(
+          (await _dio.get<String>('/channels/$channelId')).data ?? '',
+        ),
+      );
+
+  /// 채널의 이름·설명·공개 여부를 바꾸고 서버가 저장한 채널을 돌려준다.
+  Future<ChannelResponse> updateChannel(
+    int channelId,
+    UpdateChannelRequest request,
+  ) async => ChannelResponse.fromJson(
+    unwrapPayload(
+      (await _dio.patch<String>(
+            '/channels/$channelId',
+            data: request.toJson(),
+          )).data ??
+          '',
+    ),
+  );
 
   /// 채널을 읽을 수 있는 사용자. 서버가 사용자 id 만 줘서 이름은 따로 채운다.
   Future<List<ChannelMemberResponse>> fetchMembers(int channelId) async => [
