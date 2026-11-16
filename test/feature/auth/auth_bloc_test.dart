@@ -177,9 +177,9 @@ void main() {
   group('로그인 실패 문구', () {
     test('서버 요청 실패는 공통 규칙(dioErrorMessage)을 따른다', () async {
       final error = DioException(
-        requestOptions: RequestOptions(path: '/auth/token'),
+        requestOptions: RequestOptions(path: '/auth/callback'),
         response: Response(
-          requestOptions: RequestOptions(path: '/auth/token'),
+          requestOptions: RequestOptions(path: '/auth/callback'),
           statusCode: 503,
         ),
       );
@@ -214,7 +214,8 @@ void main() {
 
     for (final (kind, message) in [
       (AuthFailureKind.browserFailed, '브라우저 인증에 실패했습니다.'),
-      (AuthFailureKind.stateMismatch, '인증 응답을 신뢰할 수 없어 로그인을 중단했습니다.'),
+      (AuthFailureKind.invalidLoginStart, '로그인을 시작하지 못했습니다.'),
+      (AuthFailureKind.stateMissing, '인증 응답을 신뢰할 수 없어 로그인을 중단했습니다.'),
       (AuthFailureKind.codeMissing, '인가 코드를 받지 못했습니다.'),
       (AuthFailureKind.invalidTokenResponse, '토큰 응답 형식이 올바르지 않습니다.'),
     ]) {

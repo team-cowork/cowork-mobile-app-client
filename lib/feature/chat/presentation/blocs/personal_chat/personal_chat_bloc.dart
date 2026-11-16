@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:dio/dio.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -75,11 +74,7 @@ class PersonalChatBloc extends Bloc<PersonalChatEvent, PersonalChatState> {
       _conversations = await _fetch();
     } catch (e, s) {
       Logger.e('DM 목록 조회 실패', tag: 'PersonalChat', error: e, stackTrace: s);
-      emit(
-        PersonalChatState.failure(
-          e is DioException ? dioErrorMessage(e) : null,
-        ),
-      );
+      emit(PersonalChatState.failure(failureMessageOf(e)));
       return;
     }
     _emit(emit);
@@ -137,7 +132,7 @@ class PersonalChatBloc extends Bloc<PersonalChatEvent, PersonalChatState> {
         ..insert(index.clamp(0, _conversations.length), hidden);
       _emit(
         emit,
-        error: e is DioException ? dioErrorMessage(e) : 'DM을 숨기지 못했어요.',
+        error: failureMessageOf(e, 'DM을 숨기지 못했어요.'),
       );
     } finally {
       _hiding.remove(event.channelId);

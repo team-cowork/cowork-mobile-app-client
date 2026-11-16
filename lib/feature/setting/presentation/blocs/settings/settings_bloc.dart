@@ -68,9 +68,7 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
       );
     } catch (e, s) {
       Logger.e('설정 조회 실패', tag: 'Settings', error: e, stackTrace: s);
-      emit(
-        SettingsState.failure(e is DioException ? dioErrorMessage(e) : null),
-      );
+      emit(SettingsState.failure(failureMessageOf(e)));
     }
   }
 

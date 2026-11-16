@@ -1,4 +1,3 @@
-import 'package:dio/dio.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -23,7 +22,7 @@ class IssuesBloc extends Bloc<IssuesEvent, IssuesState> {
       emit(IssuesState.success(IssuesStore.instance.issues));
     } catch (e, s) {
       Logger.e('이슈 조회 실패', tag: 'Issues', error: e, stackTrace: s);
-      emit(IssuesState.failure(e is DioException ? dioErrorMessage(e) : null));
+      emit(IssuesState.failure(failureMessageOf(e)));
     }
   }
 
