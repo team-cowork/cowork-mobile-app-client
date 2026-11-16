@@ -1,4 +1,3 @@
-import 'package:dio/dio.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -30,11 +29,7 @@ class ChannelSettingsBloc
       );
     } catch (e, s) {
       Logger.e('채널 설정 조회 실패', tag: 'ChannelSettings', error: e, stackTrace: s);
-      emit(
-        ChannelSettingsState.failure(
-          e is DioException ? dioErrorMessage(e) : null,
-        ),
-      );
+      emit(ChannelSettingsState.failure(failureMessageOf(e)));
     }
   }
 

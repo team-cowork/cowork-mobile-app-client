@@ -1,4 +1,3 @@
-import 'package:dio/dio.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -38,11 +37,7 @@ class ProfileStatusBloc extends Bloc<ProfileStatusEvent, ProfileStatusState> {
       emit(const ProfileStatusState(saved: true));
     } catch (e, s) {
       Logger.e('상태 저장 실패', tag: 'Profile', error: e, stackTrace: s);
-      emit(
-        ProfileStatusState(
-          error: e is DioException ? dioErrorMessage(e) : '상태를 저장하지 못했어요.',
-        ),
-      );
+      emit(ProfileStatusState(error: failureMessageOf(e, '상태를 저장하지 못했어요.')));
     }
   }
 }
