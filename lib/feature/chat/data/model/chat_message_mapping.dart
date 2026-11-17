@@ -4,6 +4,7 @@ import '../../../../shared/utils/initial.dart';
 import '../../domain/chat_attachment.dart';
 import '../../domain/chat_message.dart';
 import 'responses/message_response.dart';
+import 'responses/user_display_name_response.dart';
 
 /// 같은 사람이 늘 같은 색이 되도록 작성자 id 로 고르는 아바타 색.
 const _avatarColors = [
@@ -13,9 +14,20 @@ const _avatarColors = [
   ChatAvatarColor.red,
 ];
 
+const _unknownAuthorName = '알 수 없음';
+
 /// 이름을 아직 모르는 작성자. 이름을 받아 오면 [chatAuthorOf] 로 바꾼다.
 ProfileEntity unknownChatAuthor(int id) =>
-    ProfileEntity(id: id, name: '알 수 없음', avatarInitial: '?');
+    ProfileEntity(id: id, name: _unknownAuthorName, avatarInitial: '?');
+
+/// [author] 가 [unknownChatAuthor] 로 만든, 이름을 모르는 작성자인지.
+bool isUnknownChatAuthor(ProfileEntity author) =>
+    author.name == _unknownAuthorName && author.avatarInitial == '?';
+
+/// 사용자 이름을 화면에 보일 이름으로. `name` 을 먼저 쓰고, 비어 있으면 `nickname`.
+/// 채팅·스레드·멤버 목록이 같은 규칙을 쓰도록 한곳에 둔다.
+String displayNameOf(UserDisplayNameResponse user) =>
+    user.name.isNotEmpty ? user.name : (user.nickname ?? '');
 
 /// 표시 이름으로 만든 작성자. 이름이 비어 있으면 [unknownChatAuthor].
 ProfileEntity chatAuthorOf(int id, String name) => name.isEmpty

@@ -23,6 +23,12 @@ class FakeMessageGateway implements HttpClientAdapter {
 
   final users = <int, String>{1: '나', 2: '도윤', 3: '서연', 4: '민재'};
 
+  /// `GET /channels/10/members` 로 읽는 채널 10 의 멤버 id.
+  final memberIds = <int>[1, 2, 3];
+
+  /// 사용자 id 별 닉네임. 이름(`users`)이 비어 있을 때 쓴다.
+  final nicknames = <int, String>{};
+
   final calls = <String>[];
   final bodies = <String, Map<String, dynamic>>{};
 
@@ -64,13 +70,21 @@ class FakeMessageGateway implements HttpClientAdapter {
         'viewType': 'TEXT',
         'teamId': 1,
       }),
+      'GET /channel/channels/10/members' => _ok([
+        for (final id in memberIds) {'channelId': 10, 'userId': id},
+      ]),
       'GET /chat/chat/channels/10/messages' => await _list(uri.queryParameters),
       'POST /chat/chat/channels/10/messages' => _ok({'queued': true}),
       'GET /user/users/me' => _ok({'id': 1, 'name': '나'}),
       'GET /user/users/batch' => _ok({
         'users': [
           for (final id in uri.queryParameters['ids']!.split(','))
-            {'id': int.parse(id), 'name': users[int.parse(id)] ?? ''},
+            {
+              'id': int.parse(id),
+              'name': users[int.parse(id)] ?? '',
+              if (nicknames[int.parse(id)] case final nickname?)
+                'nickname': nickname,
+            },
         ],
       }),
       _ => ResponseBody.fromString('', 204),
