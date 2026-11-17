@@ -17,6 +17,15 @@ _MeetingNoteResponse _$MeetingNoteResponseFromJson(Map<String, dynamic> json) =>
           : parseNoteContent(json['content']),
       createdBy: (json['createdBy'] as num?)?.toInt() ?? 0,
       createdAt: _createdAtOf(json['createdAt'] as String?),
+      attachments:
+          (json['attachments'] as List<dynamic>?)
+              ?.map(
+                (e) => MeetingNoteAttachmentResponse.fromJson(
+                  e as Map<String, dynamic>,
+                ),
+              )
+              .toList() ??
+          const [],
     );
 
 Map<String, dynamic> _$MeetingNoteResponseToJson(
@@ -29,4 +38,5 @@ Map<String, dynamic> _$MeetingNoteResponseToJson(
   'content': instance.sections,
   'createdBy': instance.createdBy,
   'createdAt': instance.createdAt.toIso8601String(),
+  'attachments': instance.attachments,
 };

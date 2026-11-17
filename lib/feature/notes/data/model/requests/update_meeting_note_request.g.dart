@@ -11,4 +11,5 @@ Map<String, dynamic> _$UpdateMeetingNoteRequestToJson(
 ) => <String, dynamic>{
   'title': instance.title,
   'content': encodeNoteContent(instance.sections),
+  'attachments': instance.attachments.map((e) => e.toJson()).toList(),
 };

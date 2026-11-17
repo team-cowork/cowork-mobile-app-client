@@ -1,7 +1,9 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
 
 import '../../../domain/note.dart';
+import '../../../domain/note_attachment.dart';
 import '../meeting_note_content.dart';
+import 'meeting_note_attachment_response.dart';
 
 part 'meeting_note_response.freezed.dart';
 part 'meeting_note_response.g.dart';
@@ -33,6 +35,9 @@ abstract class MeetingNoteResponse with _$MeetingNoteResponse {
 
     /// 정렬에만 쓰므로 못 읽으면 맨 뒤로 보낸다.
     @JsonKey(fromJson: _createdAtOf) required DateTime createdAt,
+
+    /// 붙은 파일. 첨부가 생기기 전 서버 응답에는 없으므로 비어 있는 것으로 본다.
+    @Default([]) List<MeetingNoteAttachmentResponse> attachments,
   }) = _MeetingNoteResponse;
 
   factory MeetingNoteResponse.fromJson(Map<String, dynamic> json) =>
@@ -47,6 +52,10 @@ abstract class MeetingNoteResponse with _$MeetingNoteResponse {
     tags: const [],
     author: author,
     sections: sections,
+    attachments: [
+      for (final attachment in attachments)
+        NoteAttachment(objectKey: attachment.objectKey, name: attachment.name),
+    ],
   );
 }
 
