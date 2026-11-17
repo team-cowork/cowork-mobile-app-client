@@ -6,6 +6,7 @@ import 'package:cowork_app/feature/auth/data/auth_repository.dart';
 import 'package:cowork_app/feature/auth/data/dgsm_oauth_config.dart';
 import 'package:cowork_app/feature/auth/presentation/blocs/auth/auth_bloc.dart';
 import 'package:cowork_app/feature/channel/data/repositories/channel_repository.dart';
+import 'package:cowork_app/feature/chat/data/repositories/dm_repository.dart';
 import 'package:cowork_app/feature/chat/data/repositories/message_repository.dart';
 import 'package:cowork_app/feature/notes/data/repositories/notes_repository.dart';
 import 'package:cowork_app/feature/notes/data/repositories/note_template_repository.dart';
@@ -81,6 +82,9 @@ class CoworkApp extends StatelessWidget {
         RepositoryProvider(
           create: (context) =>
               MessageRepository(context.read<AuthRepository>()),
+        ),
+        RepositoryProvider(
+          create: (context) => DmRepository(context.read<AuthRepository>()),
         ),
         RepositoryProvider(
           create: (context) => SearchRepository(context.read<AuthRepository>()),

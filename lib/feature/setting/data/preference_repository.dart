@@ -21,14 +21,18 @@ class PreferenceRepository {
   Future<AccountPreference> fetchAccount(int accountId) async =>
       _parse(await _dio.get<String>('/preferences/account/$accountId'));
 
-  /// 서버가 저장된 설정을 그대로 돌려준다.
-  Future<AccountPreference> updateAccount(
+  /// 알림 수준만 보낸다. 서버는 보낸 항목만 바꾸고 나머지는 유지한 뒤 저장된
+  /// 설정을 돌려준다.
+  ///
+  /// 부분 수정은 계정 설정(`/preferences/account/{id}`)에만 해당한다. 채널 알림
+  /// 설정(`.../channels/{channelId}/notification`)의 PUT 은 설정 전체를 교체한다.
+  Future<AccountPreference> updateNotificationLevel(
     int accountId,
-    AccountPreference preference,
+    NotificationLevel level,
   ) async => _parse(
     await _dio.put<String>(
       '/preferences/account/$accountId',
-      data: preference.toJson(),
+      data: {'notification_level': level.value},
     ),
   );
 

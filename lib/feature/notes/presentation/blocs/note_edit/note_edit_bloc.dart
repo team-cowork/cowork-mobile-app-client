@@ -1,4 +1,3 @@
-import 'package:dio/dio.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -134,11 +133,7 @@ class NoteEditBloc extends Bloc<NoteEditEvent, NoteEditState> {
       emit(state.copyWith(note: edited, saved: true));
     } catch (e, s) {
       Logger.e('회의록 저장 실패', tag: 'Notes', error: e, stackTrace: s);
-      emit(
-        state.copyWith(
-          error: e is DioException ? dioErrorMessage(e) : '회의록을 저장하지 못했어요.',
-        ),
-      );
+      emit(state.copyWith(error: failureMessageOf(e, '회의록을 저장하지 못했어요.')));
     } finally {
       _saving = false;
     }

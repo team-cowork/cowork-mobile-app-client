@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:dio/dio.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -39,17 +38,22 @@ class ChannelListBloc extends Bloc<ChannelListEvent, ChannelListState> {
     on<ChannelListTeamCreated>(_onTeamCreated);
     on<ChannelListChannelAdded>(_onChannelAdded);
     on<_ChannelListSocketEventReceived>(_onSocketEvent);
+    on<_ChannelListReconnected>(_onReconnected);
 
     _socketEvents = _socket.events
         .map(ChannelSocketEvent.from)
         .where((event) => event != null)
         .listen((event) => add(_ChannelListSocketEventReceived(event!)));
+    _reconnects = _socket.reconnected.listen(
+      (_) => add(const _ChannelListReconnected()),
+    );
   }
 
   final TeamRepository _teamRepository;
   final ChannelRepository _channelRepository;
   final ChatSocket _socket;
   late final StreamSubscription<ChannelSocketEvent?> _socketEvents;
+  late final StreamSubscription<void> _reconnects;
 
   /// 마지막으로 읽은 팀 목록. 팀을 바꿀 때는 다시 읽지 않고 여기서 고른다.
   List<TeamSummaryResponse> _teams = const [];
@@ -62,6 +66,10 @@ class ChannelListBloc extends Bloc<ChannelListEvent, ChannelListState> {
 
   /// 채널 목록을 읽는 동안 온 변경. 목록을 받은 뒤 순서대로 반영한다.
   final _pending = <ChannelListChange>[];
+
+  /// 재연결 후 목록을 다시 읽는 동안 반영한 변경. 응답으로 목록을 바꾼 뒤 다시 반영해,
+  /// 응답이 그 변경보다 먼저 찍힌 목록이어도 덮이지 않게 한다. 읽는 중이 아니면 null.
+  List<ChannelListChange>? _resyncChanges;
 
   /// 단축 바 아바타 색. 같은 팀이 늘 같은 색이 되도록 id 로 고른다.
   static const _avatarColors = [
@@ -144,7 +152,12 @@ class ChannelListBloc extends Bloc<ChannelListEvent, ChannelListState> {
   void _onChannelAdded(
     ChannelListChannelAdded event,
     Emitter<ChannelListState> emit,
-  ) => _upsert(event.channel, emit);
+  ) {
+    final teamId = _teamId;
+    if (teamId == null) return;
+    // 소켓으로 온 변경과 같은 경로로 반영해, 다시 읽는 동안이면 함께 지켜진다.
+    _apply(ChannelUpserted(teamId: teamId, channel: event.channel), emit);
+  }
 
   Future<void> _onSocketEvent(
     _ChannelListSocketEventReceived event,
@@ -162,7 +175,58 @@ class ChannelListBloc extends Bloc<ChannelListEvent, ChannelListState> {
     }
   }
 
+  /// 소켓이 끊김 복구(2분) 없이 다시 붙었다. 끊긴 동안 생기거나 바뀌거나 지워진 채널,
+  /// 빠진 팀은 이벤트로 오지 않으므로 내 팀 목록과 보고 있는 팀의 채널 목록을 다시 읽어
+  /// 맞춘다.
+  ///
+  /// 화면을 로딩으로 바꾸지 않고 목록만 갈아 끼운다. 목록이 없거나(읽는 중·실패) 다시
+  /// 읽는 사이 다른 팀으로 옮겼다면 하지 않는다. 읽기에 실패하면 보던 목록을 둔다.
+  /// 읽는 사이 소켓으로 온 변경은 응답으로 바꾼 뒤 다시 반영한다.
+  Future<void> _onReconnected(
+    _ChannelListReconnected event,
+    Emitter<ChannelListState> emit,
+  ) async {
+    final team = _currentTeam();
+    if (state is! AsyncSuccess<ChannelListData> || team == null) return;
+
+    final changes = _resyncChanges = <ChannelListChange>[];
+    final List<TeamSummaryResponse> teams;
+    final List<Channel> channels;
+    try {
+      // 403 만 보고 팀에서 빠졌다고 판단하면 막 만든 팀의 일시적인 403 에도 팀을 떠나
+      // 버리므로, 팀 목록으로 확인한다.
+      teams = await _teamRepository.fetchMyTeams();
+      if (!teams.any((other) => other.id == team.id)) {
+        if (isClosed || team.id != _teamId) return;
+        // 끊긴 동안 팀에서 빠졌다. team:access:revoked 를 받은 것과 같게 처리한다.
+        _resyncChanges = null;
+        await _leaveTeam(team.id, emit);
+        return;
+      }
+      channels = await _channelRepository.fetchChannels(team.id);
+    } catch (e, s) {
+      Logger.e('재연결 후 채널 목록 조회 실패', tag: 'Chat', error: e, stackTrace: s);
+      return;
+    } finally {
+      if (identical(_resyncChanges, changes)) _resyncChanges = null;
+    }
+    if (isClosed || team.id != _teamId) return;
+    if (state is! AsyncSuccess<ChannelListData>) return;
+
+    _teams = teams;
+    emit(
+      ChannelListState.success(
+        _homeOf(teams.firstWhere((other) => other.id == team.id), channels),
+      ),
+    );
+    // 같은 변경이 응답에 이미 들어 있어도 upsert·삭제라 다시 반영해도 결과가 같다.
+    for (final change in changes) {
+      _apply(change, emit);
+    }
+  }
+
   void _apply(ChannelListChange change, Emitter<ChannelListState> emit) {
+    _resyncChanges?.add(change);
     switch (change) {
       case ChannelUpserted(:final teamId, :final channel):
         if (teamId == _teamId) _upsert(channel, emit);
@@ -294,6 +358,7 @@ class ChannelListBloc extends Bloc<ChannelListEvent, ChannelListState> {
     // 방 구독부터 끊는다. 구독 취소(cancel)는 비동기라 기다리는 동안 이벤트가 더 온다.
     _follow(null);
     await _socketEvents.cancel();
+    await _reconnects.cancel();
     return super.close();
   }
 
@@ -315,5 +380,5 @@ class ChannelListBloc extends Bloc<ChannelListEvent, ChannelListState> {
 
   /// `팀 목록 조회 실패 · (503) 서비스를 잠시 사용할 수 없습니다.` 꼴의 실패 사유.
   static String _reasonOf(String stage, Object error) =>
-      '$stage · ${error is DioException ? dioErrorMessage(error) : '잠시 후 다시 시도해 주세요.'}';
+      '$stage · ${failureMessageOf(error, '잠시 후 다시 시도해 주세요.')}';
 }

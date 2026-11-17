@@ -10,6 +10,7 @@ import '../avatar/cowork_avatar.dart';
 ///
 /// 아바타 + 사용자명 + 시간 + 마크다운 본문으로 구성된다.
 /// [avatar]가 주어지면 그대로 사용하고, 미주입 시 [initials]로 [CoworkAvatar]를 렌더링한다.
+/// [footer]는 본문 아래(본문과 같은 들여쓰기)에 붙는다. 본문이 비어 있으면 머리줄 바로 아래에 붙는다.
 class CoworkMessageItem extends StatelessWidget {
   const CoworkMessageItem({
     required this.username,
@@ -17,6 +18,7 @@ class CoworkMessageItem extends StatelessWidget {
     required this.message,
     this.initials = "CW",
     this.avatar,
+    this.footer,
     super.key,
   });
 
@@ -25,6 +27,7 @@ class CoworkMessageItem extends StatelessWidget {
   final String message;
   final String initials;
   final Widget? avatar;
+  final Widget? footer;
 
   @override
   Widget build(BuildContext context) {
@@ -43,26 +46,31 @@ class CoworkMessageItem extends StatelessWidget {
                 '$username · $timestamp',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: AppFont.labelXs.copyWith(
-                  color: colors.onSurfaceVariant,
-                ),
+                style: AppFont.labelXs.copyWith(color: colors.onSurfaceVariant),
               ),
-              const SizedBox(height: AppSpacing.s6),
-              MarkdownBody(
-                data: message,
-                shrinkWrap: true,
-                styleSheet: MarkdownStyleSheet(
-                  p: AppFont.subtextL.copyWith(color: colors.onSurface),
-                  code: AppFont.subtextL.copyWith(
-                    color: colors.onSurface,
-                    fontFamily: 'monospace',
-                    backgroundColor: colors.surfaceContainerHigh,
-                  ),
-                  codeblockDecoration: BoxDecoration(
-                    color: colors.surfaceContainerHigh,
+              // 파일만 보낸 메시지는 본문이 비어 있어, 자리를 만들지 않는다.
+              if (message.trim().isNotEmpty) ...[
+                const SizedBox(height: AppSpacing.s6),
+                MarkdownBody(
+                  data: message,
+                  shrinkWrap: true,
+                  styleSheet: MarkdownStyleSheet(
+                    p: AppFont.subtextL.copyWith(color: colors.onSurface),
+                    code: AppFont.subtextL.copyWith(
+                      color: colors.onSurface,
+                      fontFamily: 'monospace',
+                      backgroundColor: colors.surfaceContainerHigh,
+                    ),
+                    codeblockDecoration: BoxDecoration(
+                      color: colors.surfaceContainerHigh,
+                    ),
                   ),
                 ),
-              ),
+              ],
+              if (footer != null) ...[
+                const SizedBox(height: AppSpacing.s8),
+                footer!,
+              ],
             ],
           ),
         ),

@@ -14,9 +14,15 @@ const _avatarColors = [
   ChatAvatarColor.red,
 ];
 
+const _unknownAuthorName = '알 수 없음';
+
 /// 이름을 아직 모르는 작성자. 이름을 받아 오면 [chatAuthorOf] 로 바꾼다.
 ProfileEntity unknownChatAuthor(int id) =>
-    ProfileEntity(id: id, name: '알 수 없음', avatarInitial: '?');
+    ProfileEntity(id: id, name: _unknownAuthorName, avatarInitial: '?');
+
+/// [author] 가 [unknownChatAuthor] 로 만든, 이름을 모르는 작성자인지.
+bool isUnknownChatAuthor(ProfileEntity author) =>
+    author.name == _unknownAuthorName && author.avatarInitial == '?';
 
 /// 사용자 이름을 화면에 보일 이름으로. `name` 을 먼저 쓰고, 비어 있으면 `nickname`.
 /// 채팅·스레드·멤버 목록이 같은 규칙을 쓰도록 한곳에 둔다.

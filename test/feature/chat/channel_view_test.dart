@@ -17,6 +17,8 @@ void main() {
     WidgetTester tester,
     FakeMessageGateway gateway, {
     String? focusMessageId,
+    String? dmName,
+    bool isDirect = false,
     FakeChatSocket? socket,
   }) async {
     await tester.pumpWidget(
@@ -44,8 +46,12 @@ void main() {
             routes: [
               GoRoute(
                 path: '/',
-                builder: (_, _) =>
-                    ChannelView(channelId: 10, focusMessageId: focusMessageId),
+                builder: (_, _) => ChannelView(
+                  channelId: 10,
+                  focusMessageId: focusMessageId,
+                  dmName: dmName,
+                  isDirect: isDirect,
+                ),
               ),
               GoRoute(
                 path: '/chat/channel/:channelId/thread',
@@ -140,6 +146,75 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('스레드 10 m1'), findsOneWidget);
+  });
+
+  testWidgets('메시지 수정 시트를 열면 입력창에 바로 포커스가 간다', (tester) async {
+    await pumpChannel(
+      tester,
+      FakeMessageGateway(messages: [myMessage, otherMessage]),
+    );
+
+    await tester.longPress(messageText('내 메시지'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('메시지 수정'));
+    await tester.pumpAndSettle();
+
+    // 입력창에 포커스가 있으면 키보드(입력 연결)가 열려 있다.
+    expect(tester.testTextInput.isVisible, isTrue);
+  });
+
+  testWidgets('파일만 있는 메시지는 빈 본문 자리를 만들지 않는다', (tester) async {
+    await pumpChannel(
+      tester,
+      FakeMessageGateway(
+        messages: [
+          {
+            ...messageJson('m1', 2, '', type: 'FILE'),
+            'attachments': [
+              {'name': '기획서.pdf', 'size': 2048, 'mimeType': 'application/pdf'},
+            ],
+          },
+          messageJson('m0', 3, '본문이 있는 메시지'),
+        ],
+      ),
+    );
+
+    // 본문이 있는 메시지만 마크다운 본문을 그린다.
+    expect(
+      find.byWidgetPredicate((w) => w.runtimeType.toString() == 'MarkdownBody'),
+      findsOneWidget,
+    );
+    expect(find.text('기획서.pdf'), findsOneWidget);
+
+    // 첨부 카드는 아바타 높이만큼 내려가지 않고 머리줄 바로 아래에 붙는다.
+    final gap =
+        tester.getTopLeft(find.byType(CoworkAttachmentCard)).dy -
+        tester.getBottomLeft(find.textContaining('도윤 ·')).dy;
+    expect(gap, AppSpacing.s8);
+  });
+
+  testWidgets('DM 대화는 머리에 상대 이름을 보이고 채널 이름·설명은 숨긴다', (tester) async {
+    await pumpChannel(
+      tester,
+      FakeMessageGateway(messages: [otherMessage]),
+      dmName: '서연',
+    );
+
+    expect(find.text('서연'), findsOneWidget);
+    expect(find.text('백엔드'), findsNothing);
+    expect(find.text('API 논의'), findsNothing);
+  });
+
+  testWidgets('상대 이름을 모르는 DM 대화는 머리에 다이렉트 메시지를 보인다', (tester) async {
+    await pumpChannel(
+      tester,
+      FakeMessageGateway(messages: [otherMessage]),
+      isDirect: true,
+    );
+
+    expect(find.text('다이렉트 메시지'), findsOneWidget);
+    expect(find.text('백엔드'), findsNothing);
+    expect(find.text('API 논의'), findsNothing);
   });
 
   testWidgets('파일 메시지는 첨부파일 이름과 크기를 보여 준다', (tester) async {

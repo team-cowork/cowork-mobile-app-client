@@ -1,4 +1,3 @@
-import 'package:dio/dio.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -74,11 +73,7 @@ class NoteTemplatesBloc extends Bloc<NoteTemplatesEvent, NoteTemplatesState> {
     } catch (e, s) {
       Logger.e('회의록 템플릿 조회 실패', tag: 'NoteTemplates', error: e, stackTrace: s);
       if (_isStale(event.channelId)) return;
-      emit(
-        NoteTemplatesState.failure(
-          e is DioException ? dioErrorMessage(e) : null,
-        ),
-      );
+      emit(NoteTemplatesState.failure(failureMessageOf(e)));
     }
   }
 

@@ -56,6 +56,9 @@ class FakeChatServer implements HttpClientAdapter {
   /// 팀 id 별로 걸어 두면 그 팀 채널 목록 응답을 이 Future 가 끝날 때까지 붙잡는다.
   final channelGates = <int, Future<void>>{};
 
+  /// 받은 요청. `METHOD 경로` 형식이다.
+  final requests = <String>[];
+
   /// 채널 생성 요청 본문.
   final created = <Map<String, dynamic>>[];
 
@@ -72,6 +75,7 @@ class FakeChatServer implements HttpClientAdapter {
   ) async {
     final path = options.uri.path.replaceFirst('/api', '');
     final body = await _body(requestStream);
+    requests.add('${options.method} $path');
 
     if (path == '/team/teams' && options.method == 'POST') {
       return _respond(options, failCreateTeam, () => _createTeam(body));

@@ -277,4 +277,46 @@ void main() {
     expect(saved.sections.keys, ['참석자', '안건', '메모']);
     expect(saved.sections['안건'], '- [x] 끝난 일');
   });
+
+  test('지운 회의록은 그 채널 경로로 DELETE 하고, 다시 읽으면 빠져 있다', () async {
+    final server = FakeNotesServer();
+    final repository = notesRepositoryOf(server);
+    final note = (await repository.fetchNotes()).first;
+
+    await repository.deleteNote(note);
+
+    final (method, path, _) = server.requests.last;
+    expect(method, 'DELETE');
+    expect(
+      path,
+      '/channel/channels/${note.channelId}/meeting-notes/${note.id}',
+    );
+    final ids = [for (final left in await repository.fetchNotes()) left.id];
+    expect(ids, isNot(contains(note.id)));
+  });
+
+  test('이미 지워진 회의록(404)은 지운 것으로 본다', () async {
+    final server = FakeNotesServer()..failDelete = (404, '회의록을 찾을 수 없습니다.');
+    final repository = notesRepositoryOf(server);
+    final note = (await repository.fetchNotes()).first;
+
+    await expectLater(repository.deleteNote(note), completes);
+  });
+
+  test('작성자가 아니어서 거절(403)되면 그대로 던진다', () async {
+    final server = FakeNotesServer()..failDelete = (403, '권한이 없습니다.');
+    final repository = notesRepositoryOf(server);
+    final note = (await repository.fetchNotes()).first;
+
+    await expectLater(
+      repository.deleteNote(note),
+      throwsA(
+        isA<DioException>().having(
+          (e) => e.response?.statusCode,
+          'statusCode',
+          403,
+        ),
+      ),
+    );
+  });
 }

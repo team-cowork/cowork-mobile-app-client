@@ -1,4 +1,3 @@
-import 'package:dio/dio.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -116,11 +115,7 @@ class ChannelSettingsBloc
       );
     } catch (e, s) {
       Logger.e('채널 설정 조회 실패', tag: 'ChannelSettings', error: e, stackTrace: s);
-      emit(
-        ChannelSettingsState.failure(
-          e is DioException ? dioErrorMessage(e) : null,
-        ),
-      );
+      emit(ChannelSettingsState.failure(failureMessageOf(e)));
     }
   }
 
@@ -233,7 +228,7 @@ class ChannelSettingsBloc
       // 뒤에 보낼 요청이 있으면 그 요청이 화면 값을 서버에 맞춘다.
       if (error == null || _pendingNotifications > 0 || isClosed) return;
 
-      final reason = error is DioException ? dioErrorMessage(error) : failure;
+      final reason = failureMessageOf(error, failure);
       final server = await _serverNotification();
       if (isClosed) return;
       final current = _settings;
@@ -289,11 +284,7 @@ class ChannelSettingsBloc
       if (isClosed) return;
       final current = _settings;
       if (current == null) return;
-      _emit(
-        emit,
-        revert(current, before),
-        error: e is DioException ? dioErrorMessage(e) : failure,
-      );
+      _emit(emit, revert(current, before), error: failureMessageOf(e, failure));
     }
   }
 

@@ -181,7 +181,12 @@ class ChatSocket {
       ..on('error', (e) => Logger.e('소켓 오류', tag: 'Socket', error: e));
     for (final name in _listened) {
       socket.on(name, (data) {
-        Logger.d('소켓 이벤트 $name: $data', tag: 'Socket');
+        // 메시지 내용이 로그에 그대로 남지 않게 이벤트 이름과 채널만 적는다.
+        final channel = data is Map ? data['channelId'] : null;
+        Logger.d(
+          '소켓 이벤트 $name${channel == null ? '' : ' (채널 $channel)'}',
+          tag: 'Socket',
+        );
         if (data is Map) {
           _events.add((name: name, data: Map<String, dynamic>.from(data)));
         }
