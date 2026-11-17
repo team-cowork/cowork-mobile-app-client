@@ -8,9 +8,11 @@ import '../../../../core/utils/async_state.dart';
 import '../../../../shared/widgets/bloc_scaffold.dart';
 import '../../../channel/data/repositories/channel_repository.dart';
 import '../../data/repositories/message_repository.dart';
+import '../../domain/chat_attachment.dart';
 import '../../domain/chat_message.dart';
 import '../blocs/thread/thread_bloc.dart';
 import '../utils/attachment_opener.dart';
+import '../widgets/attachment_image_preview.dart';
 import '../widgets/chat_message_row.dart';
 
 class ThreadView extends StatefulWidget {
@@ -53,6 +55,17 @@ class _ThreadViewState extends State<ThreadView> {
     );
     if (failure != null && mounted) _notify(failure);
   }
+
+  Widget _image(ChatMessage message, int index, ChatAttachment attachment) =>
+      AttachmentImagePreview(
+        key: ValueKey('${message.id}/$index'),
+        repository: context.read<MessageRepository>(),
+        channelId: widget.channelId,
+        messageId: message.id,
+        attachmentIndex: index,
+        name: attachment.name,
+        onTap: () => _openAttachment(message, index),
+      );
 
   @override
   Widget build(BuildContext context) {
@@ -99,6 +112,11 @@ class _ThreadViewState extends State<ThreadView> {
                           conversation.thread.rootMessage,
                           index,
                         ),
+                        imageBuilder: (index, attachment) => _image(
+                          conversation.thread.rootMessage,
+                          index,
+                          attachment,
+                        ),
                       ),
                     ),
                     Padding(
@@ -139,6 +157,8 @@ class _ThreadViewState extends State<ThreadView> {
                               avatarSize: 32,
                               onAttachmentTap: (index) =>
                                   _openAttachment(reply, index),
+                              imageBuilder: (index, attachment) =>
+                                  _image(reply, index, attachment),
                             ),
                         ],
                       ),

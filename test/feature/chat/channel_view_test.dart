@@ -24,6 +24,7 @@ void main() {
     bool isDirect = false,
     FakeChatSocket? socket,
     UrlOpener? openUrl,
+    FakeFilesServer? files,
   }) async {
     await tester.pumpWidget(
       MultiRepositoryProvider(
@@ -35,6 +36,7 @@ void main() {
             value: MessageRepository.withDio(
               chat: messageDio(gateway, 'chat'),
               user: messageDio(gateway, 'user'),
+              files: filesDio(files ?? FakeFilesServer()),
             ),
           ),
           RepositoryProvider.value(
@@ -239,6 +241,72 @@ void main() {
 
     expect(find.text('기획서.pdf'), findsOneWidget);
     expect(find.text('2.0 KB'), findsOneWidget);
+  });
+
+  group('이미지 첨부는', () {
+    FakeMessageGateway withImage({String mimeType = 'image/png'}) =>
+        FakeMessageGateway(
+          messages: [
+            {
+              ...messageJson('img1', 2, '', type: 'FILE'),
+              'attachments': [
+                {'name': '화면.png', 'size': 2048, 'mimeType': mimeType},
+              ],
+            },
+          ],
+        );
+
+    testWidgets('카드 대신 그림으로 보인다', (tester) async {
+      await pumpChannel(tester, withImage());
+      await tester.pumpAndSettle();
+
+      expect(find.byType(Image), findsOneWidget);
+      expect(find.byType(CoworkAttachmentCard), findsNothing);
+    });
+
+    testWidgets('그릴 수 없는 형식은 카드로 보인다', (tester) async {
+      await pumpChannel(tester, withImage(mimeType: 'image/svg+xml'));
+
+      expect(find.byType(Image), findsNothing);
+      expect(find.byType(CoworkAttachmentCard), findsOneWidget);
+    });
+
+    testWidgets('받지 못하면 눌러서 다시 받는다', (tester) async {
+      final files = FakeFilesServer()..failing = true;
+      await pumpChannel(tester, withImage(), files: files);
+      await tester.pumpAndSettle();
+      expect(find.textContaining('눌러서 다시 시도'), findsOneWidget);
+
+      files.failing = false;
+      await tester.tap(find.textContaining('눌러서 다시 시도'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(Image), findsOneWidget);
+      expect(files.requests, hasLength(2));
+    });
+
+    testWidgets('누르면 임시 주소로 크게 볼 수 있게 연다', (tester) async {
+      final opened = <Uri>[];
+      await pumpChannel(
+        tester,
+        withImage(),
+        openUrl: (url) async {
+          opened.add(url);
+          return true;
+        },
+      );
+      await tester.pumpAndSettle();
+      // 그림이 풀려야 크기가 생겨 누를 수 있다.
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 200)),
+      );
+      await tester.pump();
+
+      await tester.tap(find.byType(Image));
+      await tester.pumpAndSettle();
+
+      expect(opened, [Uri.parse('https://files.test/img1.png')]);
+    });
   });
 
   group('첨부파일을 누르면', () {
