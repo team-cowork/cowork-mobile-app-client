@@ -88,6 +88,7 @@ class ChatView extends StatelessWidget {
                 onTitleTap: () => TeamMenuSheet.show(
                   context,
                   teamName: data.workspaceName,
+                  onInviteMembers: () => context.push('/teams/$teamId/invite'),
                   onCreateChannel: () => _createChannel(context, teamId),
                   onCreateProject: () => NewProjectSheet.show(context),
                 ),
