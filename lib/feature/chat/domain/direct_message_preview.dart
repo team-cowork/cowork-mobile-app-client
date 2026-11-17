@@ -6,6 +6,7 @@ import 'enums/dm_presence.dart';
 
 class DirectMessagePreview extends Equatable {
   const DirectMessagePreview({
+    required this.channelId,
     required this.profile,
     required this.avatarColor,
     required this.presence,
@@ -16,6 +17,9 @@ class DirectMessagePreview extends Equatable {
     this.isMuted = false,
     this.isTyping = false,
   });
+
+  /// 대화에 쓰는 DM 채널 id. 누르면 이 채널의 대화 화면으로 간다.
+  final int channelId;
 
   final ProfileEntity profile;
   final ChatAvatarColor avatarColor;
@@ -29,6 +33,7 @@ class DirectMessagePreview extends Equatable {
 
   @override
   List<Object?> get props => [
+    channelId,
     profile,
     avatarColor,
     presence,
