@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:cowork_app/core/network/chat_socket.dart';
 import 'package:cowork_app/feature/channel/data/repositories/channel_repository.dart';
 import 'package:cowork_app/feature/chat/data/repositories/message_repository.dart';
+import 'package:cowork_app/feature/chat/presentation/utils/attachment_opener.dart';
 import 'package:cowork_app/feature/chat/presentation/views/channel_view.dart';
 import 'package:cowork_app/feature/profile/data/repositories/profile_repository.dart';
 import 'package:cowork_design_system/design_system.dart';
@@ -224,6 +227,23 @@ void main() {
 
       expect(opened, isEmpty);
       expect(find.byType(SnackBar), findsOneWidget);
+    });
+
+    testWidgets('여는 중에 다시 누르면 주소를 또 받지 않는다', (tester) async {
+      final gate = Completer<bool>();
+      final gateway = withAttachment();
+      await pumpChannel(tester, gateway, openUrl: (_) => gate.future);
+
+      await tester.tap(find.text('기획서.pdf'));
+      await tester.pump();
+      await tester.tap(find.text('기획서.pdf'));
+      gate.complete(true);
+      await tester.pumpAndSettle();
+
+      expect(
+        gateway.calls.where((c) => c.endsWith('/download-url')),
+        hasLength(1),
+      );
     });
 
     testWidgets('열 수 있는 앱이 없으면 안내한다', (tester) async {

@@ -6,10 +6,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show RenderSliver;
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../core/network/chat_socket.dart';
-import '../../../../core/network/http_error_message.dart';
 import '../../../../core/utils/app_lifecycle.dart';
 import '../../../../core/utils/async_state.dart';
 import '../../../../shared/widgets/bloc_scaffold.dart';
@@ -18,19 +16,14 @@ import '../../../profile/data/repositories/profile_repository.dart';
 import '../../data/repositories/message_repository.dart';
 import '../../domain/chat_message.dart';
 import '../blocs/channel_message/channel_message_bloc.dart';
+import '../utils/attachment_opener.dart';
 import '../widgets/chat_message_row.dart';
-
-/// 받은 주소를 기기의 외부 앱·브라우저로 연다. 열 수 없으면 false.
-typedef UrlOpener = Future<bool> Function(Uri url);
-
-Future<bool> _launchExternally(Uri url) =>
-    launchUrl(url, mode: LaunchMode.externalApplication);
 
 class ChannelView extends StatelessWidget {
   const ChannelView({
     required this.channelId,
     this.focusMessageId,
-    this.openUrl = _launchExternally,
+    this.openUrl = launchExternally,
     super.key,
   });
 
@@ -405,38 +398,20 @@ class _MessageListState extends State<_MessageList> {
     );
   }
 
-  bool _opening = false;
+  late final _attachmentOpener = AttachmentOpener(
+    repository: context.read<MessageRepository>(),
+    open: widget.openUrl,
+  );
 
-  /// 첨부파일을 누르면 그때마다 서버에서 임시 주소(60초)를 새로 받아 바로 연다. 주소를
-  /// 저장해 두면 만료되므로 들고 있지 않는다. 받는 동안 같은 카드를 다시 눌러도 요청이
-  /// 겹치지 않게 한다.
   Future<void> _openAttachment(
-    BuildContext context,
+    BuildContext rowContext,
     ChatMessage message,
     int index,
   ) async {
-    if (_opening) return;
-    _opening = true;
-    final repository = context.read<MessageRepository>();
-    final channelId = context.read<ChannelMessageBloc>().channelId;
-    String? failure;
-    try {
-      final url = await repository.fetchAttachmentDownloadUrl(
-        channelId,
-        message.id,
-        index,
-      );
-      if (!await widget.openUrl(Uri.parse(url))) {
-        failure = '파일을 열 수 있는 앱이 없어요.';
-      }
-    } on Object catch (e) {
-      failure = failureMessageOf(e, '파일을 열지 못했어요.');
-    } finally {
-      _opening = false;
-    }
-    if (failure != null && context.mounted) {
-      ChannelView._notify(context, failure);
-    }
+    final channelId = rowContext.read<ChannelMessageBloc>().channelId;
+    final failure = await _attachmentOpener.open(channelId, message.id, index);
+    // 줄이 스크롤 밖으로 나가 사라져도 안내는 목록 화면 기준으로 띄운다.
+    if (failure != null && mounted) ChannelView._notify(context, failure);
   }
 
   /// 내 메시지를 길게 눌렀을 때. 고치거나 지울지 고르게 한다.

@@ -90,7 +90,7 @@ void main() {
 
     expect(
       repository.fetchAttachmentDownloadUrl(10, 'm1', 1),
-      throwsA(isA<Object>()),
+      throwsA(isA<FormatException>()),
     );
   });
 
