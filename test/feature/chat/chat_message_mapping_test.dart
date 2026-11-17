@@ -1,4 +1,5 @@
 import 'package:cowork_app/feature/chat/data/model/chat_message_mapping.dart';
+import 'package:cowork_app/shared/utils/chat_author.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

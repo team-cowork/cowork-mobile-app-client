@@ -24,7 +24,6 @@ ChannelMessageBloc _bloc(
   channelRepository: ChannelRepository.withDio(messageDio(gateway, 'channel')),
   messageRepository: MessageRepository.withDio(
     chat: messageDio(gateway, 'chat'),
-    user: messageDio(gateway, 'user'),
   ),
   profileRepository: ProfileRepository.withDio(messageDio(gateway, 'user')),
   socket: socket,

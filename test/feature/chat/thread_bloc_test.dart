@@ -1,6 +1,7 @@
 import 'package:cowork_app/core/utils/async_state.dart';
 import 'package:cowork_app/feature/channel/data/repositories/channel_repository.dart';
 import 'package:cowork_app/feature/chat/data/repositories/message_repository.dart';
+import 'package:cowork_app/feature/profile/data/repositories/profile_repository.dart';
 import 'package:cowork_app/feature/chat/domain/message_thread.dart';
 import 'package:cowork_app/feature/chat/presentation/blocs/thread/thread_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -26,8 +27,8 @@ ThreadBloc _bloc(
   channelRepository: ChannelRepository.withDio(messageDio(gateway, 'channel')),
   messageRepository: MessageRepository.withDio(
     chat: messageDio(gateway, 'chat'),
-    user: messageDio(gateway, 'user'),
   ),
+  profileRepository: ProfileRepository.withDio(messageDio(gateway, 'user')),
   socket: socket,
   confirmTimeout: confirmTimeout,
 );

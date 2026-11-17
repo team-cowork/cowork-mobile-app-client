@@ -62,7 +62,7 @@ MessageRepository _repository(_RecordingServer server) {
       responseType: ResponseType.plain,
     ),
   )..httpClientAdapter = server;
-  return MessageRepository.withDio(chat: dio('chat'), user: dio('user'));
+  return MessageRepository.withDio(chat: dio('chat'));
 }
 
 void main() {
@@ -70,7 +70,6 @@ void main() {
     final gateway = FakeMessageGateway();
     final repository = MessageRepository.withDio(
       chat: messageDio(gateway, 'chat'),
-      user: messageDio(gateway, 'user'),
     );
 
     final url = await repository.fetchAttachmentDownloadUrl(10, 'm1', 0);
@@ -85,7 +84,6 @@ void main() {
     final gateway = FakeMessageGateway();
     final repository = MessageRepository.withDio(
       chat: messageDio(gateway, 'chat'),
-      user: messageDio(gateway, 'user'),
     );
 
     expect(
@@ -184,10 +182,7 @@ void main() {
 
   group('스레드', () {
     MessageRepository repository(FakeMessageGateway gateway) =>
-        MessageRepository.withDio(
-          chat: messageDio(gateway, 'chat'),
-          user: messageDio(gateway, 'user'),
-        );
+        MessageRepository.withDio(chat: messageDio(gateway, 'chat'));
 
     test('답글은 한 페이지가 꽉 차는 동안 더 이전 답글을 이어서 읽는다', () async {
       final gateway = FakeMessageGateway(
@@ -264,17 +259,5 @@ void main() {
         throwsStateError,
       );
     });
-  });
-
-  test('작성자 이름은 중복을 빼고 100명씩 나눠 읽는다', () async {
-    final server = _RecordingServer();
-
-    final users = await _repository(
-      server,
-    ).fetchDisplayNames([for (var id = 1; id <= 150; id++) id, 1, 2]);
-
-    expect(users, hasLength(150));
-    expect(server.calls, hasLength(2));
-    expect(server.calls.last, startsWith('GET /user/users/batch?ids=101%2C'));
   });
 }

@@ -1,6 +1,6 @@
 import 'package:cowork_app/core/network/chat_socket.dart';
 import 'package:cowork_app/feature/chat/data/repositories/dm_repository.dart';
-import 'package:cowork_app/feature/chat/data/repositories/message_repository.dart';
+import 'package:cowork_app/feature/profile/data/repositories/profile_repository.dart';
 import 'package:cowork_app/feature/chat/presentation/views/dm_list_view.dart';
 import 'package:cowork_app/feature/profile/data/profile_store.dart';
 import 'package:cowork_design_system/design_system.dart';
@@ -23,8 +23,8 @@ void main() {
           RepositoryProvider<DmRepository>.value(
             value: dmRepositoryOf(gateway),
           ),
-          RepositoryProvider<MessageRepository>.value(
-            value: dmMessageRepositoryOf(gateway),
+          RepositoryProvider<ProfileRepository>.value(
+            value: dmProfileRepositoryOf(gateway),
           ),
           RepositoryProvider<ChatSocket>.value(value: FakeChatSocket()),
         ],

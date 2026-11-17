@@ -1,6 +1,7 @@
 import 'package:cowork_app/core/network/chat_socket.dart';
 import 'package:cowork_app/feature/channel/data/repositories/channel_repository.dart';
 import 'package:cowork_app/feature/chat/data/repositories/message_repository.dart';
+import 'package:cowork_app/feature/profile/data/repositories/profile_repository.dart';
 import 'package:cowork_app/feature/chat/presentation/utils/attachment_opener.dart';
 import 'package:cowork_app/feature/chat/presentation/views/thread_view.dart';
 import 'package:cowork_design_system/design_system.dart';
@@ -25,10 +26,10 @@ void main() {
             value: ChannelRepository.withDio(messageDio(gateway, 'channel')),
           ),
           RepositoryProvider.value(
-            value: MessageRepository.withDio(
-              chat: messageDio(gateway, 'chat'),
-              user: messageDio(gateway, 'user'),
-            ),
+            value: MessageRepository.withDio(chat: messageDio(gateway, 'chat')),
+          ),
+          RepositoryProvider.value(
+            value: ProfileRepository.withDio(messageDio(gateway, 'user')),
           ),
           RepositoryProvider<ChatSocket>.value(value: socket),
         ],
@@ -107,7 +108,10 @@ void main() {
     final sent = server.bodies['POST /chat/chat/channels/10/messages']!;
     expect(sent['content'], '새 답글');
     expect(sent['parentMessageId'], 'm1');
-    expect(tester.widget<TextField>(find.byType(TextField)).controller!.text, '');
+    expect(
+      tester.widget<TextField>(find.byType(TextField)).controller!.text,
+      '',
+    );
 
     socket.push(
       'message',

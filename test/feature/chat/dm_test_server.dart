@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:cowork_app/feature/chat/data/repositories/dm_repository.dart';
-import 'package:cowork_app/feature/chat/data/repositories/message_repository.dart';
+import 'package:cowork_app/feature/profile/data/repositories/profile_repository.dart';
 import 'package:dio/dio.dart';
 
 /// DM 목록 테스트용 가짜 게이트웨이. 서비스 prefix(`/chat`, `/channel`, `/user`)로
@@ -110,8 +110,5 @@ DmRepository dmRepositoryOf(FakeDmGateway gateway) => DmRepository.withDio(
   channel: dmDio(gateway, 'channel'),
 );
 
-MessageRepository dmMessageRepositoryOf(FakeDmGateway gateway) =>
-    MessageRepository.withDio(
-      chat: dmDio(gateway, 'chat'),
-      user: dmDio(gateway, 'user'),
-    );
+ProfileRepository dmProfileRepositoryOf(FakeDmGateway gateway) =>
+    ProfileRepository.withDio(dmDio(gateway, 'user'));

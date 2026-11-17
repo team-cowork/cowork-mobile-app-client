@@ -41,10 +41,7 @@ void main() {
             value: ChannelRepository.withDio(messageDio(gateway, 'channel')),
           ),
           RepositoryProvider.value(
-            value: MessageRepository.withDio(
-              chat: messageDio(gateway, 'chat'),
-              user: messageDio(gateway, 'user'),
-            ),
+            value: MessageRepository.withDio(chat: messageDio(gateway, 'chat')),
           ),
           RepositoryProvider.value(
             value: ProfileRepository.withDio(messageDio(gateway, 'user')),
