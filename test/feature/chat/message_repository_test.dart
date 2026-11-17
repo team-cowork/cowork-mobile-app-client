@@ -66,6 +66,79 @@ MessageRepository _repository(_RecordingServer server) {
 }
 
 void main() {
+  group('이미지 첨부', () {
+    MessageRepository repositoryOf(
+      FakeMessageGateway gateway,
+      FakeFilesServer files,
+    ) => MessageRepository.withDio(
+      chat: messageDio(gateway, 'chat'),
+      user: messageDio(gateway, 'user'),
+      files: filesDio(files),
+    );
+
+    test('임시 주소를 받아 이미지를 내려받는다', () async {
+      final gateway = FakeMessageGateway();
+      final files = FakeFilesServer();
+
+      final bytes = await repositoryOf(
+        gateway,
+        files,
+      ).fetchAttachmentImage(10, 'img1', 0);
+
+      expect(bytes, tinyPng);
+      expect(files.requests, ['https://files.test/img1.png']);
+    });
+
+    test('한 번 받은 이미지는 주소를 다시 받지 않고 쓴다', () async {
+      final gateway = FakeMessageGateway();
+      final files = FakeFilesServer();
+      final repository = repositoryOf(gateway, files);
+
+      await repository.fetchAttachmentImage(10, 'img1', 0);
+      gateway.calls.clear();
+      final again = await repository.fetchAttachmentImage(10, 'img1', 0);
+
+      expect(again, tinyPng);
+      expect(repository.cachedAttachmentImage(10, 'img1', 0), tinyPng);
+      expect(gateway.calls, isEmpty);
+      expect(files.requests, hasLength(1));
+    });
+
+    test('같은 이미지를 받는 중이면 그 요청을 같이 기다린다', () async {
+      final gateway = FakeMessageGateway();
+      final files = FakeFilesServer();
+      final repository = repositoryOf(gateway, files);
+
+      await Future.wait([
+        repository.fetchAttachmentImage(10, 'img1', 0),
+        repository.fetchAttachmentImage(10, 'img1', 0),
+      ]);
+
+      expect(files.requests, hasLength(1));
+    });
+
+    test('받지 못하면 저장하지 않고, 다시 부르면 새 주소로 받는다', () async {
+      final gateway = FakeMessageGateway();
+      final files = FakeFilesServer()..failing = true;
+      final repository = repositoryOf(gateway, files);
+
+      await expectLater(
+        repository.fetchAttachmentImage(10, 'img1', 0),
+        throwsA(isA<DioException>()),
+      );
+      expect(repository.cachedAttachmentImage(10, 'img1', 0), isNull);
+
+      files.failing = false;
+      final bytes = await repository.fetchAttachmentImage(10, 'img1', 0);
+
+      expect(bytes, tinyPng);
+      expect(
+        gateway.calls.where((c) => c.endsWith('/download-url')),
+        hasLength(2),
+      );
+    });
+  });
+
   test('첨부파일 다운로드 주소는 메시지와 첨부 순번으로 요청해 읽는다', () async {
     final gateway = FakeMessageGateway();
     final repository = MessageRepository.withDio(
