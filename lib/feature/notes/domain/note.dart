@@ -48,6 +48,19 @@ class Note extends Equatable {
   String get summary =>
       sections['요약'] ?? sections['내용'] ?? sections.values.join(' ').trim();
 
+  /// OS 공유 시트로 내보낼 텍스트.
+  ///
+  /// 제목을 `# `, 내용이 있는 섹션 제목을 `## ` 로 두고 본문을 그대로 잇는다.
+  /// 본문이 이미 마크다운이라 받는 쪽에서 구조가 유지된다.
+  String get shareText {
+    final buffer = StringBuffer('# $title');
+    for (final MapEntry(key: name, value: body) in sections.entries) {
+      if (body.trim().isEmpty) continue;
+      buffer.write('\n\n## $name\n${body.trim()}');
+    }
+    return buffer.toString();
+  }
+
   Note copyWith({
     String? title,
     List<String>? tags,

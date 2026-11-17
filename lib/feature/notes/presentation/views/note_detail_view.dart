@@ -2,6 +2,7 @@ import 'package:cowork_design_system/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 import 'package:go_router/go_router.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../../../../shared/widgets/base_scaffold.dart';
 import '../../../profile/data/profile_store.dart';
@@ -73,6 +74,11 @@ class _NoteDetailViewState extends State<NoteDetailView> {
     }
   }
 
+  /// 제목·내용을 OS 공유 시트로 내보낸다.
+  Future<void> _share() => SharePlus.instance.share(
+    ShareParams(text: _note.shareText, subject: _note.title),
+  );
+
   @override
   Widget build(BuildContext context) {
     // 뒤로 가기는 결과 없이 닫으므로, 편집했으면 가로채서 결과를 실어 닫는다.
@@ -99,7 +105,7 @@ class _NoteDetailViewState extends State<NoteDetailView> {
             variant: CoworkIconButtonVariant.ghost,
             color: CoworkIconButtonColor.neutral,
             semanticLabel: '공유',
-            onPressed: () {},
+            onPressed: _share,
           ),
           if (_isMine)
             CoworkIconButton(
