@@ -3,79 +3,49 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../chat/data/repositories/message_repository.dart';
 import '../../../../shared/domain/enums/chat_avatar_color.dart';
 import '../../../../shared/widgets/bloc_scaffold.dart';
+import '../../data/repositories/channel_repository.dart';
 import '../../domain/channel_member.dart';
 import '../blocs/channel_members/channel_members_bloc.dart';
 
 class MembersView extends StatelessWidget {
-  const MembersView({super.key});
+  const MembersView({required this.channelId, super.key});
+
+  final int channelId;
 
   @override
   Widget build(BuildContext context) {
     return BlocScaffold<ChannelMembersBloc, ChannelMembersData>(
-      create: (_) =>
-          ChannelMembersBloc()..add(const ChannelMembersEvent.requested()),
+      create: (context) => ChannelMembersBloc(
+        channelId: channelId,
+        channelRepository: context.read<ChannelRepository>(),
+        messageRepository: context.read<MessageRepository>(),
+      )..add(const ChannelMembersEvent.requested()),
       errorTitle: '멤버를 불러오지 못했어요',
       onRetry: (context) => context.read<ChannelMembersBloc>().add(
         const ChannelMembersEvent.requested(),
       ),
-      builder: (context, data) {
-        final online = data.members.where((m) => m.isOnline).toList();
-        final offline = data.members.where((m) => !m.isOnline).toList();
-
-        return SafeArea(
-          child: Column(
-            children: [
-              _MembersHeader(
-                channelName: data.channelName,
-                memberCount: data.members.length,
-                onBack: () => context.pop(),
+      builder: (context, data) => SafeArea(
+        child: Column(
+          children: [
+            _MembersHeader(
+              channelName: data.channelName,
+              memberCount: data.members.length,
+              onBack: () => context.pop(),
+            ),
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s16),
+                children: [
+                  for (final member in data.members)
+                    _ChannelMemberTile(member: member),
+                ],
               ),
-              Expanded(
-                child: ListView(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.s16,
-                  ),
-                  children: [
-                    if (online.isNotEmpty) ...[
-                      _SectionLabel('온라인 — ${online.length}'),
-                      for (final member in online)
-                        _ChannelMemberTile(member: member),
-                    ],
-                    if (offline.isNotEmpty) ...[
-                      _SectionLabel('오프라인 — ${offline.length}'),
-                      for (final member in offline)
-                        _ChannelMemberTile(member: member),
-                    ],
-                  ],
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-}
-
-class _SectionLabel extends StatelessWidget {
-  const _SectionLabel(this.label);
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.s4,
-        AppSpacing.s10,
-        AppSpacing.s4,
-        AppSpacing.s6,
-      ),
-      child: Text(
-        label,
-        style: AppFont.labelXs.copyWith(color: AppColors.neutral300),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -86,14 +56,11 @@ class _MembersHeader extends StatelessWidget {
     required this.channelName,
     required this.memberCount,
     this.onBack,
-    // ignore: unused_element_parameter -- 초대 동작 미연결. 배선되면 이 줄을 지운다.
-    this.onInviteTap,
   });
 
   final String channelName;
   final int memberCount;
   final VoidCallback? onBack;
-  final VoidCallback? onInviteTap;
 
   @override
   Widget build(BuildContext context) {
@@ -133,7 +100,6 @@ class _MembersHeader extends StatelessWidget {
               ],
             ),
           ),
-          GestureDetector(onTap: onInviteTap, child: AppIcon.userPlus()),
         ],
       ),
     );
@@ -141,14 +107,9 @@ class _MembersHeader extends StatelessWidget {
 }
 
 class _ChannelMemberTile extends StatelessWidget {
-  const _ChannelMemberTile({
-    required this.member,
-    // ignore: unused_element_parameter -- 더보기 동작 미연결. 배선되면 이 줄을 지운다.
-    this.onMoreTap,
-  });
+  const _ChannelMemberTile({required this.member});
 
   final ChannelMember member;
-  final VoidCallback? onMoreTap;
 
   static Color _colorFor(ChatAvatarColor color) => switch (color) {
     ChatAvatarColor.blue => AppColors.blue500,
@@ -160,12 +121,6 @@ class _ChannelMemberTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final avatar = CoworkAvatar(
-      initials: member.profile.avatarInitial,
-      backgroundColor: _colorFor(member.avatarColor),
-      foregroundColor: AppColors.white,
-    );
-
     return Padding(
       padding: const EdgeInsets.symmetric(
         horizontal: AppSpacing.s4,
@@ -173,90 +128,19 @@ class _ChannelMemberTile extends StatelessWidget {
       ),
       child: Row(
         children: [
-          SizedBox(
-            width: AppSize.componentMedium,
-            height: AppSize.componentMedium,
-            child: Stack(
-              children: [
-                Opacity(opacity: member.isOnline ? 1 : 0.55, child: avatar),
-                Positioned(
-                  right: 0,
-                  bottom: 0,
-                  child: Container(
-                    width: 13,
-                    height: 13,
-                    decoration: BoxDecoration(
-                      color: member.isOnline
-                          ? AppColors.green500
-                          : AppColors.neutral300,
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: AppColors.neutral850,
-                        width: 2.5,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
+          CoworkAvatar(
+            initials: member.profile.avatarInitial,
+            backgroundColor: _colorFor(member.avatarColor),
+            foregroundColor: AppColors.white,
           ),
           const SizedBox(width: AppSpacing.s12),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              spacing: 2,
-              children: [
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  spacing: AppSpacing.s6,
-                  children: [
-                    Text(
-                      member.profile.name,
-                      style: AppFont.subtextL.copyWith(
-                        color: AppColors.darkOnSurface,
-                      ),
-                    ),
-                    if (member.isOwner) const _OwnerBadge(),
-                  ],
-                ),
-                Text(
-                  member.role,
-                  style: AppFont.subtextS.copyWith(color: AppColors.neutral300),
-                ),
-              ],
+            child: Text(
+              member.profile.name,
+              style: AppFont.subtextL.copyWith(color: AppColors.darkOnSurface),
             ),
           ),
-          GestureDetector(onTap: onMoreTap, child: AppIcon.more(size: 20)),
         ],
-      ),
-    );
-  }
-}
-
-/// 채널 소유자 표시. 팔레트에 없는 보라색은 이 배지 전용값이라 인라인.
-class _OwnerBadge extends StatelessWidget {
-  const _OwnerBadge();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.s6,
-        vertical: 2,
-      ),
-      decoration: BoxDecoration(
-        color: const Color(0xFF3D2050),
-        borderRadius: BorderRadius.circular(AppRadius.r4),
-      ),
-      child: const Text(
-        'OWNER',
-        style: TextStyle(
-          fontFamily: AppFont.fontFamily,
-          fontFamilyFallback: AppFont.fontFamilyFallback,
-          fontSize: 10,
-          fontWeight: AppFont.bold,
-          color: Color(0xFFD4A3FF),
-        ),
       ),
     );
   }

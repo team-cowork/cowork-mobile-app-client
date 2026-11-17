@@ -663,7 +663,7 @@ class ChannelMessageBloc
     };
     if (unknown.isEmpty) return;
     for (final user in await _messageRepository.fetchDisplayNames(unknown)) {
-      _authors[user.id] = chatAuthorOf(user.id, user.name);
+      _authors[user.id] = chatAuthorOf(user.id, displayNameOf(user));
     }
   }
 
@@ -678,7 +678,7 @@ class ChannelMessageBloc
           if (isClosed) return;
           add(
             _ChannelMessageAuthorsResolved([
-              for (final user in users) chatAuthorOf(user.id, user.name),
+              for (final user in users) chatAuthorOf(user.id, displayNameOf(user)),
             ]),
           );
         })

@@ -4,6 +4,7 @@ import '../../../../core/network/dio_client.dart';
 import '../../../auth/data/auth_repository.dart';
 import '../../domain/channel.dart';
 import '../model/requests/create_channel_request.dart';
+import '../model/responses/channel_member_response.dart';
 import '../model/responses/channel_response.dart';
 
 /// 채널 화면 머리에 쓰는 채널 정보. [teamId] 는 DM 채널이면 null.
@@ -39,6 +40,14 @@ class ChannelRepository {
       teamId: channel.teamId,
     );
   }
+
+  /// 채널을 읽을 수 있는 사용자. 서버가 사용자 id 만 줘서 이름은 따로 채운다.
+  Future<List<ChannelMemberResponse>> fetchMembers(int channelId) async => [
+    for (final json in unwrapListPayload(
+      (await _dio.get<String>('/channels/$channelId/members')).data ?? '',
+    ))
+      ChannelMemberResponse.fromJson(json),
+  ];
 
   /// 채널을 만들고 서버가 저장한 채널을 돌려준다.
   Future<Channel> createChannel(CreateChannelRequest request) async =>
