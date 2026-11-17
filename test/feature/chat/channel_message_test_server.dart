@@ -52,6 +52,12 @@ class FakeMessageGateway implements HttpClientAdapter {
   /// 이 요청에는 500 을 돌려준다.
   String? failing;
 
+  /// 이 요청은 한 번만 500 을 돌려준다.
+  final failingOnce = <String>{};
+
+  /// 걸어 두면 알림 설정 `PUT` 응답을 이 Future 가 끝날 때까지 붙잡는다.
+  Future<void>? notificationGate;
+
   /// 걸어 두면 메시지 목록 응답을 이 Future 가 끝날 때까지 붙잡는다.
   Future<void>? listGate;
 
@@ -77,7 +83,12 @@ class FakeMessageGateway implements HttpClientAdapter {
         bodies[call] = jsonDecode(utf8.decode(bytes)) as Map<String, dynamic>;
       }
     }
-    if (call == failing) return _json({'message': '서버 오류'}, 500);
+    if (call.startsWith('PUT ') && call.endsWith('/notification')) {
+      await notificationGate;
+    }
+    if (call == failing || failingOnce.remove(call)) {
+      return _json({'message': '서버 오류'}, 500);
+    }
 
     return switch (call) {
       'GET /channel/channels/10' => _ok(channel),

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cowork_app/core/utils/async_state.dart';
 import 'package:cowork_app/feature/channel/data/model/requests/update_channel_request.dart';
 import 'package:cowork_app/feature/channel/data/repositories/channel_repository.dart';
@@ -221,6 +223,57 @@ void main() {
       );
 
       expect(_data(bloc).settings.isPrivate, isFalse);
+      expect(_data(bloc).errorMessage, isNotNull);
+    });
+
+    test('알림 요청이 겹쳐도 앞이 실패하고 뒤가 성공하면 화면과 서버가 같다', () async {
+      final gateway = FakeMessageGateway();
+      final bloc = await _loaded(gateway);
+      addTearDown(bloc.close);
+      final gate = Completer<void>();
+      gateway.notificationGate = gate.future;
+
+      bloc.add(
+        const ChannelSettingsEvent.notificationLevelChanged(
+          NotificationLevel.mentions,
+        ),
+      );
+      await pumpEventQueue();
+      // 수준 요청이 끝나기 전에 음소거를 켠다. 서버는 알림 설정을 통째로 교체한다.
+      bloc.add(const ChannelSettingsEvent.muteToggled(true));
+      await pumpEventQueue();
+      gateway.failingOnce.add('PUT $_notificationPath');
+      gate.complete();
+      await pumpEventQueue();
+
+      final notification = _data(bloc).settings.notification;
+      expect(notification.level, NotificationLevel.mentions);
+      expect(notification.isMuted(DateTime.now()), isTrue);
+      expect(gateway.notification['notification_level'], 'MENTIONS');
+      expect(gateway.notification['muted_until'], '9999-01-01T00:00:00.000Z');
+    });
+
+    test('알림 요청이 모두 실패하면 서버 값으로 되돌리고 사유를 싣는다', () async {
+      final gateway = FakeMessageGateway();
+      final bloc = await _loaded(gateway);
+      addTearDown(bloc.close);
+      gateway.failing = 'PUT $_notificationPath';
+
+      bloc.add(
+        const ChannelSettingsEvent.notificationLevelChanged(
+          NotificationLevel.mentions,
+        ),
+      );
+      bloc.add(const ChannelSettingsEvent.muteToggled(true));
+      await bloc.stream.firstWhere(
+        (s) =>
+            s is AsyncSuccess<ChannelSettingsData> &&
+            s.data.errorMessage != null,
+      );
+
+      final notification = _data(bloc).settings.notification;
+      expect(notification.level, isNull);
+      expect(notification.isMuted(DateTime.now()), isFalse);
       expect(_data(bloc).errorMessage, isNotNull);
     });
 
