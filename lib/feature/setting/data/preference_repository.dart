@@ -22,6 +22,9 @@ class PreferenceRepository {
 
   /// 알림 수준만 보낸다. 서버는 보낸 항목만 바꾸고 나머지는 유지한 뒤 저장된
   /// 설정을 돌려준다.
+  ///
+  /// 부분 수정은 계정 설정(`/preferences/account/{id}`)에만 해당한다. 채널 알림
+  /// 설정(`.../channels/{channelId}/notification`)의 PUT 은 설정 전체를 교체한다.
   Future<AccountPreference> updateNotificationLevel(
     int accountId,
     NotificationLevel level,
