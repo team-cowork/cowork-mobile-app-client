@@ -43,6 +43,9 @@ class FakeMessageGateway implements HttpClientAdapter {
     'muted_until': null,
   };
 
+  /// 채널 10 의 스레드. `POST`·`PATCH /channels/10/threads` 가 바꾼다.
+  List<Map<String, dynamic>> threads = [];
+
   /// 사용자 id 별 닉네임. 이름(`users`)이 비어 있을 때 쓴다.
   final nicknames = <int, String>{};
 
@@ -99,6 +102,13 @@ class FakeMessageGateway implements HttpClientAdapter {
       'PUT /preference/preferences/account/1/channels/10/notification' => _ok(
         notification = {...bodies[call]!, 'notification': true},
       ),
+      'GET /channel/channels/10/threads' => _ok({'content': threads}),
+      'POST /channel/channels/10/threads' => _ok(
+        _addThread({...bodies[call]!, 'id': 5, 'channelId': 10}),
+      ),
+      'PATCH /channel/channels/10/threads/5' => _ok(
+        threads.single..addAll(bodies[call]!),
+      ),
       'GET /channel/channels/10/members' => _ok([
         for (final id in memberIds) {'channelId': 10, 'userId': id},
       ]),
@@ -122,6 +132,11 @@ class FakeMessageGateway implements HttpClientAdapter {
       }),
       _ => ResponseBody.fromString('', 204),
     };
+  }
+
+  Map<String, dynamic> _addThread(Map<String, dynamic> thread) {
+    threads = [...threads, thread];
+    return thread;
   }
 
   /// 서버처럼 `before`, `after`, `around` 커서 중 하나로 최신순 한 페이지를 준다.
