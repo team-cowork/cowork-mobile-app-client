@@ -45,12 +45,15 @@ void main() {
   late _HeldNotes repository;
   late NotesBloc bloc;
   late List<NotesState> states;
+  late List<String> failures;
 
   setUp(() {
     repository = _HeldNotes();
     bloc = NotesBloc(repository);
     states = [];
     bloc.stream.listen(states.add);
+    failures = [];
+    bloc.failures.listen(failures.add);
   });
 
   tearDown(() => bloc.close());
@@ -95,7 +98,7 @@ void main() {
     expect(_titles(bloc.state), ['새 목록']);
   });
 
-  test('다시 읽기에 실패해도 보던 목록은 그대로 둔다', () async {
+  test('다시 읽기에 실패하면 보던 목록은 두고 실패를 한 번 알린다', () async {
     await loaded(['처음']);
 
     bloc.add(const NotesRequested());
@@ -105,9 +108,43 @@ void main() {
 
     expect(states, isEmpty);
     expect(_titles(bloc.state), ['처음']);
+    expect(failures, ['회의록 목록을 새로 고치지 못했어요.']);
   });
 
-  test('목록이 없을 때 실패하면 오류 화면으로 간다', () async {
+  test('겹친 다시 읽기가 모두 실패해도 마지막 조회만 알린다', () async {
+    await loaded(['처음']);
+
+    bloc
+      ..add(const NotesRequested())
+      ..add(const NotesRequested());
+    await pumpEventQueue();
+    final [older, newer] = repository.calls.sublist(1);
+
+    older.completeError(Exception('네트워크'));
+    await pumpEventQueue();
+    expect(failures, isEmpty);
+
+    newer.completeError(Exception('네트워크'));
+    await pumpEventQueue();
+    expect(failures, ['회의록 목록을 새로 고치지 못했어요.']);
+  });
+
+  test('다시 읽는 사이 화면이 닫힌 뒤 실패해도 예외 없이 끝낸다', () async {
+    await loaded(['처음']);
+
+    bloc.add(const NotesRequested());
+    await pumpEventQueue();
+    // 로그아웃·세션 만료로 셸이 내려가 Bloc 이 닫힌다.
+    final closing = bloc.close();
+    await pumpEventQueue();
+    repository.calls.last.completeError(Exception('네트워크'));
+    await closing;
+    await pumpEventQueue();
+
+    expect(failures, isEmpty);
+  });
+
+  test('목록이 없을 때 실패하면 알리지 않고 오류 화면으로 간다', () async {
     bloc.add(const NotesRequested());
     await pumpEventQueue();
     expect(bloc.state, isA<AsyncLoading<List<Note>>>());
@@ -115,16 +152,10 @@ void main() {
     repository.calls.last.completeError(Exception('네트워크'));
     await pumpEventQueue();
     expect(bloc.state, isA<AsyncFailure<List<Note>>>());
+    expect(failures, isEmpty);
   });
 
   group('삭제', () {
-    late List<String> failures;
-
-    setUp(() {
-      failures = [];
-      bloc.failures.listen(failures.add);
-    });
-
     test('서버 응답을 기다리지 않고 목록에서 먼저 뺀다', () async {
       await loaded(['하나', '둘', '셋']);
 
@@ -154,6 +185,20 @@ void main() {
 
       expect(states.whereType<AsyncLoading<List<Note>>>(), isEmpty);
       expect(_titles(bloc.state), ['넷', '하나', '셋']);
+    });
+
+    test('지운 뒤 다시 읽기에 실패하면 지운 채로 두고 다시 읽기 실패만 알린다', () async {
+      await loaded(['하나', '둘', '셋']);
+
+      bloc.add(NoteDeleteRequested(_note('둘')));
+      await pumpEventQueue();
+      repository.deletes.last.complete();
+      await pumpEventQueue();
+      repository.calls.last.completeError(Exception('네트워크'));
+      await pumpEventQueue();
+
+      expect(_titles(bloc.state), ['하나', '셋']);
+      expect(failures, ['회의록 목록을 새로 고치지 못했어요.']);
     });
 
     test('실패하면 원래 자리에 되돌리고 실패를 한 번 알린다', () async {

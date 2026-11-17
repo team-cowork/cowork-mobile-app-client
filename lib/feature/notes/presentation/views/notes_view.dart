@@ -141,7 +141,8 @@ class _NewNoteButton extends StatelessWidget {
   }
 }
 
-/// [NotesBloc.failures] 를 SnackBar 로 띄운다. 삭제가 실패해 카드가 되돌아올 때 쓴다.
+/// [NotesBloc.failures] 를 SnackBar 로 띄운다. 삭제가 실패해 카드가 되돌아올 때와
+/// 목록을 다시 읽지 못해 보던 목록이 그대로 남을 때 쓴다.
 ///
 /// 마지막 카드를 지우면 목록이 빈 화면으로 바뀌므로, 구독이 끊기지 않게 목록과
 /// 빈 화면을 함께 감싼다.
