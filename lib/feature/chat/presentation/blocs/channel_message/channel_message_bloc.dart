@@ -50,7 +50,9 @@ class ChannelMessageBloc
     this.focusMessageId,
     this.confirmTimeout = const Duration(seconds: 10),
     this.markReadRetryDelay = const Duration(seconds: 3),
-  }) : _channelRepository = channelRepository,
+    DateTime Function() now = DateTime.now,
+  }) : _now = now,
+       _channelRepository = channelRepository,
        _messageRepository = messageRepository,
        _profileRepository = profileRepository,
        _socket = socket,
@@ -66,6 +68,8 @@ class ChannelMessageBloc
     on<_ChannelMessageConfirmTimedOut>(_onConfirmTimedOut);
     on<_ChannelMessageResynced>(_onResynced);
     on<_ChannelMessageForegroundChanged>(_onForegroundChanged);
+    on<_ChannelMessageDayChanged>(_onDayChanged);
+    _scheduleDayChange();
 
     _socketEvents = _socket.events
         .map(MessageSocketEvent.from)
@@ -93,6 +97,12 @@ class ChannelMessageBloc
 
   /// 읽음 요청이 실패하면 다시 보내기까지 기다리는 첫 시간. 실패할 때마다 두 배로 늘린다.
   final Duration markReadRetryDelay;
+
+  /// 지금 시각. `오늘`·`어제` 표기를 정하고 자정을 기다리는 데 쓴다.
+  final DateTime Function() _now;
+
+  /// 자정이 지나면 `오늘`·`어제` 표기를 다시 만들려고 거는 타이머.
+  Timer? _dayTimer;
 
   static const _maxMarkReadRetries = 3;
 
@@ -562,8 +572,17 @@ class ChannelMessageBloc
           // 과거 위치를 보는 중이면 사이가 비어 붙이지 않는다. 이후 메시지를 읽을 때 온다.
           if (_hasNewer) return false;
           _messages.add(message);
-        } else {
+        } else if (_isSaved(_messages[index])) {
           _messages[index] = message;
+        } else {
+          // 보낸 메시지가 저장됐다. 보낼 때 맨 끝에 넣어 뒀으므로, 그사이 소켓으로 온
+          // 다른 사람의 메시지와 서버 시각 순서가 다르면 자리를 옮긴다.
+          _messages.removeAt(index);
+          final after = _messages.lastIndexWhere(
+            (other) =>
+                _isSaved(other) && !other.createdAt.isAfter(message.createdAt),
+          );
+          _messages.insert(after + 1, message);
         }
         _confirmTimers.remove(message.clientMessageId)?.cancel();
         if (!message.isSystem && !_authors.containsKey(message.authorId)) {
@@ -688,7 +707,8 @@ class ChannelMessageBloc
           if (isClosed) return;
           add(
             _ChannelMessageAuthorsResolved([
-              for (final user in users) chatAuthorOf(user.id, displayNameOf(user)),
+              for (final user in users)
+                chatAuthorOf(user.id, displayNameOf(user)),
             ]),
           );
         })
@@ -727,6 +747,24 @@ class ChannelMessageBloc
     _markReadFailures++;
   }
 
+  /// 다음 자정에 표기를 다시 만든다.
+  void _scheduleDayChange() {
+    final now = _now();
+    final midnight = DateTime(now.year, now.month, now.day + 1);
+    _dayTimer?.cancel();
+    _dayTimer = Timer(midnight.difference(now), () {
+      if (!isClosed) add(const _ChannelMessageDayChanged());
+    });
+  }
+
+  void _onDayChanged(
+    _ChannelMessageDayChanged event,
+    Emitter<ChannelMessageState> emit,
+  ) {
+    _emit(emit);
+    _scheduleDayChange();
+  }
+
   void _emit(Emitter<ChannelMessageState> emit, {String? error}) {
     final header = _header;
     if (header == null) return;
@@ -742,7 +780,7 @@ class ChannelMessageBloc
   }
 
   ChannelConversation _conversationOf(ChannelHeader header) {
-    final now = DateTime.now();
+    final now = _now();
     return ChannelConversation(
       name: header.name,
       description: header.description,
@@ -782,6 +820,7 @@ class ChannelMessageBloc
     }
     _confirmTimers.clear();
     _markReadRetry?.cancel();
+    _dayTimer?.cancel();
     await _socketEvents.cancel();
     await _reconnects.cancel();
     await _lifecycle?.cancel();
