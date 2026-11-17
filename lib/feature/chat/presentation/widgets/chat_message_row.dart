@@ -21,7 +21,7 @@ class ChatMessageRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    Widget item = CoworkMessageItem(
+    final Widget item = CoworkMessageItem(
       username: message.author.name,
       timestamp: message.timestamp,
       message: message.text,
@@ -32,20 +32,11 @@ class ChatMessageRow extends StatelessWidget {
         backgroundColor: message.avatarColor.toColor(),
         foregroundColor: AppColors.white,
       ),
-    );
-
-    if (message.attachments.isNotEmpty) {
-      item = Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          item,
-          Padding(
-            // 메시지 본문과 같은 줄에 맞춘다. (아바타 + CoworkMessageItem 의 간격)
-            padding: EdgeInsets.only(
-              left: avatarSize + AppSpacing.s20,
-              top: AppSpacing.s8,
-            ),
-            child: Column(
+      // 본문 칸 안에 그려야 파일만 있는 메시지도 머리줄 바로 아래에 붙는다.
+      footer: message.attachments.isEmpty
+          ? null
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               spacing: AppSpacing.s8,
               children: [
                 for (final attachment in message.attachments)
@@ -56,10 +47,7 @@ class ChatMessageRow extends StatelessWidget {
                   ),
               ],
             ),
-          ),
-        ],
-      );
-    }
+    );
 
     if (onTap == null && onLongPress == null) return item;
     return InkWell(onTap: onTap, onLongPress: onLongPress, child: item);
