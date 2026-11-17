@@ -1,42 +1,8 @@
-import '../../../../shared/domain/enums/chat_avatar_color.dart';
 import '../../../../shared/domain/profile_entity.dart';
-import '../../../../shared/utils/initial.dart';
+import '../../../../shared/utils/chat_author.dart';
 import '../../domain/chat_attachment.dart';
 import '../../domain/chat_message.dart';
 import 'responses/message_response.dart';
-import 'responses/user_display_name_response.dart';
-
-/// 같은 사람이 늘 같은 색이 되도록 작성자 id 로 고르는 아바타 색.
-const _avatarColors = [
-  ChatAvatarColor.blue,
-  ChatAvatarColor.green,
-  ChatAvatarColor.amber,
-  ChatAvatarColor.red,
-];
-
-const _unknownAuthorName = '알 수 없음';
-
-/// 이름을 아직 모르는 작성자. 이름을 받아 오면 [chatAuthorOf] 로 바꾼다.
-ProfileEntity unknownChatAuthor(int id) =>
-    ProfileEntity(id: id, name: _unknownAuthorName, avatarInitial: '?');
-
-/// [author] 가 [unknownChatAuthor] 로 만든, 이름을 모르는 작성자인지.
-bool isUnknownChatAuthor(ProfileEntity author) =>
-    author.name == _unknownAuthorName && author.avatarInitial == '?';
-
-/// 사용자 이름을 화면에 보일 이름으로. `name` 을 먼저 쓰고, 비어 있으면 `nickname`.
-/// 채팅·스레드·멤버 목록이 같은 규칙을 쓰도록 한곳에 둔다.
-String displayNameOf(UserDisplayNameResponse user) =>
-    user.name.isNotEmpty ? user.name : (user.nickname ?? '');
-
-/// 표시 이름으로 만든 작성자. 이름이 비어 있으면 [unknownChatAuthor].
-ProfileEntity chatAuthorOf(int id, String name) => name.isEmpty
-    ? unknownChatAuthor(id)
-    : ProfileEntity(id: id, name: name, avatarInitial: initialOf(name));
-
-/// 시스템 메시지(GitHub 연동 결과 등)의 작성자. 사람 이름을 찾지 않는다.
-ProfileEntity systemChatAuthor(int id) =>
-    ProfileEntity(id: id, name: '시스템', avatarInitial: '시');
 
 /// 서버 메시지를 화면 메시지로. 시각은 기기 시간대로 [now] 기준 상대 표기한다.
 ///
@@ -62,9 +28,6 @@ ChatMessage chatMessageOf(
   ],
   editable: editable,
 );
-
-ChatAvatarColor chatAvatarColorOf(int authorId) =>
-    _avatarColors[authorId % _avatarColors.length];
 
 /// `오늘 14:20` / `어제 09:05` / `3월 2일 18:00` / `2025년 3월 2일 18:00`.
 String chatTimestampOf(DateTime createdAt, {DateTime? now}) {

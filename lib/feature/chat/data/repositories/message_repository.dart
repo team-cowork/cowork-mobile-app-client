@@ -6,25 +6,18 @@ import '../model/requests/edit_message_request.dart';
 import '../model/requests/read_channel_request.dart';
 import '../model/requests/send_message_request.dart';
 import '../model/responses/message_response.dart';
-import '../model/responses/user_display_name_response.dart';
 
 /// 채널 메시지 저장소.
 ///
-/// 메시지는 chat 서비스에 있고 작성자는 id 만 오므로, 이름은 user 서비스에서 한꺼번에
-/// 읽는다. 그래서 게이트웨이 prefix 가 다른 dio 둘을 쓴다.
+/// 메시지는 chat 서비스에 있다. 작성자는 id 만 오므로 이름은 user 서비스를 쓰는
+/// `ProfileRepository.fetchDisplayNames` 로 따로 채운다.
 class MessageRepository {
   MessageRepository(AuthRepository auth)
-    : this.withDio(
-        chat: createAuthedDio(ApiService.chat, auth),
-        user: createAuthedDio(ApiService.user, auth),
-      );
+    : this.withDio(chat: createAuthedDio(ApiService.chat, auth));
 
-  MessageRepository.withDio({required Dio chat, required Dio user})
-    : _chat = chat,
-      _user = user;
+  MessageRepository.withDio({required Dio chat}) : _chat = chat;
 
   final Dio _chat;
-  final Dio _user;
 
   /// 한 번에 오는 메시지 수의 서버 상한. 이보다 적게 오면 더 이전 메시지가 없다.
   static const pageSize = 100;
@@ -32,9 +25,6 @@ class MessageRepository {
   /// [fetchMessages] 의 `around` 가 기준 메시지 쪽(기준 포함 이전)과 이후 쪽에서 각각
   /// 가져오는 최대 수. 서버가 한 페이지를 반씩 나눈다.
   static const aroundHalf = pageSize ~/ 2;
-
-  /// `/users/batch` 가 한 번에 받는 id 수의 서버 상한.
-  static const _userBatchSize = 100;
 
   /// 채널 메시지를 최신순으로. 커서는 하나만 준다(둘 이상이면 서버가 400).
   ///
@@ -158,32 +148,4 @@ class MessageRepository {
         '/chat/channels/$channelId/read',
         data: ReadChannelRequest(lastReadMessageId: lastReadMessageId).toJson(),
       );
-
-  /// [userIds] 사용자의 표시 이름. 서버 상한에 맞춰 나눠 읽는다.
-  Future<List<UserDisplayNameResponse>> fetchDisplayNames(
-    Iterable<int> userIds,
-  ) async {
-    final ids = userIds.toSet().toList();
-    return [
-      for (var start = 0; start < ids.length; start += _userBatchSize)
-        ...await _fetchDisplayNameBatch(ids.skip(start).take(_userBatchSize)),
-    ];
-  }
-
-  Future<List<UserDisplayNameResponse>> _fetchDisplayNameBatch(
-    Iterable<int> ids,
-  ) async {
-    final users = unwrapPayload(
-      (await _user.get<String>(
-            '/users/batch',
-            queryParameters: {'ids': ids.join(',')},
-          )).data ??
-          '',
-    )['users'];
-    if (users is! List) return const [];
-    return [
-      for (final json in users.whereType<Map<String, dynamic>>())
-        UserDisplayNameResponse.fromJson(json),
-    ];
-  }
 }
