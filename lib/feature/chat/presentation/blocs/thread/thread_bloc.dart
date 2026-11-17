@@ -9,6 +9,9 @@ import '../../../../../core/utils/async_state.dart';
 import '../../../../../core/utils/logger.dart';
 import '../../../../../shared/domain/profile_entity.dart';
 import '../../../../../shared/utils/client_message_id.dart';
+import '../../../../channel/data/model/requests/create_thread_request.dart';
+import '../../../../channel/data/model/requests/update_thread_request.dart';
+import '../../../../channel/data/model/responses/thread_response.dart';
 import '../../../../channel/data/repositories/channel_repository.dart';
 import '../../../data/model/chat_message_mapping.dart';
 import '../../../data/model/message_socket_event.dart';
@@ -41,6 +44,8 @@ class ThreadBloc extends Bloc<ThreadEvent, ThreadState> {
        super(const ThreadState.initial()) {
     on<ThreadRequested>(_onLoad);
     on<ThreadReplySent>(_onSend);
+    on<ThreadRenamed>(_onRename);
+    on<ThreadArchivedChanged>(_onArchive);
     on<_ThreadSocketEventReceived>(_onSocketEvent);
     on<_ThreadAuthorsResolved>(_onAuthorsResolved);
     on<_ThreadConfirmTimedOut>(_onConfirmTimedOut);
@@ -72,6 +77,9 @@ class ThreadBloc extends Bloc<ThreadEvent, ThreadState> {
   late final StreamSubscription<void> _reconnects;
 
   String? _channelName;
+
+  /// 이 부모 메시지에 이름을 붙여 만든 스레드. 만든 적이 없거나 못 읽었으면 null.
+  ThreadResponse? _thread;
 
   /// 부모 메시지. 불러오기에 성공하면 채워진다.
   MessageResponse? _root;
@@ -122,6 +130,7 @@ class ThreadBloc extends Bloc<ThreadEvent, ThreadState> {
 
       _channelName = header.name;
       _root = root;
+      _thread = await _fetchThread();
       _replies
         ..clear()
         ..addAll(replies.reversed);
@@ -136,6 +145,65 @@ class ThreadBloc extends Bloc<ThreadEvent, ThreadState> {
     }
     _pending.clear();
     _emit(emit);
+  }
+
+  /// 이 스레드의 이름·보관 정보. 못 읽어도 답글은 보이도록 null 로 둔다.
+  Future<ThreadResponse?> _fetchThread() async {
+    try {
+      return (await _channelRepository.fetchThreads(channelId))
+          .where((thread) => thread.parentMessageId == parentMessageId)
+          .firstOrNull;
+    } catch (e, s) {
+      Logger.e('스레드 이름 조회 실패', tag: 'Chat', error: e, stackTrace: s);
+      return null;
+    }
+  }
+
+  Future<void> _onRename(ThreadRenamed event, Emitter<ThreadState> emit) async {
+    final name = event.name.trim();
+    if (_root == null || name.isEmpty) return;
+    final before = _thread;
+    try {
+      _thread = before == null
+          ? await _channelRepository.createThread(
+              channelId,
+              CreateThreadRequest(name: name, parentMessageId: parentMessageId),
+            )
+          : await _channelRepository.updateThread(
+              channelId,
+              before.id,
+              UpdateThreadRequest(name: name),
+            );
+      _emit(emit);
+    } catch (e, s) {
+      Logger.e('스레드 이름 변경 실패', tag: 'Chat', error: e, stackTrace: s);
+      _emit(emit, error: _reasonOf('스레드 이름을 바꾸지 못했어요.', e));
+    }
+  }
+
+  Future<void> _onArchive(
+    ThreadArchivedChanged event,
+    Emitter<ThreadState> emit,
+  ) async {
+    final thread = _thread;
+    if (_root == null || thread == null) return;
+    try {
+      _thread = await _channelRepository.updateThread(
+        channelId,
+        thread.id,
+        UpdateThreadRequest(isArchived: event.archived),
+      );
+      _emit(emit);
+    } catch (e, s) {
+      Logger.e('스레드 보관 변경 실패', tag: 'Chat', error: e, stackTrace: s);
+      _emit(
+        emit,
+        error: _reasonOf(
+          event.archived ? '스레드를 보관하지 못했어요.' : '스레드 보관을 풀지 못했어요.',
+          e,
+        ),
+      );
+    }
   }
 
   Future<void> _onSend(ThreadReplySent event, Emitter<ThreadState> emit) async {
@@ -317,7 +385,8 @@ class ThreadBloc extends Bloc<ThreadEvent, ThreadState> {
           if (isClosed) return;
           add(
             _ThreadAuthorsResolved([
-              for (final user in users) chatAuthorOf(user.id, displayNameOf(user)),
+              for (final user in users)
+                chatAuthorOf(user.id, displayNameOf(user)),
             ]),
           );
         })
@@ -339,6 +408,8 @@ class ThreadBloc extends Bloc<ThreadEvent, ThreadState> {
     final conversation = ThreadConversation(
       thread: MessageThread(
         channelName: channelName,
+        name: _thread?.name,
+        isArchived: _thread?.isArchived ?? false,
         rootMessage: chatMessageOf(root, _authorOf(root), now: now),
         replies: [
           for (final reply in _replies)

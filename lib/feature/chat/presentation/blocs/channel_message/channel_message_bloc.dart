@@ -688,7 +688,8 @@ class ChannelMessageBloc
           if (isClosed) return;
           add(
             _ChannelMessageAuthorsResolved([
-              for (final user in users) chatAuthorOf(user.id, displayNameOf(user)),
+              for (final user in users)
+                chatAuthorOf(user.id, displayNameOf(user)),
             ]),
           );
         })
