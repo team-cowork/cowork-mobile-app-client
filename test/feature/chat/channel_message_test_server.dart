@@ -26,6 +26,23 @@ class FakeMessageGateway implements HttpClientAdapter {
   /// `GET /channels/10/members` 로 읽는 채널 10 의 멤버 id.
   final memberIds = <int>[1, 2, 3];
 
+  /// 채널 10. `PATCH /channels/10` 이 보낸 필드만 덮어쓴다.
+  final channel = <String, dynamic>{
+    'id': 10,
+    'name': '백엔드',
+    'description': 'API 논의',
+    'viewType': 'TEXT',
+    'teamId': 1,
+    'isPrivate': false,
+  };
+
+  /// 계정 1 의 채널 10 알림 설정. `PUT` 이 통째로 교체한다.
+  Map<String, dynamic> notification = {
+    'notification': true,
+    'notification_level': 'DEFAULT',
+    'muted_until': null,
+  };
+
   /// 사용자 id 별 닉네임. 이름(`users`)이 비어 있을 때 쓴다.
   final nicknames = <int, String>{};
 
@@ -34,6 +51,12 @@ class FakeMessageGateway implements HttpClientAdapter {
 
   /// 이 요청에는 500 을 돌려준다.
   String? failing;
+
+  /// 이 요청은 한 번만 500 을 돌려준다.
+  final failingOnce = <String>{};
+
+  /// 걸어 두면 알림 설정 `PUT` 응답을 이 Future 가 끝날 때까지 붙잡는다.
+  Future<void>? notificationGate;
 
   /// 걸어 두면 메시지 목록 응답을 이 Future 가 끝날 때까지 붙잡는다.
   Future<void>? listGate;
@@ -60,16 +83,22 @@ class FakeMessageGateway implements HttpClientAdapter {
         bodies[call] = jsonDecode(utf8.decode(bytes)) as Map<String, dynamic>;
       }
     }
-    if (call == failing) return _json({'message': '서버 오류'}, 500);
+    if (call.startsWith('PUT ') && call.endsWith('/notification')) {
+      await notificationGate;
+    }
+    if (call == failing || failingOnce.remove(call)) {
+      return _json({'message': '서버 오류'}, 500);
+    }
 
     return switch (call) {
-      'GET /channel/channels/10' => _ok({
-        'id': 10,
-        'name': '백엔드',
-        'description': 'API 논의',
-        'viewType': 'TEXT',
-        'teamId': 1,
-      }),
+      'GET /channel/channels/10' => _ok(channel),
+      'PATCH /channel/channels/10' => _ok(channel..addAll(bodies[call]!)),
+      'GET /preference/preferences/account/1/channels/10/notification' => _ok(
+        notification,
+      ),
+      'PUT /preference/preferences/account/1/channels/10/notification' => _ok(
+        notification = {...bodies[call]!, 'notification': true},
+      ),
       'GET /channel/channels/10/members' => _ok([
         for (final id in memberIds) {'channelId': 10, 'userId': id},
       ]),
