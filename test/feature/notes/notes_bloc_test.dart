@@ -144,6 +144,49 @@ void main() {
     expect(failures, isEmpty);
   });
 
+  group('당겨서 새로고침의 done', () {
+    test('읽어 오면 완료한다', () async {
+      await loaded(['처음']);
+      final done = Completer<void>();
+
+      bloc.add(NotesRequested(done: done));
+      await pumpEventQueue();
+      expect(done.isCompleted, isFalse);
+
+      repository.calls.last.complete([_note('갱신')]);
+      await pumpEventQueue();
+      expect(done.isCompleted, isTrue);
+    });
+
+    test('실패해도 완료한다', () async {
+      await loaded(['처음']);
+      final done = Completer<void>();
+
+      bloc.add(NotesRequested(done: done));
+      await pumpEventQueue();
+      repository.calls.last.completeError(Exception('네트워크'));
+      await pumpEventQueue();
+
+      expect(done.isCompleted, isTrue);
+      expect(failures, ['회의록 목록을 새로 고치지 못했어요.']);
+    });
+
+    test('더 새 조회에 밀려 응답을 버려도 완료한다', () async {
+      await loaded(['처음']);
+      final older = Completer<void>();
+
+      bloc
+        ..add(NotesRequested(done: older))
+        ..add(const NotesRequested());
+      await pumpEventQueue();
+      repository.calls[1].complete([_note('옛 목록')]);
+      await pumpEventQueue();
+
+      expect(older.isCompleted, isTrue);
+      expect(_titles(bloc.state), ['처음']);
+    });
+  });
+
   test('목록이 없을 때 실패하면 알리지 않고 오류 화면으로 간다', () async {
     bloc.add(const NotesRequested());
     await pumpEventQueue();

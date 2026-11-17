@@ -45,6 +45,9 @@ class NotesBloc extends Bloc<NotesEvent, NotesState> {
   /// 목록이 통째로 다시 그려져 스크롤 위치를 잃는다. 같은 이유로 다시 읽기에
   /// 실패해도 보던 목록은 그대로 두고, 대신 [failures] 로 한 번 알린다. 알리지
   /// 않으면 상세에서 고치고 돌아왔을 때 옛 제목이 남아 저장이 안 된 것처럼 보인다.
+  ///
+  /// [NotesRequested.done] 은 결과를 화면에 내든, 더 새 조회에 밀려 버리든 이 조회가
+  /// 끝나면 완료한다.
   Future<void> _onLoad(NotesRequested event, Emitter<NotesState> emit) async {
     final request = ++_latest;
     final refreshing = state is AsyncSuccess<List<Note>>;
@@ -68,6 +71,8 @@ class NotesBloc extends Bloc<NotesEvent, NotesState> {
         return;
       }
       emit(NotesState.failure(failureMessageOf(e)));
+    } finally {
+      event.done?.complete();
     }
   }
 
