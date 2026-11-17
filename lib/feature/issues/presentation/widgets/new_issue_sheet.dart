@@ -2,18 +2,10 @@ import 'package:cowork_design_system/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../../../shared/domain/profile_entity.dart';
-import '../../data/issues_store.dart';
-import '../../domain/enums/issue_priority.dart';
-import '../../domain/enums/issue_status.dart';
-import '../../domain/enums/issue_tag_color.dart';
-import '../../domain/issue.dart';
-import '../../domain/issue_label.dart';
+import '../../data/repositories/issue_repository.dart';
+import '../../domain/issue_target.dart';
 import '../blocs/issues/issues_bloc.dart';
 import '../blocs/new_issue/new_issue_bloc.dart';
-import 'add_assignee_button.dart';
-import 'issue_assignee_avatar.dart';
-import 'issue_color_mapping.dart';
 import 'issue_label_toggle.dart';
 
 class NewIssueSheet extends StatelessWidget {
@@ -21,27 +13,10 @@ class NewIssueSheet extends StatelessWidget {
 
   static const double _sheetRadius = 22;
 
-  static const _labelCandidates = [
-    IssueLabel(name: '기능', color: IssueTagColor.blue),
-    IssueLabel(name: '버그', color: IssueTagColor.red),
-    IssueLabel(name: '개선', color: IssueTagColor.green),
-  ];
-
-  static const _assigneeCandidates = [
-    ProfileEntity(id: 101, name: 'junjuny', avatarInitial: '준'),
-    ProfileEntity(id: 102, name: '도윤', avatarInitial: '도'),
-    ProfileEntity(id: 103, name: '서연', avatarInitial: '서'),
-  ];
-
-  static Color _avatarColorFor(int index) => switch (index) {
-    0 => AppColors.blue500,
-    1 => AppColors.green500,
-    _ => AppColors.amber500,
-  };
-
   /// 시트를 띄운다. [context]는 [IssuesBloc] 하위여야 한다.
-  static Future<void> show(BuildContext context) {
+  static Future<void> show(BuildContext context, IssueTarget target) {
     final issuesBloc = context.read<IssuesBloc>();
+    final repository = context.read<IssueRepository>();
 
     return showModalBottomSheet<void>(
       context: context,
@@ -53,7 +28,9 @@ class NewIssueSheet extends StatelessWidget {
       builder: (_) => BlocProvider.value(
         value: issuesBloc,
         child: BlocProvider(
-          create: (_) => NewIssueBloc(),
+          create: (_) =>
+              NewIssueBloc(repository, target)
+                ..add(const NewIssueEvent.labelsRequested()),
           child: const NewIssueSheet(),
         ),
       ),
@@ -62,27 +39,11 @@ class NewIssueSheet extends StatelessWidget {
 
   void _submit(BuildContext context) {
     final form = context.read<NewIssueBloc>().state;
-    final label = _labelCandidates[form.labelIndex];
-    final assignee = form.assigneeIndex == null
-        ? null
-        : _assigneeCandidates[form.assigneeIndex!];
-
-    final dueDate = form.dueDate.trim();
-    final milestone = form.milestone.trim();
-
     context.read<IssuesBloc>().add(
-      IssuesEvent.added(
-        Issue(
-          id: 'issue-${DateTime.now().microsecondsSinceEpoch}',
-          number: IssuesStore.instance.nextNumber,
-          title: form.title.trim(),
-          labels: [label],
-          status: form.status,
-          assignee: assignee,
-          priority: form.priority,
-          dueDate: dueDate.isEmpty ? null : dueDate,
-          milestone: milestone.isEmpty ? null : milestone,
-        ),
+      IssuesEvent.created(
+        title: form.title,
+        body: form.body,
+        label: form.label,
       ),
     );
     Navigator.of(context).pop();
@@ -94,7 +55,9 @@ class NewIssueSheet extends StatelessWidget {
 
     return SafeArea(
       child: Padding(
-        padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.viewInsetsOf(context).bottom,
+        ),
         child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(
             AppSpacing.s20,
@@ -121,7 +84,9 @@ class NewIssueSheet extends StatelessWidget {
                 children: [
                   Text(
                     '새 이슈',
-                    style: AppFont.titleS.copyWith(color: AppColors.darkOnSurface),
+                    style: AppFont.titleS.copyWith(
+                      color: AppColors.darkOnSurface,
+                    ),
                   ),
                   CoworkIconButton(
                     icon: AppIcon.close,
@@ -136,142 +101,62 @@ class NewIssueSheet extends StatelessWidget {
               CoworkTextField(
                 labelText: '제목',
                 hintText: '이슈 제목을 입력하세요',
-                textInputAction: TextInputAction.done,
+                textInputAction: TextInputAction.next,
                 onChanged: (value) =>
                     bloc.add(NewIssueEvent.titleChanged(value)),
               ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                spacing: AppSpacing.s8,
+                children: [
+                  Text(
+                    '내용',
+                    style: AppFont.subtextS.copyWith(
+                      fontWeight: AppFont.semiBold,
+                      color: AppColors.neutral300,
+                    ),
+                  ),
+                  CoworkTextArea(
+                    hintText: '이슈 내용을 입력하세요 (선택)',
+                    minLines: 3,
+                    onChanged: (value) =>
+                        bloc.add(NewIssueEvent.bodyChanged(value)),
+                  ),
+                ],
+              ),
               BlocBuilder<NewIssueBloc, NewIssueForm>(
                 buildWhen: (previous, current) =>
-                    previous.status != current.status,
-                builder: (context, form) => Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  spacing: AppSpacing.s8,
-                  children: [
-                    Text(
-                      '상태',
-                      style: AppFont.subtextS.copyWith(
-                        fontWeight: AppFont.semiBold,
-                        color: AppColors.neutral300,
+                    previous.labels != current.labels ||
+                    previous.label != current.label,
+                builder: (context, form) {
+                  if (form.labels.isEmpty) return const SizedBox.shrink();
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    spacing: AppSpacing.s8,
+                    children: [
+                      Text(
+                        '라벨',
+                        style: AppFont.subtextS.copyWith(
+                          fontWeight: AppFont.semiBold,
+                          color: AppColors.neutral300,
+                        ),
                       ),
-                    ),
-                    CoworkSegmentedControl<IssueStatus>(
-                      groupValue: form.status,
-                      onChanged: (value) =>
-                          bloc.add(NewIssueEvent.statusChanged(value)),
-                      segments: [
-                        for (final status in IssueStatus.values)
-                          CoworkSegment(value: status, label: status.label),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                spacing: AppSpacing.s8,
-                children: [
-                  Text(
-                    '라벨',
-                    style: AppFont.subtextS.copyWith(
-                      fontWeight: AppFont.semiBold,
-                      color: AppColors.neutral300,
-                    ),
-                  ),
-                  BlocBuilder<NewIssueBloc, NewIssueForm>(
-                    buildWhen: (previous, current) =>
-                        previous.labelIndex != current.labelIndex,
-                    builder: (context, form) => Row(
-                      spacing: AppSpacing.s8,
-                      children: [
-                        for (final (index, candidate) in _labelCandidates.indexed)
-                          IssueLabelToggle(
-                            label: candidate,
-                            selected: index == form.labelIndex,
-                            onTap: () =>
-                                bloc.add(NewIssueEvent.labelChanged(index)),
-                          ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                spacing: AppSpacing.s8,
-                children: [
-                  Text(
-                    '담당자',
-                    style: AppFont.subtextS.copyWith(
-                      fontWeight: AppFont.semiBold,
-                      color: AppColors.neutral300,
-                    ),
-                  ),
-                  BlocBuilder<NewIssueBloc, NewIssueForm>(
-                    buildWhen: (previous, current) =>
-                        previous.assigneeIndex != current.assigneeIndex,
-                    builder: (context, form) => Row(
-                      spacing: AppSpacing.s8,
-                      children: [
-                        for (final (
-                          index,
-                          candidate,
-                        ) in _assigneeCandidates.indexed)
-                          IssueAssigneeAvatar(
-                            profile: candidate,
-                            color: _avatarColorFor(index),
-                            selected: index == form.assigneeIndex,
-                            onTap: () => bloc.add(
-                              NewIssueEvent.assigneeToggled(index),
+                      Wrap(
+                        spacing: AppSpacing.s8,
+                        runSpacing: AppSpacing.s8,
+                        children: [
+                          for (final name in form.labels)
+                            IssueLabelToggle(
+                              name: name,
+                              selected: name == form.label,
+                              onTap: () =>
+                                  bloc.add(NewIssueEvent.labelToggled(name)),
                             ),
-                          ),
-                        const AddAssigneeButton(),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                spacing: AppSpacing.s8,
-                children: [
-                  Text(
-                    '우선순위',
-                    style: AppFont.subtextS.copyWith(
-                      fontWeight: AppFont.semiBold,
-                      color: AppColors.neutral300,
-                    ),
-                  ),
-                  BlocBuilder<NewIssueBloc, NewIssueForm>(
-                    buildWhen: (previous, current) =>
-                        previous.priority != current.priority,
-                    builder: (context, form) => CoworkSegmentedControl<
-                      IssuePriority
-                    >(
-                      groupValue: form.priority,
-                      onChanged: (value) =>
-                          bloc.add(NewIssueEvent.priorityChanged(value)),
-                      segments: [
-                        for (final priority in IssuePriority.values)
-                          CoworkSegment(
-                            value: priority,
-                            label: priority.label,
-                          ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              CoworkTextField(
-                labelText: '마감일',
-                hintText: '예: 2026.03.20',
-                onChanged: (value) =>
-                    bloc.add(NewIssueEvent.dueDateChanged(value)),
-              ),
-              CoworkTextField(
-                labelText: '마일스톤',
-                hintText: '예: MVP · 1차',
-                onChanged: (value) =>
-                    bloc.add(NewIssueEvent.milestoneChanged(value)),
+                        ],
+                      ),
+                    ],
+                  );
+                },
               ),
               BlocBuilder<NewIssueBloc, NewIssueForm>(
                 buildWhen: (previous, current) =>

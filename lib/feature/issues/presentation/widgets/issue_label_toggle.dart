@@ -1,25 +1,21 @@
 import 'package:cowork_design_system/design_system.dart';
 import 'package:flutter/material.dart';
 
-import '../../domain/issue_label.dart';
-import 'issue_color_mapping.dart';
-
+/// 새 이슈 시트에서 라벨을 고르는 칩.
 class IssueLabelToggle extends StatelessWidget {
   const IssueLabelToggle({
-    required this.label,
+    required this.name,
     required this.selected,
     this.onTap,
     super.key,
   });
 
-  final IssueLabel label;
+  final String name;
   final bool selected;
   final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    final color = label.color!;
-
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -28,17 +24,17 @@ class IssueLabelToggle extends StatelessWidget {
           vertical: 7,
         ),
         decoration: BoxDecoration(
-          color: selected ? color.background : AppColors.neutral750,
+          color: selected ? AppColors.blue900 : AppColors.neutral750,
           border: Border.all(
-            color: selected ? color.foreground : AppColors.neutral700,
+            color: selected ? AppColors.blue300 : AppColors.neutral700,
           ),
           borderRadius: BorderRadius.circular(AppRadius.r8),
         ),
         child: Text(
-          label.name,
+          name,
           style: AppFont.labelXs.copyWith(
             fontSize: 13,
-            color: selected ? color.foreground : AppColors.neutral300,
+            color: selected ? AppColors.blue300 : AppColors.neutral300,
           ),
         ),
       ),

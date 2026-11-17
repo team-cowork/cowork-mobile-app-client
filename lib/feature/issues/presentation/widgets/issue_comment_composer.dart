@@ -22,7 +22,7 @@ class _IssueCommentComposerState extends State<IssueCommentComposer> {
 
   void _send() {
     if (_controller.text.trim().isEmpty) return;
-    context.read<IssueCommentsCubit>().addComment(_controller.text);
+    context.read<IssueCommentsCubit>().send(_controller.text);
     _controller.clear();
   }
 
