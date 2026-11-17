@@ -77,9 +77,7 @@ class ChannelMembersBloc
     try {
       return {
         for (final user in await _messageRepository.fetchDisplayNames(userIds))
-          user.id: user.nickname?.isNotEmpty == true
-              ? user.nickname!
-              : user.name,
+          user.id: displayNameOf(user),
       };
     } catch (e, s) {
       Logger.e(
