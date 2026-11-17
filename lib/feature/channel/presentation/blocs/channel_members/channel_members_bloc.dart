@@ -6,6 +6,8 @@ import '../../../../../core/utils/async_state.dart';
 import '../../../../../core/utils/logger.dart';
 import '../../../../chat/data/model/chat_message_mapping.dart';
 import '../../../../chat/data/repositories/message_repository.dart';
+import '../../../../team/data/model/responses/team_member_response.dart';
+import '../../../../team/data/repositories/team_repository.dart';
 import '../../../data/repositories/channel_repository.dart';
 import '../../../domain/channel_member.dart';
 
@@ -22,8 +24,10 @@ class ChannelMembersBloc
     required this.channelId,
     required ChannelRepository channelRepository,
     required MessageRepository messageRepository,
+    required TeamRepository teamRepository,
   }) : _channelRepository = channelRepository,
        _messageRepository = messageRepository,
+       _teamRepository = teamRepository,
        super(const ChannelMembersState.initial()) {
     on<ChannelMembersRequested>(_onLoad);
   }
@@ -31,6 +35,7 @@ class ChannelMembersBloc
   final int channelId;
   final ChannelRepository _channelRepository;
   final MessageRepository _messageRepository;
+  final TeamRepository _teamRepository;
 
   Future<void> _onLoad(
     ChannelMembersRequested event,
@@ -45,6 +50,7 @@ class ChannelMembersBloc
       final header = await headerRequest;
       final members = await membersRequest;
       final names = await _fetchNames([for (final m in members) m.userId]);
+      final teamMembers = await _fetchTeamMembers(header.teamId);
 
       emit(
         ChannelMembersState.success((
@@ -57,6 +63,13 @@ class ChannelMembersBloc
                   names[member.userId] ?? '',
                 ),
                 avatarColor: chatAvatarColorOf(member.userId),
+                role: _roleOf(teamMembers[member.userId]),
+                roleNames: [
+                  for (final role
+                      in teamMembers[member.userId]?.roles ??
+                          const <TeamMemberRoleResponse>[])
+                    if (!role.isDefault && role.name.isNotEmpty) role.name,
+                ],
               ),
           ],
         )),
@@ -66,6 +79,32 @@ class ChannelMembersBloc
       emit(ChannelMembersState.failure(failureMessageOf(e)));
     }
   }
+
+  /// 사용자 id → 팀 멤버. 못 읽으면 빈 맵이라 역할 없이 목록만 보인다.
+  Future<Map<int, TeamMemberResponse>> _fetchTeamMembers(int? teamId) async {
+    if (teamId == null) return const {};
+    try {
+      return {
+        for (final member in await _teamRepository.fetchMembers(teamId))
+          member.userId: member,
+      };
+    } catch (e, s) {
+      Logger.e(
+        '채널 멤버 역할 조회 실패',
+        tag: 'ChannelMembers',
+        error: e,
+        stackTrace: s,
+      );
+      return const {};
+    }
+  }
+
+  static ChannelMemberRole _roleOf(TeamMemberResponse? member) =>
+      switch (member?.role) {
+        'OWNER' => ChannelMemberRole.owner,
+        'ADMIN' => ChannelMemberRole.admin,
+        _ => ChannelMemberRole.member,
+      };
 
   /// 사용자 id → 표시 이름. 못 읽으면 빈 맵이라 멤버가 `알 수 없음` 으로 보인다.
   Future<Map<int, String>> _fetchNames(List<int> userIds) async {
