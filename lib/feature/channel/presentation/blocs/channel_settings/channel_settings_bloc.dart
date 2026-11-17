@@ -24,6 +24,10 @@ part 'channel_settings_state.dart';
 ///
 /// 바꾸는 값은 먼저 화면에 반영하고 서버에 보낸다. 실패하면 그 값만 이전으로 되돌리고
 /// 사유를 알린다. 그사이 다른 값이 바뀌었을 수 있어 통째로 되돌리지 않는다.
+///
+/// 알림 설정은 서버가 통째로 교체하므로 요청을 순서대로 하나씩 보내고, 보낼 때마다 그
+/// 시점에 화면에 보이는 값을 통째로 싣는다. 실패해서 더 보낼 요청이 없으면 화면을
+/// 서버 값으로 맞춘다.
 class ChannelSettingsBloc
     extends Bloc<ChannelSettingsEvent, ChannelSettingsState> {
   ChannelSettingsBloc({
@@ -56,6 +60,13 @@ class ChannelSettingsBloc
 
   /// 음소거는 서버에 `muted_until` 로만 있어, 끄는 시각 없이 켜려면 아주 먼 시각을 넣는다.
   static final _mutedForever = DateTime.utc(9999);
+
+  /// 알림 설정 요청이 겹치지 않게 이어 붙이는 줄. 서버가 통째로 교체해서, 동시에 보내면
+  /// 도착 순서에 따라 서로의 값을 덮는다.
+  Future<void> _notificationQueue = Future.value();
+
+  /// 보냈거나 줄에서 기다리는 알림 설정 요청 수.
+  int _pendingNotifications = 0;
 
   Future<void> _onLoad(
     ChannelSettingsRequested event,
@@ -186,27 +197,73 @@ class ChannelSettingsBloc
     ),
   );
 
-  /// 알림 설정은 서버가 통째로 교체하므로, 바꾸지 않은 값은 지금 값을 그대로 실어 보낸다.
+  /// 바꾼 값을 먼저 보이고, 알림 설정 요청을 줄에 세운다. 요청은 보내는 순간 화면에
+  /// 보이는 값을 통째로 실어, 앞 요청이 실패해도 뒤 요청이 성공하면 서버와 화면이 같다.
   Future<void> _changeNotification(
     Emitter<ChannelSettingsState> emit, {
     required String failure,
     required ChannelNotification Function(ChannelNotification current) change,
   }) {
-    final current = _settings;
-    if (current == null) return Future.value();
-    final next = change(current.notification);
-    return _change(
-      emit,
-      failure: failure,
-      apply: (settings) => settings.copyWith(notification: next),
-      revert: (settings, before) =>
-          settings.copyWith(notification: before.notification),
-      request: () async => _preferenceRepository.updateChannelNotification(
+    final before = _settings;
+    if (before == null) return Future.value();
+    _emit(emit, before.copyWith(notification: change(before.notification)));
+    _pendingNotifications++;
+
+    final task = _notificationQueue.then((_) async {
+      Object? error;
+      try {
+        final sending = _settings?.notification;
+        if (sending != null) {
+          await _preferenceRepository.updateChannelNotification(
+            await _accountId(),
+            channelId,
+            sending,
+          );
+        }
+      } catch (e, s) {
+        Logger.e(
+          '채널 알림 변경 실패',
+          tag: 'ChannelSettings',
+          error: e,
+          stackTrace: s,
+        );
+        error = e;
+      }
+      _pendingNotifications--;
+      // 뒤에 보낼 요청이 있으면 그 요청이 화면 값을 서버에 맞춘다.
+      if (error == null || _pendingNotifications > 0 || isClosed) return;
+
+      final reason = error is DioException ? dioErrorMessage(error) : failure;
+      final server = await _serverNotification();
+      if (isClosed) return;
+      final current = _settings;
+      if (current == null) return;
+      _emit(
+        emit,
+        current.copyWith(notification: server ?? before.notification),
+        error: reason,
+      );
+    });
+    _notificationQueue = task;
+    return task;
+  }
+
+  /// 서버에 있는 이 채널의 알림 설정. 못 읽으면 null.
+  Future<ChannelNotification?> _serverNotification() async {
+    try {
+      return await _preferenceRepository.fetchChannelNotification(
         await _accountId(),
         channelId,
-        next,
-      ),
-    );
+      );
+    } catch (e, s) {
+      Logger.e(
+        '채널 알림 설정 조회 실패',
+        tag: 'ChannelSettings',
+        error: e,
+        stackTrace: s,
+      );
+      return null;
+    }
   }
 
   /// [apply] 한 설정을 먼저 보이고 [request] 를 보낸다. 실패하면 [revert] 로 그 값만
@@ -276,9 +333,7 @@ class ChannelSettingsBloc
     try {
       return {
         for (final user in await _messageRepository.fetchDisplayNames(userIds))
-          user.id: user.nickname?.isNotEmpty == true
-              ? user.nickname!
-              : user.name,
+          user.id: displayNameOf(user),
       };
     } catch (e, s) {
       Logger.e(
