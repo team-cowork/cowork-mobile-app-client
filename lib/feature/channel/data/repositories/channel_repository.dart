@@ -4,9 +4,12 @@ import '../../../../core/network/dio_client.dart';
 import '../../../auth/data/auth_repository.dart';
 import '../../domain/channel.dart';
 import '../model/requests/create_channel_request.dart';
+import '../model/requests/create_thread_request.dart';
+import '../model/requests/update_thread_request.dart';
 import '../model/requests/update_channel_request.dart';
 import '../model/responses/channel_member_response.dart';
 import '../model/responses/channel_response.dart';
+import '../model/responses/thread_response.dart';
 
 /// 채널 화면 머리에 쓰는 채널 정보. [teamId] 는 DM 채널이면 null.
 typedef ChannelHeader = ({String name, String description, int? teamId});
@@ -49,6 +52,54 @@ class ChannelRepository {
           (await _dio.get<String>('/channels/$channelId')).data ?? '',
         ),
       );
+
+  /// 채널의 스레드. 보관된 것도 포함한다. 부모 메시지로 바로 찾는 API 는 없어, 한 번에
+  /// 서버 상한만큼 읽는다.
+  Future<List<ThreadResponse>> fetchThreads(int channelId) async {
+    final page = unwrapPayload(
+      (await _dio.get<String>(
+            '/channels/$channelId/threads',
+            queryParameters: {'includeArchived': true, 'size': _threadPageSize},
+          )).data ??
+          '',
+    )['content'];
+    if (page is! List) return const [];
+    return [
+      for (final json in page.whereType<Map<String, dynamic>>())
+        ThreadResponse.fromJson(json),
+    ];
+  }
+
+  /// [request.parentMessageId] 메시지에 이름을 붙여 스레드를 만든다.
+  Future<ThreadResponse> createThread(
+    int channelId,
+    CreateThreadRequest request,
+  ) async => ThreadResponse.fromJson(
+    unwrapPayload(
+      (await _dio.post<String>(
+            '/channels/$channelId/threads',
+            data: request.toJson(),
+          )).data ??
+          '',
+    ),
+  );
+
+  /// 스레드의 이름·보관 여부를 바꾸고 서버가 저장한 스레드를 돌려준다.
+  Future<ThreadResponse> updateThread(
+    int channelId,
+    int threadId,
+    UpdateThreadRequest request,
+  ) async => ThreadResponse.fromJson(
+    unwrapPayload(
+      (await _dio.patch<String>(
+            '/channels/$channelId/threads/$threadId',
+            data: request.toJson(),
+          )).data ??
+          '',
+    ),
+  );
+
+  static const _threadPageSize = 100;
 
   /// 채널의 이름·설명·공개 여부를 바꾸고 서버가 저장한 채널을 돌려준다.
   Future<ChannelResponse> updateChannel(
