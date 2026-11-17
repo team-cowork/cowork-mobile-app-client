@@ -3,13 +3,20 @@ import 'package:flutter/material.dart';
 
 import '../../../../shared/extensions/chat_avatar_color_mapping.dart';
 import '../../domain/direct_message_preview.dart';
+import '../../domain/enums/dm_presence.dart';
 import 'chat_color_mapping.dart';
 
 class DmListTile extends StatelessWidget {
-  const DmListTile({required this.preview, this.onTap, super.key});
+  const DmListTile({
+    required this.preview,
+    this.onTap,
+    this.onLongPress,
+    super.key,
+  });
 
   final DirectMessagePreview preview;
   final VoidCallback? onTap;
+  final VoidCallback? onLongPress;
 
   @override
   Widget build(BuildContext context) {
@@ -23,6 +30,7 @@ class DmListTile extends StatelessWidget {
     return InkWell(
       borderRadius: BorderRadius.circular(AppRadius.r12),
       onTap: onTap,
+      onLongPress: onLongPress,
       child: Padding(
         padding: const EdgeInsets.symmetric(
           horizontal: AppSpacing.s12,
@@ -43,22 +51,24 @@ class DmListTile extends StatelessWidget {
                     backgroundColor: preview.avatarColor.toColor(),
                     foregroundColor: AppColors.white,
                   ),
-                  Positioned(
-                    right: 0,
-                    bottom: 0,
-                    child: Container(
-                      width: 13,
-                      height: 13,
-                      decoration: BoxDecoration(
-                        color: preview.presence.toColor(),
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: AppColors.neutral850,
-                          width: 2.5,
+                  // 서버에 접속 상태가 없어 모르는 상대는 점을 그리지 않는다.
+                  if (preview.presence != DmPresence.offline)
+                    Positioned(
+                      right: 0,
+                      bottom: 0,
+                      child: Container(
+                        width: 13,
+                        height: 13,
+                        decoration: BoxDecoration(
+                          color: preview.presence.toColor(),
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: AppColors.neutral850,
+                            width: 2.5,
+                          ),
                         ),
                       ),
                     ),
-                  ),
                 ],
               ),
             ),

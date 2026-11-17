@@ -13,7 +13,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 /// 요청을 `METHOD 경로` 로 받아 적고, 정해 둔 응답을 돌려주는 가짜 서버.
 ///
-/// PUT 은 서버가 저장한 설정을 그대로 돌려주는 동작을 흉내 내 요청 본문을 되돌린다.
+/// PUT 은 실제 서버처럼 보낸 항목만 덮어쓰고, 저장된 설정 전체를 돌려준다.
 class _FakeServer implements HttpClientAdapter {
   _FakeServer({required String notificationLevel})
     : _preference = {
@@ -47,7 +47,9 @@ class _FakeServer implements HttpClientAdapter {
     return switch (call) {
       'GET /users/me' => _json({'id': 7, 'name': '김코웍'}),
       'GET /preferences/account/7' => _json(_preference),
-      'PUT /preferences/account/7' => ResponseBody.fromString(sent!, 200),
+      'PUT /preferences/account/7' => _json(
+        _preference..addAll(jsonDecode(sent!) as Map<String, dynamic>),
+      ),
       _ => ResponseBody.fromString('', 204),
     };
   }
@@ -164,7 +166,7 @@ void main() {
     expect(data.settings.notificationLevel, NotificationLevel.mentions);
   });
 
-  test('저장할 때 화면이 다루지 않는 필드도 그대로 보낸다', () async {
+  test('저장할 때 알림 수준만 보낸다', () async {
     final server = _FakeServer(notificationLevel: 'ALL');
     final bloc = await _loaded(server);
     addTearDown(bloc.close);
@@ -173,8 +175,6 @@ void main() {
 
     expect(server.bodies['PUT /preferences/account/7'], {
       'notification_level': 'MENTIONS',
-      'theme': 'BLACK',
-      'timezone': 'Asia/Seoul',
     });
   });
 

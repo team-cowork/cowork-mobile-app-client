@@ -49,6 +49,7 @@ class ChannelMessageBloc
     Stream<AppLifecycleState>? lifecycle,
     this.focusMessageId,
     this.confirmTimeout = const Duration(seconds: 10),
+    this.markReadRetryDelay = const Duration(seconds: 3),
   }) : _channelRepository = channelRepository,
        _messageRepository = messageRepository,
        _profileRepository = profileRepository,
@@ -89,6 +90,11 @@ class ChannelMessageBloc
 
   /// 보낸 메시지가 소켓으로 저장돼 오기를 기다리는 시간.
   final Duration confirmTimeout;
+
+  /// 읽음 요청이 실패하면 다시 보내기까지 기다리는 첫 시간. 실패할 때마다 두 배로 늘린다.
+  final Duration markReadRetryDelay;
+
+  static const _maxMarkReadRetries = 3;
 
   final ChannelRepository _channelRepository;
   final MessageRepository _messageRepository;
@@ -143,6 +149,10 @@ class ChannelMessageBloc
 
   /// 마지막으로 서버에 알린 읽음 위치.
   String? _lastReadId;
+
+  /// 연달아 실패한 읽음 요청 수와, 다음에 다시 보낼 타이머.
+  int _markReadFailures = 0;
+  Timer? _markReadRetry;
 
   /// 앱이 포그라운드인지. 생명주기를 받지 않으면 늘 포그라운드로 본다.
   bool _foreground = true;
@@ -663,7 +673,7 @@ class ChannelMessageBloc
     };
     if (unknown.isEmpty) return;
     for (final user in await _messageRepository.fetchDisplayNames(unknown)) {
-      _authors[user.id] = chatAuthorOf(user.id, user.name);
+      _authors[user.id] = chatAuthorOf(user.id, displayNameOf(user));
     }
   }
 
@@ -678,7 +688,7 @@ class ChannelMessageBloc
           if (isClosed) return;
           add(
             _ChannelMessageAuthorsResolved([
-              for (final user in users) chatAuthorOf(user.id, user.name),
+              for (final user in users) chatAuthorOf(user.id, displayNameOf(user)),
             ]),
           );
         })
@@ -695,12 +705,26 @@ class ChannelMessageBloc
     final latest = _messages.reversed.where(_isSaved).firstOrNull;
     if (latest == null || latest.id == _lastReadId) return;
     _lastReadId = latest.id;
-    _messageRepository.markRead(channelId, latest.id).catchError((
-      Object e,
-      StackTrace s,
-    ) {
-      Logger.e('읽음 처리 실패', tag: 'Chat', error: e, stackTrace: s);
+    _messageRepository
+        .markRead(channelId, latest.id)
+        .then((_) => _markReadFailures = 0)
+        .catchError((Object e, StackTrace s) {
+          Logger.e('읽음 처리 실패', tag: 'Chat', error: e, stackTrace: s);
+          // 같은 위치를 다시 보낼 수 있게 풀고, 다음 새 메시지를 기다리지 않고 다시 보낸다.
+          if (_lastReadId == latest.id) _lastReadId = null;
+          _scheduleMarkReadRetry();
+          return 0;
+        });
+  }
+
+  /// 읽음 요청이 실패했을 때 간격을 두 배씩 늘려 세 번까지만 다시 보낸다.
+  void _scheduleMarkReadRetry() {
+    if (isClosed || _markReadFailures >= _maxMarkReadRetries) return;
+    _markReadRetry?.cancel();
+    _markReadRetry = Timer(markReadRetryDelay * (1 << _markReadFailures), () {
+      if (!isClosed) _markRead();
     });
+    _markReadFailures++;
   }
 
   void _emit(Emitter<ChannelMessageState> emit, {String? error}) {
@@ -757,6 +781,7 @@ class ChannelMessageBloc
       timer.cancel();
     }
     _confirmTimers.clear();
+    _markReadRetry?.cancel();
     await _socketEvents.cancel();
     await _reconnects.cancel();
     await _lifecycle?.cancel();

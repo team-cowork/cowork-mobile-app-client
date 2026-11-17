@@ -1,25 +1,19 @@
 import '../domain/enums/notification_level.dart';
 
-/// `GET/PUT /preferences/account/{id}` 의 계정 설정.
+/// `GET/PUT /preferences/account/{id}` 의 계정 설정 중 앱이 쓰는 값.
 ///
-/// 받은 JSON 을 통째로 들고 있다가 바꾼 필드만 덮어 그대로 돌려보낸다. 스펙만으로는
-/// PUT 이 전체 교체인지 부분 수정인지 알 수 없어서, 어느 쪽이든 화면이 다루지 않는
-/// 필드(`theme`, `timezone`, `dnd_schedule` 등)가 지워지지 않게 하려는 것이다.
+/// 서버는 PUT 에서 보낸 항목만 바꾸고 생략한 항목은 유지한다. 그래서 화면이 다루지
+/// 않는 필드(`theme`, `timezone`, `dnd_schedule` 등)를 들고 있다가 되돌려 보낼
+/// 필요가 없다.
 class AccountPreference {
-  const AccountPreference(this._json);
+  const AccountPreference({required this.notificationLevel});
 
   factory AccountPreference.fromJson(Map<String, dynamic> json) =>
-      AccountPreference(Map.unmodifiable(json));
-
-  final Map<String, dynamic> _json;
-
-  NotificationLevel get notificationLevel =>
-      NotificationLevel.fromValue(_json['notification_level'] as String?);
-
-  AccountPreference withNotificationLevel(NotificationLevel level) =>
       AccountPreference(
-        Map.unmodifiable({..._json, 'notification_level': level.value}),
+        notificationLevel: NotificationLevel.fromValue(
+          json['notification_level'] as String?,
+        ),
       );
 
-  Map<String, dynamic> toJson() => _json;
+  final NotificationLevel notificationLevel;
 }

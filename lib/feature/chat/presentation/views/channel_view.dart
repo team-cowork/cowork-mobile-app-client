@@ -23,11 +23,23 @@ class ChannelView extends StatelessWidget {
   const ChannelView({
     required this.channelId,
     this.focusMessageId,
+    this.dmName,
+    this.isDirect = false,
     this.openUrl = launchExternally,
     super.key,
   });
 
   final int channelId;
+
+  /// DM 대화면 상대 이름. DM 채널 이름은 서버가 늘 `DM` 으로 정해, 머리에는 이 이름을
+  /// 보이고 채널 멤버·설정 같은 채널 전용 버튼은 숨긴다. 이름을 모르면 null 이다.
+  final String? dmName;
+
+  /// DM 대화인지. [dmName] 이 있으면 DM 이고, 이름을 몰라도 DM 이면 true 로 넘긴다. 이때
+  /// 머리에는 `다이렉트 메시지` 를 보인다.
+  final bool isDirect;
+
+  bool get _isDirect => isDirect || dmName != null;
 
   /// 첨부파일 주소를 여는 방법. 테스트에서 바꾼다.
   final UrlOpener openUrl;
@@ -78,8 +90,9 @@ class ChannelView extends StatelessWidget {
           child: Column(
             children: [
               _ChannelHeader(
-                name: data.name,
-                description: data.description,
+                name: dmName ?? (_isDirect ? '다이렉트 메시지' : data.name),
+                description: _isDirect ? '' : data.description,
+                isDirect: _isDirect,
                 onBack: () => context.pop(),
                 onMembersTap: () =>
                     context.push('/chat/channel/$channelId/members'),
@@ -582,7 +595,11 @@ class _EditMessageSheetState extends State<_EditMessageSheet> {
               '메시지 수정',
               style: AppFont.labelM.copyWith(color: AppColors.darkOnSurface),
             ),
-            CoworkTextArea(controller: _controller, minLines: 3),
+            CoworkTextArea(
+              controller: _controller,
+              minLines: 3,
+              autofocus: true,
+            ),
             ValueListenableBuilder(
               valueListenable: _controller,
               builder: (context, value, _) => CoworkButton(
@@ -638,6 +655,7 @@ class _ChannelHeader extends StatelessWidget {
   const _ChannelHeader({
     required this.name,
     required this.description,
+    this.isDirect = false,
     this.onBack,
     this.onMembersTap,
     // ignore: unused_element_parameter -- 더보기 동작 미연결. 배선되면 이 줄을 지운다.
@@ -646,6 +664,9 @@ class _ChannelHeader extends StatelessWidget {
 
   final String name;
   final String description;
+
+  /// DM 대화의 머리. 채널 아이콘·설명·멤버·설정 버튼을 그리지 않는다.
+  final bool isDirect;
   final VoidCallback? onBack;
   final VoidCallback? onMembersTap;
   final VoidCallback? onMoreTap;
@@ -676,8 +697,10 @@ class _ChannelHeader extends StatelessWidget {
             ),
           ),
           const SizedBox(width: AppSpacing.s6),
-          AppIcon.hash(),
-          const SizedBox(width: AppSpacing.s10),
+          if (!isDirect) ...[
+            AppIcon.hash(),
+            const SizedBox(width: AppSpacing.s10),
+          ],
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -688,18 +711,23 @@ class _ChannelHeader extends StatelessWidget {
                     color: AppColors.darkOnSurface,
                   ),
                 ),
-                Text(
-                  description,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppFont.subtextS.copyWith(color: AppColors.neutral300),
-                ),
+                if (!isDirect)
+                  Text(
+                    description,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppFont.subtextS.copyWith(
+                      color: AppColors.neutral300,
+                    ),
+                  ),
               ],
             ),
           ),
-          GestureDetector(onTap: onMembersTap, child: AppIcon.users()),
-          const SizedBox(width: AppSpacing.s16),
-          GestureDetector(onTap: onMoreTap, child: AppIcon.more()),
+          if (!isDirect) ...[
+            GestureDetector(onTap: onMembersTap, child: AppIcon.users()),
+            const SizedBox(width: AppSpacing.s16),
+            GestureDetector(onTap: onMoreTap, child: AppIcon.more()),
+          ],
         ],
       ),
     );

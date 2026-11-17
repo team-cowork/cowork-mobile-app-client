@@ -15,7 +15,7 @@ class CoworkTextArea extends StatelessWidget {
     this.suffixIcon,
     this.prefixIcon,
     this.minLines = 5,
-
+    this.autofocus = false,
   });
 
   final TextEditingController? controller;
@@ -30,7 +30,8 @@ class CoworkTextArea extends StatelessWidget {
   final Widget? prefixIcon;
   final int? minLines;
 
-
+  /// 화면이 열리면 바로 입력할 수 있게 포커스를 준다.
+  final bool autofocus;
 
   @override
   Widget build(BuildContext context) {
@@ -51,6 +52,7 @@ class CoworkTextArea extends StatelessWidget {
         ],
         TextFormField(
           controller: controller,
+          autofocus: autofocus,
           validator: validator,
           enabled: enabled,
           onChanged: onChanged,
