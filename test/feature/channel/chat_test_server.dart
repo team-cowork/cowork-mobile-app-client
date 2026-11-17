@@ -4,10 +4,13 @@ import 'dart:typed_data';
 
 import 'package:cowork_app/core/network/chat_socket.dart';
 import 'package:cowork_app/feature/channel/data/repositories/channel_repository.dart';
+import 'package:cowork_app/feature/notifications/data/repositories/notification_repository.dart';
 import 'package:cowork_app/feature/team/data/repositories/team_repository.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+
+import '../notifications/notification_test_stream.dart';
 
 /// 채팅 홈 테스트용 가짜 게이트웨이.
 ///
@@ -331,16 +334,22 @@ class FakeChatSocket implements ChatSocket {
 }
 
 /// [home] 을 [server] 에 붙은 팀·채널 저장소와 [socket] 과 함께 띄우는 앱.
+///
+/// [notifications] 를 안 주면 알림이 오지 않는 저장소를 둔다.
 Widget chatTestApp(
   FakeChatServer server, {
   required Widget home,
   FakeChatSocket? socket,
+  NotificationRepository? notifications,
   ThemeData? theme,
 }) => MultiRepositoryProvider(
   providers: [
     RepositoryProvider.value(value: teamRepositoryOf(server)),
     RepositoryProvider.value(value: channelRepositoryOf(server)),
     RepositoryProvider<ChatSocket>.value(value: socket ?? FakeChatSocket()),
+    RepositoryProvider.value(
+      value: notifications ?? NotificationRepository(FakeNotificationStream()),
+    ),
   ],
   child: MaterialApp(theme: theme, home: home),
 );

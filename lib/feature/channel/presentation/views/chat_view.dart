@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/network/chat_socket.dart';
 import '../../../../shared/widgets/bloc_scaffold.dart';
+import '../../../notifications/data/repositories/notification_repository.dart';
 import '../../../team/data/repositories/team_repository.dart';
 import '../../../team/presentation/widgets/add_team_sheet.dart';
 import '../../../team/presentation/widgets/join_team_sheet.dart';
@@ -28,6 +29,7 @@ class ChatView extends StatelessWidget {
         context.read<TeamRepository>(),
         context.read<ChannelRepository>(),
         context.read<ChatSocket>(),
+        invitedTeams: context.read<NotificationRepository>().invitedTeamIds,
       )..add(const ChannelListRequested()),
       // 어느 단계(팀/채널)가 실패했는지는 설명 문구에 실려 온다. (#94)
       errorTitle: '홈을 불러오지 못했어요',

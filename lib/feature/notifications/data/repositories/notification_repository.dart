@@ -22,6 +22,7 @@ class NotificationRepository {
 
   final _items = <ReceivedNotification>[];
   final _changes = StreamController<void>.broadcast();
+  final _invitedTeamIds = StreamController<int>.broadcast();
   StreamSubscription<Map<String, dynamic>>? _subscription;
   int _nextId = 0;
 
@@ -30,6 +31,11 @@ class NotificationRepository {
 
   /// [items] 가 바뀌었다.
   Stream<void> get changes => _changes.stream;
+
+  /// 다른 사람이 나를 넣은 팀 id. `MEMBER_INVITED` 알림이 올 때마다 흘린다.
+  ///
+  /// 팀에 바로 넣어도 소켓 이벤트가 없어, 홈이 이걸 보고 팀 목록을 다시 읽는다.
+  Stream<int> get invitedTeamIds => _invitedTeamIds.stream;
 
   /// 알림을 받기 시작한다. 로그인했을 때 부른다.
   void start() {
@@ -66,6 +72,7 @@ class NotificationRepository {
     stop();
     _stream.dispose();
     _changes.close();
+    _invitedTeamIds.close();
   }
 
   void _onEvent(Map<String, dynamic> json) {
@@ -85,5 +92,8 @@ class NotificationRepository {
     );
     if (_items.length > maxItems) _items.removeLast();
     _changes.add(null);
+    if (event.type == 'MEMBER_INVITED' && event.teamId > 0) {
+      _invitedTeamIds.add(event.teamId);
+    }
   }
 }
