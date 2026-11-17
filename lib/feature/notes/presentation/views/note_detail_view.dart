@@ -1,13 +1,20 @@
 import 'package:cowork_design_system/design_system.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 import 'package:go_router/go_router.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../../../../core/network/http_error_message.dart';
+import '../../../../core/utils/logger.dart';
+import '../../../../shared/utils/external_url.dart';
 import '../../../../shared/widgets/base_scaffold.dart';
 import '../../../profile/data/profile_store.dart';
+import '../../data/repositories/note_attachment_repository.dart';
 import '../../domain/note.dart';
+import '../../domain/note_attachment.dart';
 import '../widgets/delete_note_dialog.dart';
+import '../widgets/note_attachment_card.dart';
 
 /// 상세 화면을 닫으며 목록에 알리는 결과. 결과가 없으면 목록은 그대로 둔다.
 enum NoteDetailResult {
@@ -22,11 +29,18 @@ enum NoteDetailResult {
 ///
 /// Figma `App / Note Detail (회의록)` 스펙에 맞춘 다크 전용 레이아웃.
 /// 제목·작성자·참여자·배지 헤더 아래에 회의록 섹션을 [Note.sections] 순서(템플릿
-/// 섹션 순서)대로 그린다.
+/// 섹션 순서)대로 그리고, 맨 아래에 첨부파일을 둔다.
 class NoteDetailView extends StatefulWidget {
-  const NoteDetailView({super.key, required this.note});
+  const NoteDetailView({
+    super.key,
+    required this.note,
+    this.openUrl = launchExternally,
+  });
 
   final Note note;
+
+  /// 첨부파일 주소를 여는 방법. 테스트는 기기 앱 대신 가짜를 넣는다.
+  final UrlOpener openUrl;
 
   /// 아바타 색상 팔레트. 작성자는 0번, 참여자는 1번부터 순서대로 사용한다.
   static const _avatarColors = [
@@ -78,6 +92,33 @@ class _NoteDetailViewState extends State<NoteDetailView> {
   Future<void> _share() => SharePlus.instance.share(
     ShareParams(text: _note.shareText, subject: _note.title),
   );
+
+  /// 첨부파일 주소를 받는 중인지. 받는 동안 다시 눌러도 요청이 겹치지 않게 한다.
+  bool _opening = false;
+
+  /// 누를 때마다 서버에서 임시 주소(60초)를 새로 받아 바로 연다. 주소를 들고 있으면
+  /// 만료되므로 저장하지 않는다.
+  Future<void> _openAttachment(NoteAttachment attachment) async {
+    if (_opening) return;
+    _opening = true;
+    final repository = context.read<NoteAttachmentRepository>();
+    String? problem;
+    try {
+      final url = await repository.fetchDownloadUrl(_note, attachment);
+      if (!await widget.openUrl(Uri.parse(url))) {
+        problem = '파일을 열 수 있는 앱이 없어요.';
+      }
+    } catch (e, s) {
+      Logger.e('회의록 첨부파일 열기 실패', tag: 'Notes', error: e, stackTrace: s);
+      problem = failureMessageOf(e) ?? '파일을 열지 못했어요.';
+    } finally {
+      _opening = false;
+    }
+    if (problem == null || !mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(problem)));
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -156,6 +197,16 @@ class _NoteDetailViewState extends State<NoteDetailView> {
           const Divider(height: 1, thickness: 1, color: AppColors.neutral700),
           for (final MapEntry(key: title, value: body) in note.sections.entries)
             if (body.trim().isNotEmpty) _Section(title: title, body: body),
+          if (note.attachments.isNotEmpty) ...[
+            const _SectionTitle('첨부파일'),
+            for (final (index, attachment) in note.attachments.indexed) ...[
+              if (index > 0) const SizedBox(height: AppSpacing.s8),
+              NoteAttachmentCard(
+                attachment: attachment,
+                onTap: () => _openAttachment(attachment),
+              ),
+            ],
+          ],
         ],
       ),
     );
