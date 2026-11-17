@@ -110,6 +110,27 @@ class MessageRepository {
     );
   }
 
+  /// [messageId] 메시지의 [attachmentIndex] 번째 첨부파일을 받을 임시 주소.
+  ///
+  /// 서버는 누를 때마다 채널 읽기 권한을 다시 확인하고 60초만 유효한 주소를 준다. 영구
+  /// 주소가 없으므로 받은 주소는 저장하지 않고 바로 쓴다.
+  Future<String> fetchAttachmentDownloadUrl(
+    int channelId,
+    String messageId,
+    int attachmentIndex,
+  ) async {
+    final url = unwrapPayload(
+      (await _chat.get<String>(
+            '/chat/channels/$channelId/messages/$messageId/attachments/$attachmentIndex/download-url',
+          )).data ??
+          '',
+    )['downloadUrl'];
+    if (url is! String || url.isEmpty) {
+      throw const FormatException('다운로드 주소가 응답에 없다');
+    }
+    return url;
+  }
+
   /// 메시지를 보낸다. 서버는 큐에 넣고 바로 돌아오고, 저장된 메시지는 소켓으로 온다.
   Future<void> sendMessage(int channelId, SendMessageRequest request) =>
       _chat.post<String>(

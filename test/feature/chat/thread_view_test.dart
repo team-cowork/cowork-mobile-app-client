@@ -1,6 +1,7 @@
 import 'package:cowork_app/core/network/chat_socket.dart';
 import 'package:cowork_app/feature/channel/data/repositories/channel_repository.dart';
 import 'package:cowork_app/feature/chat/data/repositories/message_repository.dart';
+import 'package:cowork_app/feature/chat/presentation/utils/attachment_opener.dart';
 import 'package:cowork_app/feature/chat/presentation/views/thread_view.dart';
 import 'package:cowork_design_system/design_system.dart';
 import 'package:flutter/material.dart';
@@ -14,8 +15,9 @@ void main() {
   Future<void> pumpThread(
     WidgetTester tester,
     FakeMessageGateway gateway,
-    FakeChatSocket socket,
-  ) async {
+    FakeChatSocket socket, {
+    UrlOpener? openUrl,
+  }) async {
     await tester.pumpWidget(
       MultiRepositoryProvider(
         providers: [
@@ -32,7 +34,11 @@ void main() {
         ],
         child: MaterialApp(
           theme: AppTheme.dark(),
-          home: const ThreadView(channelId: 10, parentMessageId: 'm1'),
+          home: ThreadView(
+            channelId: 10,
+            parentMessageId: 'm1',
+            openUrl: openUrl ?? (_) async => true,
+          ),
         ),
       ),
     );
@@ -51,6 +57,34 @@ void main() {
       matching: find.byType(InkWell),
     ),
   );
+
+  testWidgets('답글의 첨부파일을 누르면 임시 주소로 연다', (tester) async {
+    final opened = <Uri>[];
+    final server = FakeMessageGateway(
+      replies: [
+        {
+          ...messageJson('r1', 2, '', parentMessageId: 'm1', type: 'FILE'),
+          'attachments': [
+            {'name': '답글.pdf', 'size': 2048, 'mimeType': 'application/pdf'},
+          ],
+        },
+      ],
+    );
+    await pumpThread(
+      tester,
+      server,
+      FakeChatSocket(),
+      openUrl: (url) async {
+        opened.add(url);
+        return true;
+      },
+    );
+
+    await tester.tap(find.text('답글.pdf'));
+    await tester.pumpAndSettle();
+
+    expect(opened, [Uri.parse('https://files.test/reply.pdf')]);
+  });
 
   testWidgets('부모 메시지와 답글을 보여 준다', (tester) async {
     await pumpThread(tester, gateway(), FakeChatSocket());

@@ -16,6 +16,7 @@ import '../../../profile/data/repositories/profile_repository.dart';
 import '../../data/repositories/message_repository.dart';
 import '../../domain/chat_message.dart';
 import '../blocs/channel_message/channel_message_bloc.dart';
+import '../utils/attachment_opener.dart';
 import '../widgets/chat_message_row.dart';
 
 class ChannelView extends StatelessWidget {
@@ -24,6 +25,7 @@ class ChannelView extends StatelessWidget {
     this.focusMessageId,
     this.dmName,
     this.isDirect = false,
+    this.openUrl = launchExternally,
     super.key,
   });
 
@@ -38,6 +40,9 @@ class ChannelView extends StatelessWidget {
   final bool isDirect;
 
   bool get _isDirect => isDirect || dmName != null;
+
+  /// 첨부파일 주소를 여는 방법. 테스트에서 바꾼다.
+  final UrlOpener openUrl;
 
   /// 열 때 보여 줄 메시지(검색 결과에서 고른 것). 없으면 최근 메시지부터 연다.
   final String? focusMessageId;
@@ -94,7 +99,9 @@ class ChannelView extends StatelessWidget {
                 onMoreTap: () =>
                     context.push('/chat/channel/$channelId/settings'),
               ),
-              Expanded(child: _MessageList(data: data)),
+              Expanded(
+                child: _MessageList(data: data, openUrl: openUrl),
+              ),
               const Padding(
                 padding: EdgeInsets.fromLTRB(
                   AppSpacing.s12,
@@ -142,9 +149,10 @@ class ChannelView extends StatelessWidget {
 /// 배치한다. 목록이 화면에 보이는 줄만 만들어서, 멀리 있는 줄은 위치를 알 수 없기
 /// 때문이다. 기준 메시지가 스크롤 0 에 오고, 그보다 최근 메시지는 아래로 이어 붙는다.
 class _MessageList extends StatefulWidget {
-  const _MessageList({required this.data});
+  const _MessageList({required this.data, required this.openUrl});
 
   final ChannelConversation data;
+  final UrlOpener openUrl;
 
   @override
   State<_MessageList> createState() => _MessageListState();
@@ -382,6 +390,7 @@ class _MessageListState extends State<_MessageList> {
       onLongPress: message.editable
           ? () => _showMessageActions(context, message)
           : null,
+      onAttachmentTap: (index) => _openAttachment(context, message, index),
     );
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s4),
@@ -400,6 +409,22 @@ class _MessageListState extends State<_MessageList> {
             )
           : row,
     );
+  }
+
+  late final _attachmentOpener = AttachmentOpener(
+    repository: context.read<MessageRepository>(),
+    open: widget.openUrl,
+  );
+
+  Future<void> _openAttachment(
+    BuildContext rowContext,
+    ChatMessage message,
+    int index,
+  ) async {
+    final channelId = rowContext.read<ChannelMessageBloc>().channelId;
+    final failure = await _attachmentOpener.open(channelId, message.id, index);
+    // 줄이 스크롤 밖으로 나가 사라져도 안내는 목록 화면 기준으로 띄운다.
+    if (failure != null && mounted) ChannelView._notify(context, failure);
   }
 
   /// 내 메시지를 길게 눌렀을 때. 고치거나 지울지 고르게 한다.
