@@ -66,7 +66,7 @@ void main() {
     final bloc = _bloc(
       gateway,
       FakeChatSocket(),
-      markReadRetryDelay: const Duration(milliseconds: 10),
+      markReadRetryDelay: const Duration(milliseconds: 300),
     )..add(const ChannelMessageEvent.requested());
     addTearDown(bloc.close);
     await bloc.stream.firstWhere((s) => s is AsyncSuccess<ChannelConversation>);
@@ -77,12 +77,40 @@ void main() {
     );
 
     gateway.failing = null;
-    await Future<void>.delayed(const Duration(milliseconds: 100));
+    await Future<void>.delayed(const Duration(milliseconds: 600));
 
     expect(
       gateway.calls.where((c) => c == 'POST /chat/chat/channels/10/read'),
       hasLength(2),
     );
+  });
+
+  test('읽음이 한 번 성공하면 재시도 횟수를 처음으로 돌린다', () async {
+    const read = 'POST /chat/chat/channels/10/read';
+    final gateway = FakeMessageGateway()..failing = read;
+    final socket = FakeChatSocket();
+    final bloc = _bloc(
+      gateway,
+      socket,
+      markReadRetryDelay: const Duration(milliseconds: 5),
+    )..add(const ChannelMessageEvent.requested());
+    addTearDown(bloc.close);
+    await bloc.stream.firstWhere((s) => s is AsyncSuccess<ChannelConversation>);
+    await Future<void>.delayed(const Duration(milliseconds: 300));
+    // 처음 한 번과 다시 보내기 세 번을 다 썼다.
+    expect(gateway.calls.where((c) => c == read), hasLength(4));
+
+    gateway.failing = null;
+    socket.push('message', messageJson('m3', 2, '새 메시지'));
+    await Future<void>.delayed(const Duration(milliseconds: 100));
+    expect(gateway.calls.where((c) => c == read), hasLength(5));
+
+    gateway.failing = read;
+    socket.push('message', messageJson('m4', 2, '또 새 메시지'));
+    await Future<void>.delayed(const Duration(milliseconds: 300));
+
+    // 성공하면서 횟수가 돌아와, 이번에도 처음 한 번과 다시 보내기 세 번을 쓴다.
+    expect(gateway.calls.where((c) => c == read), hasLength(9));
   });
 
   test('읽음 요청이 계속 실패하면 세 번까지만 다시 보낸다', () async {

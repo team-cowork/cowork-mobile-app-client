@@ -179,6 +179,12 @@ void main() {
       findsOneWidget,
     );
     expect(find.text('기획서.pdf'), findsOneWidget);
+
+    // 첨부 카드는 아바타 높이만큼 내려가지 않고 머리줄 바로 아래에 붙는다.
+    final gap =
+        tester.getTopLeft(find.byType(CoworkAttachmentCard)).dy -
+        tester.getBottomLeft(find.textContaining('도윤 ·')).dy;
+    expect(gap, AppSpacing.s8);
   });
 
   testWidgets('파일 메시지는 첨부파일 이름과 크기를 보여 준다', (tester) async {
