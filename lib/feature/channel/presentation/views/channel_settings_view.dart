@@ -91,6 +91,7 @@ class ChannelSettingsView extends StatelessWidget {
                                   title: '채널 이름',
                                   initialText: settings.name,
                                   allowEmpty: false,
+                                  singleLine: true,
                                 );
                                 if (name != null) {
                                   bloc.add(
@@ -303,6 +304,7 @@ class _EditTextSheet extends StatefulWidget {
     required this.title,
     required this.initialText,
     required this.allowEmpty,
+    required this.singleLine,
   });
 
   final String title;
@@ -311,11 +313,15 @@ class _EditTextSheet extends StatefulWidget {
   /// 비워서 저장할 수 있는지. 채널 이름은 비울 수 없다.
   final bool allowEmpty;
 
+  /// 한 줄만 받는지. 채널 이름은 줄바꿈이 들어가면 목록·헤더가 두 줄로 보인다.
+  final bool singleLine;
+
   static Future<String?> show(
     BuildContext context, {
     required String title,
     required String initialText,
     required bool allowEmpty,
+    bool singleLine = false,
   }) => showModalBottomSheet<String>(
     context: context,
     isScrollControlled: true,
@@ -327,6 +333,7 @@ class _EditTextSheet extends StatefulWidget {
       title: title,
       initialText: initialText,
       allowEmpty: allowEmpty,
+      singleLine: singleLine,
     ),
   );
 
@@ -341,6 +348,12 @@ class _EditTextSheetState extends State<_EditTextSheet> {
   void dispose() {
     _controller.dispose();
     super.dispose();
+  }
+
+  void _save() {
+    final text = _controller.text.trim();
+    if (!widget.allowEmpty && text.isEmpty) return;
+    Navigator.of(context).pop(text);
   }
 
   @override
@@ -362,14 +375,21 @@ class _EditTextSheetState extends State<_EditTextSheet> {
               widget.title,
               style: AppFont.labelM.copyWith(color: AppColors.darkOnSurface),
             ),
-            CoworkTextArea(controller: _controller, minLines: 1),
+            if (widget.singleLine)
+              CoworkTextField(
+                controller: _controller,
+                textInputAction: TextInputAction.done,
+                onSubmitted: (_) => _save(),
+              )
+            else
+              CoworkTextArea(controller: _controller, minLines: 1),
             ValueListenableBuilder(
               valueListenable: _controller,
               builder: (context, value, _) => CoworkButton(
                 label: '저장',
                 size: CoworkButtonSize.large,
                 enabled: widget.allowEmpty || value.text.trim().isNotEmpty,
-                onPressed: () => Navigator.of(context).pop(_controller.text),
+                onPressed: _save,
               ),
             ),
           ],
