@@ -52,6 +52,25 @@ void main() {
       expect(gateway.calls, contains('GET /user/users/batch?ids=1%2C2%2C3'));
     });
 
+    test('닉네임이 있어도 이름이 있으면 이름을 쓰고, 이름이 비면 닉네임을 쓴다', () async {
+      final gateway = FakeMessageGateway()
+        ..users[2] = ''
+        ..nicknames[1] = '별명'
+        ..nicknames[2] = '도윤닉';
+      final bloc = _bloc(gateway)..add(const ChannelMembersEvent.requested());
+      addTearDown(bloc.close);
+
+      final state = await bloc.stream.firstWhere(
+        (s) => s is AsyncSuccess<ChannelMembersData>,
+      );
+
+      final data = (state as AsyncSuccess<ChannelMembersData>).data;
+      expect(
+        [for (final m in data.members) m.profile.name],
+        ['나', '도윤닉', '서연'],
+      );
+    });
+
     test('이름을 못 읽어도 멤버 목록은 보여 준다', () async {
       final gateway = FakeMessageGateway()..failing = 'GET /user/users/batch';
       final bloc = _bloc(gateway)..add(const ChannelMembersEvent.requested());

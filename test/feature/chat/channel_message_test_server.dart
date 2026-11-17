@@ -26,6 +26,9 @@ class FakeMessageGateway implements HttpClientAdapter {
   /// `GET /channels/10/members` 로 읽는 채널 10 의 멤버 id.
   final memberIds = <int>[1, 2, 3];
 
+  /// 사용자 id 별 닉네임. 이름(`users`)이 비어 있을 때 쓴다.
+  final nicknames = <int, String>{};
+
   final calls = <String>[];
   final bodies = <String, Map<String, dynamic>>{};
 
@@ -76,7 +79,12 @@ class FakeMessageGateway implements HttpClientAdapter {
       'GET /user/users/batch' => _ok({
         'users': [
           for (final id in uri.queryParameters['ids']!.split(','))
-            {'id': int.parse(id), 'name': users[int.parse(id)] ?? ''},
+            {
+              'id': int.parse(id),
+              'name': users[int.parse(id)] ?? '',
+              if (nicknames[int.parse(id)] case final nickname?)
+                'nickname': nickname,
+            },
         ],
       }),
       _ => ResponseBody.fromString('', 204),
