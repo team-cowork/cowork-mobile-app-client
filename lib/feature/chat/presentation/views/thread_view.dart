@@ -8,13 +8,16 @@ import '../../../../core/utils/async_state.dart';
 import '../../../../shared/widgets/bloc_scaffold.dart';
 import '../../../channel/data/repositories/channel_repository.dart';
 import '../../data/repositories/message_repository.dart';
+import '../../domain/chat_message.dart';
 import '../blocs/thread/thread_bloc.dart';
+import '../utils/attachment_opener.dart';
 import '../widgets/chat_message_row.dart';
 
-class ThreadView extends StatelessWidget {
+class ThreadView extends StatefulWidget {
   const ThreadView({
     required this.channelId,
     required this.parentMessageId,
+    this.openUrl = launchExternally,
     super.key,
   });
 
@@ -23,8 +26,38 @@ class ThreadView extends StatelessWidget {
   /// 스레드의 부모(맨 위) 메시지 id.
   final String parentMessageId;
 
+  /// 첨부파일 주소를 여는 방법. 테스트에서 바꾼다.
+  final UrlOpener openUrl;
+
+  @override
+  State<ThreadView> createState() => _ThreadViewState();
+}
+
+class _ThreadViewState extends State<ThreadView> {
+  late final _attachmentOpener = AttachmentOpener(
+    repository: context.read<MessageRepository>(),
+    open: widget.openUrl,
+  );
+
+  void _notify(String message) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  Future<void> _openAttachment(ChatMessage message, int index) async {
+    final failure = await _attachmentOpener.open(
+      widget.channelId,
+      message.id,
+      index,
+    );
+    if (failure != null && mounted) _notify(failure);
+  }
+
   @override
   Widget build(BuildContext context) {
+    final channelId = widget.channelId;
+    final parentMessageId = widget.parentMessageId;
     return BlocScaffold<ThreadBloc, ThreadConversation>(
       create: (context) => ThreadBloc(
         channelId: channelId,
@@ -41,11 +74,9 @@ class ThreadView extends StatelessWidget {
             current is AsyncSuccess<ThreadConversation> &&
             current.data.errorMessage != null,
         listener: (context, state) {
-          final message =
-              (state as AsyncSuccess<ThreadConversation>).data.errorMessage!;
-          ScaffoldMessenger.of(context)
-            ..hideCurrentSnackBar()
-            ..showSnackBar(SnackBar(content: Text(message)));
+          _notify(
+            (state as AsyncSuccess<ThreadConversation>).data.errorMessage!,
+          );
         },
         child: SafeArea(
           child: Column(
@@ -64,6 +95,10 @@ class ThreadView extends StatelessWidget {
                       ),
                       child: ChatMessageRow(
                         message: conversation.thread.rootMessage,
+                        onAttachmentTap: (index) => _openAttachment(
+                          conversation.thread.rootMessage,
+                          index,
+                        ),
                       ),
                     ),
                     Padding(
@@ -99,7 +134,12 @@ class ThreadView extends StatelessWidget {
                         spacing: AppSpacing.s18,
                         children: [
                           for (final reply in conversation.thread.replies)
-                            ChatMessageRow(message: reply, avatarSize: 32),
+                            ChatMessageRow(
+                              message: reply,
+                              avatarSize: 32,
+                              onAttachmentTap: (index) =>
+                                  _openAttachment(reply, index),
+                            ),
                         ],
                       ),
                     ),
