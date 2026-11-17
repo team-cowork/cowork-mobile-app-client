@@ -43,6 +43,26 @@ class FakeMessageGateway implements HttpClientAdapter {
     'muted_until': null,
   };
 
+  /// `GET /teams/1/members` 로 읽는 팀 멤버와 역할.
+  List<Map<String, dynamic>> teamMembers = [
+    {
+      'userId': 1,
+      'role': 'OWNER',
+      'roles': [
+        {'name': 'Backend', 'isDefault': false},
+        {'name': 'everyone', 'isDefault': true},
+      ],
+    },
+    {
+      'userId': 2,
+      'role': 'ADMIN',
+      'roles': [
+        {'name': 'everyone', 'isDefault': true},
+      ],
+    },
+    {'userId': 3, 'role': 'MEMBER', 'roles': <Map<String, dynamic>>[]},
+  ];
+
   /// 사용자 id 별 닉네임. 이름(`users`)이 비어 있을 때 쓴다.
   final nicknames = <int, String>{};
 
@@ -99,6 +119,7 @@ class FakeMessageGateway implements HttpClientAdapter {
       'PUT /preference/preferences/account/1/channels/10/notification' => _ok(
         notification = {...bodies[call]!, 'notification': true},
       ),
+      'GET /team/teams/1/members' => _ok(teamMembers),
       'GET /channel/channels/10/members' => _ok([
         for (final id in memberIds) {'channelId': 10, 'userId': id},
       ]),
