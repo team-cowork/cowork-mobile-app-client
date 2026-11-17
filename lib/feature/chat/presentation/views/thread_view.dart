@@ -7,6 +7,7 @@ import '../../../../core/network/chat_socket.dart';
 import '../../../../core/utils/async_state.dart';
 import '../../../../shared/widgets/bloc_scaffold.dart';
 import '../../../channel/data/repositories/channel_repository.dart';
+import '../../../profile/data/repositories/profile_repository.dart';
 import '../../data/repositories/message_repository.dart';
 import '../../domain/chat_message.dart';
 import '../blocs/thread/thread_bloc.dart';
@@ -64,6 +65,7 @@ class _ThreadViewState extends State<ThreadView> {
         parentMessageId: parentMessageId,
         channelRepository: context.read<ChannelRepository>(),
         messageRepository: context.read<MessageRepository>(),
+        profileRepository: context.read<ProfileRepository>(),
         socket: context.read<ChatSocket>(),
       )..add(const ThreadEvent.requested()),
       errorTitle: '스레드를 불러오지 못했어요',

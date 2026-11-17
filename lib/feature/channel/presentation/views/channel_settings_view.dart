@@ -8,7 +8,6 @@ import '../../../../shared/extensions/chat_avatar_color_mapping.dart';
 import '../../../../shared/widgets/bloc_scaffold.dart';
 import '../../../../shared/widgets/settings_section.dart';
 import '../../../../shared/widgets/settings_tile.dart';
-import '../../../chat/data/repositories/message_repository.dart';
 import '../../../profile/data/repositories/profile_repository.dart';
 import '../../../setting/data/preference_repository.dart';
 import '../../../setting/domain/enums/notification_level.dart';
@@ -36,7 +35,6 @@ class ChannelSettingsView extends StatelessWidget {
         channelRepository: context.read<ChannelRepository>(),
         preferenceRepository: context.read<PreferenceRepository>(),
         profileRepository: context.read<ProfileRepository>(),
-        messageRepository: context.read<MessageRepository>(),
       )..add(const ChannelSettingsEvent.requested()),
       errorTitle: '채널 설정을 불러오지 못했어요',
       onRetry: (context) => context.read<ChannelSettingsBloc>().add(
