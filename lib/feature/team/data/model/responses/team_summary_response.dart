@@ -9,10 +9,18 @@ part 'team_summary_response.g.dart';
 /// `POST /teams` 응답도 화면에서 쓰는 id·이름이 같아 이 모델로 받는다.
 @freezed
 abstract class TeamSummaryResponse with _$TeamSummaryResponse {
+  const TeamSummaryResponse._();
+
   const factory TeamSummaryResponse({
     /// 없으면 채널을 읽을 수도 만들 수도 없으므로 필수다. 없으면 fromJson 이 던진다.
     required int id,
     @Default('') String name,
+
+    /// 이 팀에서 내 역할. `OWNER` / `ADMIN` / `MEMBER`.
+    ///
+    /// 서버가 권한 판정에 쓰지 않는 표시값이라(deprecated) 앱도 판단에 쓰지 않는다.
+    /// 소유자인지는 [TeamResponse.isOwnedBy] 로 본다. `POST /teams` 응답에는 없다.
+    String? myRole,
   }) = _TeamSummaryResponse;
 
   factory TeamSummaryResponse.fromJson(Map<String, dynamic> json) =>

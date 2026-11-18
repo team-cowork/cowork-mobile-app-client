@@ -5,11 +5,13 @@ import 'dart:typed_data';
 import 'package:cowork_app/core/network/chat_socket.dart';
 import 'package:cowork_app/feature/channel/data/repositories/channel_repository.dart';
 import 'package:cowork_app/feature/notifications/data/repositories/notification_repository.dart';
+import 'package:cowork_app/feature/profile/data/repositories/profile_repository.dart';
 import 'package:cowork_app/feature/project/data/repositories/project_repository.dart';
 import 'package:cowork_app/feature/team/data/repositories/team_repository.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 
 import '../notifications/notification_test_stream.dart';
 
@@ -25,8 +27,20 @@ class FakeChatServer implements HttpClientAdapter {
   }) : teams =
            teams ??
            [
-             {'id': 1, 'name': '코워크', 'iconUrl': null, 'myRole': 'OWNER'},
-             {'id': 2, 'name': '디자인팀', 'iconUrl': null, 'myRole': 'MEMBER'},
+             {
+               'id': 1,
+               'name': '코워크',
+               'iconUrl': null,
+               'myRole': 'OWNER',
+               'ownerId': 1,
+             },
+             {
+               'id': 2,
+               'name': '디자인팀',
+               'iconUrl': null,
+               'myRole': 'MEMBER',
+               'ownerId': 2,
+             },
            ],
        channels =
            channels ??
@@ -69,6 +83,15 @@ class FakeChatServer implements HttpClientAdapter {
   ServerFailure? failChannels;
   ServerFailure? failCreate;
   ServerFailure? failCreateTeam;
+  ServerFailure? failLeave;
+  ServerFailure? failPermissions;
+  ServerFailure? failTeam;
+
+  /// 팀 id 별 내(1) 역할의 권한. 없는 팀은 권한이 하나도 없다.
+  /// 기본값은 내가 소유자인 코워크(1)만 `administrator` 다.
+  final permissions = <int, Map<String, bool>>{
+    1: {'administrator': true},
+  };
 
   /// 걸어 두면 채널 생성 응답을 이 Future 가 끝날 때까지 붙잡는다.
   Future<void>? createGate;
@@ -121,6 +144,24 @@ class FakeChatServer implements HttpClientAdapter {
     if (path == '/team/teams') {
       return _respond(options, failTeams, () => teams);
     }
+    if (path == '/user/users/me') {
+      return _respond(options, null, () => {'id': 1, 'name': '나'});
+    }
+    // `GET /teams/{teamId}/members/1/roles`: 내 역할. 기본 역할 하나에 권한을 싣는다.
+    if (path.startsWith('/team/teams/') && path.endsWith('/members/1/roles')) {
+      final teamId = int.parse(path.split('/')[3]);
+      return _respond(
+        options,
+        failPermissions,
+        () => [
+          {
+            'id': 1,
+            'name': '@everyone',
+            'permissions': permissions[teamId] ?? const <String, bool>{},
+          },
+        ],
+      );
+    }
     if (path.startsWith('/team/teams/join/')) {
       final code = Uri.decodeComponent(path.split('/').last);
       return _respond(options, failJoin, () => _join(code));
@@ -130,6 +171,9 @@ class FakeChatServer implements HttpClientAdapter {
       final teamId = int.parse(segments[3]);
       final teamInvites = invites.putIfAbsent(teamId, () => []);
       switch ((options.method, segments.length > 4 ? segments[4] : '')) {
+        // `GET /teams/{teamId}`: 팀 상세. 소유자는 이 `ownerId` 로 판단한다.
+        case ('GET', ''):
+          return _respond(options, failTeam, () => _teamOf(teamId));
         case ('GET', 'members'):
           return _respond(options, failMembers, () => _membersOf(teamId));
         case ('POST', 'members'):
@@ -157,6 +201,12 @@ class FakeChatServer implements HttpClientAdapter {
             };
             teamInvites.insert(0, invite);
             return invite;
+          });
+        // `DELETE /teams/{teamId}/members/{userId}`: 팀 나가기. 서버처럼 내 팀 목록에서 뺀다.
+        case ('DELETE', 'members'):
+          return _respond(options, failLeave, () {
+            teams.removeWhere((team) => team['id'] == teamId);
+            return null;
           });
         case ('DELETE', 'invites'):
           final code = Uri.decodeComponent(segments[5]);
@@ -228,6 +278,13 @@ class FakeChatServer implements HttpClientAdapter {
       'nicknameFormatEnforced': false,
       'nicknameFormatExample': null,
     };
+  }
+
+  /// 내 팀 목록에 있는 팀의 상세. 없는 팀은 서버처럼 403.
+  Map<String, dynamic> _teamOf(int teamId) {
+    final team = teams.where((team) => team['id'] == teamId).firstOrNull;
+    if (team == null) throw const ServerFailure(403, '팀 멤버가 아닙니다.');
+    return team;
   }
 
   List<Map<String, dynamic>> _membersOf(int teamId) => [
@@ -349,6 +406,10 @@ Dio _dioOf(FakeChatServer server, String service) => Dio(
 TeamRepository teamRepositoryOf(FakeChatServer server) =>
     TeamRepository.withDio(_dioOf(server, 'team'));
 
+/// [server] 로 요청을 보내는 프로필 저장소. 홈이 내 id 를 읽어 팀 권한을 묻는다.
+ProfileRepository profileRepositoryOf(FakeChatServer server) =>
+    ProfileRepository.withDio(_dioOf(server, 'user'));
+
 /// [server] 로 요청을 보내는 채널 저장소.
 ChannelRepository channelRepositoryOf(FakeChatServer server) =>
     ChannelRepository.withDio(_dioOf(server, 'channel'));
@@ -413,10 +474,13 @@ class FakeChatSocket implements ChatSocket {
 
 /// [home] 을 [server] 에 붙은 팀·채널 저장소와 [socket] 과 함께 띄우는 앱.
 ///
+/// [router] 를 주면 [home] 대신 그 라우터로 띄운다. 다른 화면으로 옮겨 가는 테스트용이다.
+///
 /// [notifications] 를 안 주면 알림이 오지 않는 저장소를 둔다.
 Widget chatTestApp(
   FakeChatServer server, {
-  required Widget home,
+  Widget? home,
+  GoRouter? router,
   FakeChatSocket? socket,
   NotificationRepository? notifications,
   ThemeData? theme,
@@ -424,11 +488,14 @@ Widget chatTestApp(
   providers: [
     RepositoryProvider.value(value: teamRepositoryOf(server)),
     RepositoryProvider.value(value: channelRepositoryOf(server)),
+    RepositoryProvider.value(value: profileRepositoryOf(server)),
     RepositoryProvider.value(value: projectRepositoryOf(server)),
     RepositoryProvider<ChatSocket>.value(value: socket ?? FakeChatSocket()),
     RepositoryProvider.value(
       value: notifications ?? NotificationRepository(FakeNotificationStream()),
     ),
   ],
-  child: MaterialApp(theme: theme, home: home),
+  child: router == null
+      ? MaterialApp(theme: theme, home: home)
+      : MaterialApp.router(theme: theme, routerConfig: router),
 );

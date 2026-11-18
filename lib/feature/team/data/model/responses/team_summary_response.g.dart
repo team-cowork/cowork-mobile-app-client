@@ -10,8 +10,13 @@ _TeamSummaryResponse _$TeamSummaryResponseFromJson(Map<String, dynamic> json) =>
     _TeamSummaryResponse(
       id: (json['id'] as num).toInt(),
       name: json['name'] as String? ?? '',
+      myRole: json['myRole'] as String?,
     );
 
 Map<String, dynamic> _$TeamSummaryResponseToJson(
   _TeamSummaryResponse instance,
-) => <String, dynamic>{'id': instance.id, 'name': instance.name};
+) => <String, dynamic>{
+  'id': instance.id,
+  'name': instance.name,
+  'myRole': instance.myRole,
+};

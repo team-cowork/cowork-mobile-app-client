@@ -22,6 +22,12 @@ sealed class ChannelListEvent extends Equatable {
   const factory ChannelListEvent.projectAdded(ProjectSummaryResponse project) =
       ChannelListProjectAdded;
 
+  /// 내가 [teamId] 팀에서 나갔다(팀 나가기 성공). 보던 팀이면 다른 팀으로 옮긴다.
+  const factory ChannelListEvent.teamLeft(int teamId) = ChannelListTeamLeft;
+
+  /// 팀 설정에서 돌아왔다. 팀 이름이 바뀌었거나 팀이 지워졌을 수 있다.
+  const factory ChannelListEvent.teamsRefreshed() = ChannelListTeamsRefreshed;
+
   @override
   List<Object?> get props => [];
 }
@@ -64,6 +70,19 @@ final class ChannelListProjectAdded extends ChannelListEvent {
 
   @override
   List<Object?> get props => [project];
+}
+
+final class ChannelListTeamLeft extends ChannelListEvent {
+  const ChannelListTeamLeft(this.teamId);
+
+  final int teamId;
+
+  @override
+  List<Object?> get props => [teamId];
+}
+
+final class ChannelListTeamsRefreshed extends ChannelListEvent {
+  const ChannelListTeamsRefreshed();
 }
 
 /// 소켓으로 홈에 반영할 이벤트가 왔다. 화면이 아니라 Bloc 이 스스로 넣는다.

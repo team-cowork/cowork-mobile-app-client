@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:cowork_app/core/utils/async_state.dart';
 import 'package:cowork_app/feature/channel/presentation/blocs/channel_list/channel_list_bloc.dart';
 import 'package:cowork_app/feature/project/data/model/responses/project_summary_response.dart';
+import 'package:cowork_app/feature/team/data/model/requests/create_team_request.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'chat_test_server.dart';
@@ -17,6 +18,7 @@ Future<ChannelListBloc> _loaded(
     channelRepositoryOf(server),
     projectRepositoryOf(server),
     socket ?? FakeChatSocket(),
+    profileRepository: profileRepositoryOf(server),
   )..add(const ChannelListEvent.requested());
   await bloc.stream.firstWhere((s) => s is AsyncSuccess<ChannelListData>);
   return bloc;
@@ -190,6 +192,151 @@ void main() {
     expect([for (final s in _data(bloc).workspaceShortcuts) s.id], [1, 2, 3]);
   });
 
+  test('내 역할로 보던 팀의 소유자인지 알린다', () async {
+    final server = FakeChatServer();
+    final bloc = await _loaded(server);
+    addTearDown(bloc.close);
+    expect(_data(bloc).isTeamOwner, isTrue);
+
+    bloc.add(const ChannelListEvent.teamSelected(2));
+    await bloc.stream.firstWhere(
+      (s) => s is AsyncSuccess<ChannelListData> && s.data.teamId == 2,
+    );
+
+    expect(_data(bloc).isTeamOwner, isFalse);
+  });
+
+  test('새로 만든 팀은 생성 응답에 역할이 없어도 내가 소유자다', () async {
+    final server = FakeChatServer();
+    final bloc = await _loaded(server);
+    addTearDown(bloc.close);
+    final team = await teamRepositoryOf(
+      server,
+    ).createTeam(const CreateTeamRequest(name: '새 팀'));
+
+    bloc.add(ChannelListEvent.teamCreated(team));
+    await bloc.stream.firstWhere(
+      (s) => s is AsyncSuccess<ChannelListData> && s.data.teamId == team.id,
+    );
+
+    expect(_data(bloc).isTeamOwner, isTrue);
+  });
+
+  group('팀에서 내 권한', () {
+    /// 디자인팀(2, 내가 멤버)으로 옮긴 Bloc.
+    Future<ChannelListBloc> onMemberTeam(FakeChatServer server) async {
+      final bloc = await _loaded(server);
+      bloc.add(const ChannelListEvent.teamSelected(2));
+      await bloc.stream.firstWhere(
+        (s) => s is AsyncSuccess<ChannelListData> && s.data.teamId == 2,
+      );
+      return bloc;
+    }
+
+    test('소유자인 팀은 역할을 읽지 않고 멤버 초대를 보인다', () async {
+      final server = FakeChatServer()..permissions.clear();
+      final bloc = await _loaded(server);
+      addTearDown(bloc.close);
+
+      expect(_data(bloc).canInviteMembers, isTrue);
+      expect(server.requests, isNot(contains(endsWith('/roles'))));
+    });
+
+    test('멤버인 팀은 역할을 읽어 초대 권한이 없으면 멤버 초대를 숨긴다', () async {
+      final server = FakeChatServer();
+      final bloc = await onMemberTeam(server);
+      addTearDown(bloc.close);
+
+      expect(server.requests, contains('GET /team/teams/2/members/1/roles'));
+      expect(_data(bloc).canInviteMembers, isFalse);
+    });
+
+    test('멤버여도 manage_invites 가 켜진 역할이 있으면 초대할 수 있다', () async {
+      final server = FakeChatServer()
+        ..permissions[2] = {'manage_invites': true};
+      final bloc = await onMemberTeam(server);
+      addTearDown(bloc.close);
+
+      expect(_data(bloc).canInviteMembers, isTrue);
+    });
+
+    test('권한을 못 읽어도 홈은 보이고 멤버 초대는 숨기지 않는다', () async {
+      final server = FakeChatServer()
+        ..failPermissions = const ServerFailure(503);
+      final bloc = await onMemberTeam(server);
+      addTearDown(bloc.close);
+
+      expect(channelIds(bloc), [20]);
+      expect(_data(bloc).canInviteMembers, isTrue);
+    });
+  });
+
+  test('팀에서 나가면 남은 팀으로 옮기고 단축 바에서 뺀다', () async {
+    final server = FakeChatServer();
+    final socket = FakeChatSocket();
+    final bloc = await _loaded(server, socket: socket);
+    addTearDown(bloc.close);
+
+    bloc.add(const ChannelListEvent.teamLeft(1));
+    await bloc.stream.firstWhere(
+      (s) => s is AsyncSuccess<ChannelListData> && s.data.teamId == 2,
+    );
+
+    expect([for (final s in _data(bloc).workspaceShortcuts) s.id], [2]);
+    expect(socket.joined, {2});
+  });
+
+  group('팀 설정에서 돌아오면', () {
+    test('팀 목록만 다시 읽어 바뀐 이름을 보이고 채널은 다시 읽지 않는다', () async {
+      final server = FakeChatServer();
+      final bloc = await _loaded(server);
+      addTearDown(bloc.close);
+      final states = <ChannelListState>[];
+      final subscription = bloc.stream.listen(states.add);
+      addTearDown(subscription.cancel);
+      server.requests.clear();
+      server.teams.first['name'] = '새 이름';
+
+      bloc.add(const ChannelListEvent.teamsRefreshed());
+      await bloc.stream.firstWhere(
+        (s) =>
+            s is AsyncSuccess<ChannelListData> &&
+            s.data.workspaceName == '새 이름',
+      );
+
+      expect(server.requests, ['GET /team/teams']);
+      expect(channelIds(bloc), [10, 11]);
+      expect(states.whereType<AsyncLoading<ChannelListData>>(), isEmpty);
+    });
+
+    test('보던 팀이 없어졌으면 남은 팀으로 옮긴다', () async {
+      final server = FakeChatServer();
+      final bloc = await _loaded(server);
+      addTearDown(bloc.close);
+      server.teams.removeWhere((team) => team['id'] == 1);
+
+      bloc.add(const ChannelListEvent.teamsRefreshed());
+      await bloc.stream.firstWhere(
+        (s) => s is AsyncSuccess<ChannelListData> && s.data.teamId == 2,
+      );
+
+      expect([for (final s in _data(bloc).workspaceShortcuts) s.id], [2]);
+    });
+
+    test('다시 읽기에 실패하면 보던 화면을 그대로 둔다', () async {
+      final server = FakeChatServer();
+      final bloc = await _loaded(server);
+      addTearDown(bloc.close);
+      server.failTeams = const ServerFailure(503);
+
+      bloc.add(const ChannelListEvent.teamsRefreshed());
+      await pumpEventQueue();
+
+      expect(bloc.state, isA<AsyncSuccess<ChannelListData>>());
+      expect(_data(bloc).workspaceName, '코워크');
+    });
+  });
+
   test('다시 읽어도 없는 팀이면 보던 팀에 남는다', () async {
     final server = FakeChatServer();
     final bloc = await _loaded(server);
@@ -328,6 +475,7 @@ void main() {
         channelRepositoryOf(server),
         projectRepositoryOf(server),
         socket,
+        profileRepository: profileRepositoryOf(server),
       )..add(const ChannelListEvent.requested());
       addTearDown(bloc.close);
       await pumpEventQueue();
