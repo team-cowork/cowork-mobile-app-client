@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:dio/dio.dart';
 
 import '../../../../core/network/dio_client.dart';
+import '../../../../shared/utils/image_content_type.dart';
 import '../../../../shared/utils/initial.dart';
 import '../../../auth/data/auth_repository.dart';
 import '../model/requests/confirm_profile_image_request.dart';
@@ -61,7 +62,8 @@ class ProfileRepository {
   /// confirm 은 응답 본문이 없다. 새 사진 URL 은 뒤이어 부르는 조회·수정 응답에
   /// 실려 오므로 여기서 프로필을 다시 읽지 않는다.
   Future<void> uploadProfileImage(String path) async {
-    final contentType = _imageContentType(path);
+    // presigned 서명에 들어가므로 발급과 업로드가 같은 값을 써야 한다.
+    final contentType = imageContentTypeOf(path);
     final presigned = PresignedUploadResponse.fromJson(
       unwrapPayload(
         (await _dio.post<String>(
@@ -93,18 +95,6 @@ class ProfileRepository {
   /// 응답 본문에서 envelope 을 벗겨 [UserResponse] 로 옮긴다.
   static Future<UserResponse> _get(Future<Response<String>> request) async =>
       UserResponse.fromJson(unwrapPayload((await request).data ?? ''));
-
-  /// presigned 발급과 업로드에 쓸 MIME 타입. 서명에 들어가므로 두 요청이 같은
-  /// 값을 써야 한다. 확장자를 못 알아보면 jpeg 로 본다. 갤러리에서 오는 사진의
-  /// 대부분이고, 서버가 거부하면 그때 확장자를 늘리면 된다.
-  static String _imageContentType(String path) =>
-      switch (path.split('.').last.toLowerCase()) {
-        'png' => 'image/png',
-        'gif' => 'image/gif',
-        'webp' => 'image/webp',
-        'heic' => 'image/heic',
-        _ => 'image/jpeg',
-      };
 
   /// 이전 로그인 사용자의 id 를 지운다. 다음 사용자가 [fetchMe] 를 못 읽었을 때
   /// 이전 사용자의 회의록을 내 것으로 보지 않게 하려는 것이다.

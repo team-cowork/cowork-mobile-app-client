@@ -1,9 +1,11 @@
 import 'package:cowork_design_system/design_system.dart';
 import 'package:flutter/material.dart';
 
-class ChannelSettingsHeader extends StatelessWidget {
-  const ChannelSettingsHeader({this.onBack, super.key});
+/// 설정 화면(채널 설정·팀 설정) 맨 위의 뒤로 가기 + 제목.
+class SettingsHeader extends StatelessWidget {
+  const SettingsHeader({required this.title, this.onBack, super.key});
 
+  final String title;
   final VoidCallback? onBack;
 
   @override
@@ -28,7 +30,7 @@ class ChannelSettingsHeader extends StatelessWidget {
           ),
           const SizedBox(width: AppSpacing.s8),
           Text(
-            '채널 설정',
+            title,
             style: AppFont.labelM.copyWith(color: AppColors.darkOnSurface),
           ),
         ],
