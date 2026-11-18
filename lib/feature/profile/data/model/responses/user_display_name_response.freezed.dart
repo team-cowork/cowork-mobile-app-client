@@ -210,8 +210,8 @@ return $default(_that.id,_that.name,_that.nickname);case _:
 /// @nodoc
 @JsonSerializable()
 
-class _UserDisplayNameResponse implements UserDisplayNameResponse {
-  const _UserDisplayNameResponse({required this.id, this.name = '', this.nickname});
+class _UserDisplayNameResponse extends UserDisplayNameResponse {
+  const _UserDisplayNameResponse({required this.id, this.name = '', this.nickname}): super._();
   factory _UserDisplayNameResponse.fromJson(Map<String, dynamic> json) => _$UserDisplayNameResponseFromJson(json);
 
 @override final  int id;

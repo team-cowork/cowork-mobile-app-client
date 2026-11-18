@@ -28,6 +28,14 @@ class TeamRepository {
       TeamSummaryResponse.fromJson(json),
   ];
 
+  /// [teamId] 팀의 멤버와 역할. 팀 멤버면 누구나 읽을 수 있다.
+  Future<List<TeamMemberResponse>> fetchMembers(int teamId) async => [
+    for (final json in unwrapListPayload(
+      (await _dio.get<String>('/teams/$teamId/members')).data ?? '',
+    ))
+      TeamMemberResponse.fromJson(json),
+  ];
+
   /// 팀을 만들고 서버가 저장한 팀을 돌려준다. 만든 사람이 소유자가 된다.
   Future<TeamSummaryResponse> createTeam(CreateTeamRequest request) async =>
       TeamSummaryResponse.fromJson(
@@ -36,14 +44,6 @@ class TeamRepository {
               '',
         ),
       );
-
-  /// [teamId] 팀의 멤버. 초대할 사람을 고를 때 이미 멤버인 사람을 빼는 데 쓴다.
-  Future<List<TeamMemberResponse>> fetchMembers(int teamId) async => [
-    for (final json in unwrapListPayload(
-      (await _dio.get<String>('/teams/$teamId/members')).data ?? '',
-    ))
-      TeamMemberResponse.fromJson(json),
-  ];
 
   /// [userIds] 사용자를 [teamId] 팀 멤버로 바로 넣는다. 받는 쪽 수락 절차는 없다.
   ///

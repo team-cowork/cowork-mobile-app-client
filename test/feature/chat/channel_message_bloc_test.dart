@@ -17,6 +17,7 @@ ChannelMessageBloc _bloc(
   Stream<AppLifecycleState>? lifecycle,
   Duration confirmTimeout = const Duration(seconds: 10),
   Duration markReadRetryDelay = const Duration(seconds: 3),
+  DateTime Function()? now,
   String? focusMessageId,
 }) => ChannelMessageBloc(
   channelId: 10,
@@ -24,13 +25,13 @@ ChannelMessageBloc _bloc(
   channelRepository: ChannelRepository.withDio(messageDio(gateway, 'channel')),
   messageRepository: MessageRepository.withDio(
     chat: messageDio(gateway, 'chat'),
-    user: messageDio(gateway, 'user'),
   ),
   profileRepository: ProfileRepository.withDio(messageDio(gateway, 'user')),
   socket: socket,
   lifecycle: lifecycle,
   confirmTimeout: confirmTimeout,
   markReadRetryDelay: markReadRetryDelay,
+  now: now ?? DateTime.now,
 );
 
 /// 불러오기까지 마친 Bloc. 이후 요청만 보도록 불러오기 기록은 비운다.
@@ -181,6 +182,136 @@ void main() {
 
     expect(_texts(bloc), ['첫 번째', '두 번째', '안녕하세요']);
     expect(_data(bloc).messages.last.id, 'm3');
+  });
+
+  test('보낸 메시지가 저장되면 그사이 온 다른 사람 메시지와 서버 시각 순서로 맞춘다', () async {
+    final gateway = FakeMessageGateway();
+    final socket = FakeChatSocket();
+    final bloc = await _loaded(gateway, socket);
+    addTearDown(bloc.close);
+
+    bloc.add(const ChannelMessageEvent.sent('내 글'));
+    await pumpEventQueue();
+    final sent = gateway.bodies['POST /chat/chat/channels/10/messages']!;
+    // 서버에서는 다른 사람 메시지(05:00:02)가 내 글(05:00:05)보다 먼저 저장됐다.
+    socket.push(
+      'message',
+      messageJson('m3', 2, '먼저 저장된 글', createdAt: '2026-10-23T05:00:02.000Z'),
+    );
+    await pumpEventQueue();
+    expect(_texts(bloc), ['첫 번째', '두 번째', '내 글', '먼저 저장된 글']);
+
+    socket.push(
+      'message',
+      messageJson(
+        'm4',
+        1,
+        '내 글',
+        clientMessageId: sent['clientMessageId'] as String,
+        createdAt: '2026-10-23T05:00:05.000Z',
+      ),
+    );
+    await pumpEventQueue();
+
+    expect(_texts(bloc), ['첫 번째', '두 번째', '먼저 저장된 글', '내 글']);
+    expect(_data(bloc).messages.last.id, 'm4');
+  });
+
+  test('보낸 메시지가 저장돼도 아직 확인 안 된 다른 보낸 메시지는 맨 뒤에 둔다', () async {
+    final gateway = FakeMessageGateway();
+    final socket = FakeChatSocket();
+    final bloc = await _loaded(gateway, socket);
+    addTearDown(bloc.close);
+
+    bloc.add(const ChannelMessageEvent.sent('글1'));
+    await pumpEventQueue();
+    final first =
+        gateway.bodies['POST /chat/chat/channels/10/messages']!['clientMessageId']
+            as String;
+    bloc.add(const ChannelMessageEvent.sent('글2'));
+    await pumpEventQueue();
+    // 서버에서는 다른 사람 메시지가 글1보다 먼저 저장됐다.
+    socket.push(
+      'message',
+      messageJson('m3', 2, '먼저 저장된 글', createdAt: '2026-10-23T05:00:02.000Z'),
+    );
+    await pumpEventQueue();
+    expect(_texts(bloc), ['첫 번째', '두 번째', '글1', '글2', '먼저 저장된 글']);
+
+    socket.push(
+      'message',
+      messageJson(
+        'm4',
+        1,
+        '글1',
+        clientMessageId: first,
+        createdAt: '2026-10-23T05:00:05.000Z',
+      ),
+    );
+    await pumpEventQueue();
+
+    expect(_texts(bloc), ['첫 번째', '두 번째', '먼저 저장된 글', '글1', '글2']);
+  });
+
+  test('시각이 같아도 서버 목록처럼 id 순서로 자리를 정한다', () async {
+    final gateway = FakeMessageGateway();
+    final socket = FakeChatSocket();
+    final bloc = await _loaded(gateway, socket);
+    addTearDown(bloc.close);
+
+    bloc.add(const ChannelMessageEvent.sent('내 글'));
+    await pumpEventQueue();
+    final sent = gateway.bodies['POST /chat/chat/channels/10/messages']!;
+    socket.push(
+      'message',
+      messageJson('m5', 2, '나중 id', createdAt: '2026-10-23T05:00:05.000Z'),
+    );
+    await pumpEventQueue();
+
+    socket.push(
+      'message',
+      messageJson(
+        'm4',
+        1,
+        '내 글',
+        clientMessageId: sent['clientMessageId'] as String,
+        createdAt: '2026-10-23T05:00:05.000Z',
+      ),
+    );
+    await pumpEventQueue();
+
+    expect(_texts(bloc), ['첫 번째', '두 번째', '내 글', '나중 id']);
+  });
+
+  test('자정이 지나면 오늘·어제 표기를 다시 만든다', () async {
+    final start = DateTime(2026, 10, 23, 23, 59, 59, 900);
+    final elapsed = Stopwatch()..start();
+    final gateway = FakeMessageGateway(
+      messages: [
+        messageJson(
+          'm1',
+          2,
+          '낮에 쓴 글',
+          createdAt: DateTime(2026, 10, 23, 12).toUtc().toIso8601String(),
+        ),
+      ],
+    );
+    final bloc = _bloc(
+      gateway,
+      FakeChatSocket(),
+      now: () => start.add(elapsed.elapsed),
+    )..add(const ChannelMessageEvent.requested());
+    addTearDown(bloc.close);
+    await bloc.stream.firstWhere((s) => s is AsyncSuccess<ChannelConversation>);
+    expect(_data(bloc).messages.single.timestamp, startsWith('오늘'));
+
+    await bloc.stream.firstWhere(
+      (s) =>
+          s is AsyncSuccess<ChannelConversation> &&
+          s.data.messages.single.timestamp.startsWith('어제'),
+    );
+
+    expect(_data(bloc).messages.single.timestamp, startsWith('어제'));
   });
 
   test('전송이 실패하면 보낸 메시지를 빼고 사유를 싣는다', () async {

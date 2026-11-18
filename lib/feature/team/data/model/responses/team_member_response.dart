@@ -1,17 +1,21 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
 
+import 'team_member_role_response.dart';
+
 part 'team_member_response.freezed.dart';
 part 'team_member_response.g.dart';
 
-/// `GET /teams/{teamId}/members` 응답의 멤버 하나.
-///
-/// 초대할 사람을 고를 때 이미 멤버인 사람을 빼는 데만 쓴다. 역할·팀 닉네임은 아직
-/// 보여 주는 화면이 없어 받지 않는다.
+/// `GET /teams/{teamId}/members` 응답의 팀 멤버 하나.
 @freezed
 abstract class TeamMemberResponse with _$TeamMemberResponse {
   const factory TeamMemberResponse({
-    /// 없으면 fromJson 이 던진다.
     required int userId,
+
+    /// `OWNER` / `ADMIN` / `MEMBER`.
+    @Default('MEMBER') String role,
+
+    /// 사용자가 받은 커스텀 역할. 모든 멤버에게 자동으로 붙는 기본 역할도 들어 있다.
+    @Default([]) List<TeamMemberRoleResponse> roles,
   }) = _TeamMemberResponse;
 
   factory TeamMemberResponse.fromJson(Map<String, dynamic> json) =>

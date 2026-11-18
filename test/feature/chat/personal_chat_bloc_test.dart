@@ -19,7 +19,7 @@ PersonalChatBloc _bloc(
   Duration retryDelay = const Duration(seconds: 3),
 }) => PersonalChatBloc(
   dmRepository: dmRepositoryOf(gateway),
-  messageRepository: dmMessageRepositoryOf(gateway),
+  profileRepository: dmProfileRepositoryOf(gateway),
   socket: socket,
   retryDelay: retryDelay,
 );

@@ -8,12 +8,12 @@ import '../../../../../core/network/http_error_message.dart';
 import '../../../../../core/utils/async_state.dart';
 import '../../../../../core/utils/logger.dart';
 import '../../../../../shared/domain/profile_entity.dart';
+import '../../../../../shared/utils/chat_author.dart';
 import '../../../../profile/data/profile_store.dart';
-import '../../../data/model/chat_message_mapping.dart';
+import '../../../../profile/data/repositories/profile_repository.dart';
 import '../../../data/model/dm_preview_mapping.dart';
 import '../../../data/model/responses/dm_conversation_response.dart';
 import '../../../data/repositories/dm_repository.dart';
-import '../../../data/repositories/message_repository.dart';
 import '../../../domain/direct_message_preview.dart';
 
 part 'personal_chat_event.dart';
@@ -29,11 +29,11 @@ part 'personal_chat_state.dart';
 class PersonalChatBloc extends Bloc<PersonalChatEvent, PersonalChatState> {
   PersonalChatBloc({
     required DmRepository dmRepository,
-    required MessageRepository messageRepository,
+    required ProfileRepository profileRepository,
     required ChatSocket socket,
     this.retryDelay = const Duration(seconds: 3),
   }) : _dmRepository = dmRepository,
-       _messageRepository = messageRepository,
+       _profileRepository = profileRepository,
        _socket = socket,
        super(const PersonalChatState.initial()) {
     on<PersonalChatRequested>(_onLoad);
@@ -46,7 +46,7 @@ class PersonalChatBloc extends Bloc<PersonalChatEvent, PersonalChatState> {
   }
 
   final DmRepository _dmRepository;
-  final MessageRepository _messageRepository;
+  final ProfileRepository _profileRepository;
   final ChatSocket _socket;
 
   /// 조용한 갱신이 실패하면 다시 읽기까지 기다리는 첫 시간. 실패할 때마다 두 배로 늘린다.
@@ -196,10 +196,8 @@ class PersonalChatBloc extends Bloc<PersonalChatEvent, PersonalChatState> {
     };
     if (unknown.isEmpty) return;
     try {
-      for (final user in await _messageRepository.fetchDisplayNames(unknown)) {
-        _names[user.id] = user.nickname?.isNotEmpty == true
-            ? user.nickname!
-            : user.name;
+      for (final user in await _profileRepository.fetchDisplayNames(unknown)) {
+        _names[user.id] = user.displayName;
       }
     } catch (e, s) {
       Logger.e('DM 상대 이름 조회 실패', tag: 'PersonalChat', error: e, stackTrace: s);

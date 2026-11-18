@@ -7,7 +7,22 @@ part of 'team_member_response.dart';
 // **************************************************************************
 
 _TeamMemberResponse _$TeamMemberResponseFromJson(Map<String, dynamic> json) =>
-    _TeamMemberResponse(userId: (json['userId'] as num).toInt());
+    _TeamMemberResponse(
+      userId: (json['userId'] as num).toInt(),
+      role: json['role'] as String? ?? 'MEMBER',
+      roles:
+          (json['roles'] as List<dynamic>?)
+              ?.map(
+                (e) =>
+                    TeamMemberRoleResponse.fromJson(e as Map<String, dynamic>),
+              )
+              .toList() ??
+          const [],
+    );
 
 Map<String, dynamic> _$TeamMemberResponseToJson(_TeamMemberResponse instance) =>
-    <String, dynamic>{'userId': instance.userId};
+    <String, dynamic>{
+      'userId': instance.userId,
+      'role': instance.role,
+      'roles': instance.roles,
+    };
