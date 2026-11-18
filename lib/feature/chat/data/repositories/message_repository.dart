@@ -23,10 +23,17 @@ class MessageRepository {
 
   /// [files] 는 임시 주소의 파일을 받는 dio 다. 임시 주소는 서명이 들어 있어 인증
   /// 헤더가 필요 없고 게이트웨이 prefix 도 없으므로 따로 둔다.
-  MessageRepository.withDio({required Dio chat, required Dio user, Dio? files})
-    : _chat = chat,
-      _user = user,
-      _files = files ?? Dio();
+  ///
+  /// [imageCacheLimit] 는 받아 둘 이미지 용량의 상한(바이트)이다.
+  MessageRepository.withDio({
+    required Dio chat,
+    required Dio user,
+    Dio? files,
+    int imageCacheLimit = defaultImageCacheLimit,
+  }) : _chat = chat,
+       _user = user,
+       _files = files ?? createFileDio(),
+       _imageCacheLimit = imageCacheLimit;
 
   final Dio _chat;
   final Dio _user;
@@ -37,8 +44,10 @@ class MessageRepository {
   final _imageLoads = <String, Future<Uint8List>>{};
   int _imageBytes = 0;
 
-  /// 받아 둘 이미지 용량의 상한.
-  static const _imageCacheLimit = 30 * 1024 * 1024;
+  final int _imageCacheLimit;
+
+  /// 받아 둘 이미지 용량의 기본 상한.
+  static const defaultImageCacheLimit = 30 * 1024 * 1024;
 
   /// 한 번에 오는 메시지 수의 서버 상한. 이보다 적게 오면 더 이전 메시지가 없다.
   static const pageSize = 100;
