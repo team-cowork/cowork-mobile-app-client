@@ -218,6 +218,72 @@ void main() {
     expect(_data(bloc).messages.last.id, 'm4');
   });
 
+  test('보낸 메시지가 저장돼도 아직 확인 안 된 다른 보낸 메시지는 맨 뒤에 둔다', () async {
+    final gateway = FakeMessageGateway();
+    final socket = FakeChatSocket();
+    final bloc = await _loaded(gateway, socket);
+    addTearDown(bloc.close);
+
+    bloc.add(const ChannelMessageEvent.sent('글1'));
+    await pumpEventQueue();
+    final first =
+        gateway.bodies['POST /chat/chat/channels/10/messages']!['clientMessageId']
+            as String;
+    bloc.add(const ChannelMessageEvent.sent('글2'));
+    await pumpEventQueue();
+    // 서버에서는 다른 사람 메시지가 글1보다 먼저 저장됐다.
+    socket.push(
+      'message',
+      messageJson('m3', 2, '먼저 저장된 글', createdAt: '2026-10-23T05:00:02.000Z'),
+    );
+    await pumpEventQueue();
+    expect(_texts(bloc), ['첫 번째', '두 번째', '글1', '글2', '먼저 저장된 글']);
+
+    socket.push(
+      'message',
+      messageJson(
+        'm4',
+        1,
+        '글1',
+        clientMessageId: first,
+        createdAt: '2026-10-23T05:00:05.000Z',
+      ),
+    );
+    await pumpEventQueue();
+
+    expect(_texts(bloc), ['첫 번째', '두 번째', '먼저 저장된 글', '글1', '글2']);
+  });
+
+  test('시각이 같아도 서버 목록처럼 id 순서로 자리를 정한다', () async {
+    final gateway = FakeMessageGateway();
+    final socket = FakeChatSocket();
+    final bloc = await _loaded(gateway, socket);
+    addTearDown(bloc.close);
+
+    bloc.add(const ChannelMessageEvent.sent('내 글'));
+    await pumpEventQueue();
+    final sent = gateway.bodies['POST /chat/chat/channels/10/messages']!;
+    socket.push(
+      'message',
+      messageJson('m5', 2, '나중 id', createdAt: '2026-10-23T05:00:05.000Z'),
+    );
+    await pumpEventQueue();
+
+    socket.push(
+      'message',
+      messageJson(
+        'm4',
+        1,
+        '내 글',
+        clientMessageId: sent['clientMessageId'] as String,
+        createdAt: '2026-10-23T05:00:05.000Z',
+      ),
+    );
+    await pumpEventQueue();
+
+    expect(_texts(bloc), ['첫 번째', '두 번째', '내 글', '나중 id']);
+  });
+
   test('자정이 지나면 오늘·어제 표기를 다시 만든다', () async {
     final start = DateTime(2026, 10, 23, 23, 59, 59, 900);
     final elapsed = Stopwatch()..start();
