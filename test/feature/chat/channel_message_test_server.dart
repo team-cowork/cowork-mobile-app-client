@@ -1,7 +1,9 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:cowork_app/feature/chat/data/repositories/chat_file_repository.dart';
 import 'package:cowork_app/feature/chat/data/repositories/message_repository.dart';
+import 'package:cowork_app/shared/domain/upload_file.dart';
 import 'package:dio/dio.dart';
 
 /// 채널 대화 테스트용 가짜 게이트웨이. 서비스 prefix(`/chat`, `/channel`, `/user`)로
@@ -84,6 +86,15 @@ class FakeMessageGateway implements HttpClientAdapter {
   /// 걸어 두면 메시지 목록 응답을 이 Future 가 끝날 때까지 붙잡는다.
   Future<void>? listGate;
 
+  /// 걸어 두면 스토리지 PUT 응답을 이 Future 가 끝날 때까지 붙잡는다.
+  Future<void>? uploadGate;
+
+  /// 스토리지에 올린 파일. 업로드 주소 경로(`/upload/tmp-1`)별 바이트.
+  final uploads = <String, List<int>>{};
+
+  /// 업로드 주소를 받은 파일. 임시 키별 `filename`·`contentType`·`size`.
+  final _presigned = <String, Map<String, dynamic>>{};
+
   /// 이 커서 파라미터는 모르는 척 무시한다. 아직 배포되지 않은 서버를 흉내 낸다.
   Set<String> ignoredCursors = {};
 
@@ -102,7 +113,11 @@ class FakeMessageGateway implements HttpClientAdapter {
     calls.add(uri.hasQuery ? '$call?${uri.query}' : call);
     if (requestStream != null) {
       final bytes = (await requestStream.toList()).expand((c) => c).toList();
-      if (bytes.isNotEmpty) {
+      if (path.startsWith('/upload/')) {
+        // 스토리지에 올린 파일 내용이라 JSON 이 아니다.
+        uploads[path] = bytes;
+        await uploadGate;
+      } else if (bytes.isNotEmpty) {
         bodies[call] = jsonDecode(utf8.decode(bytes)) as Map<String, dynamic>;
       }
     }
@@ -137,6 +152,12 @@ class FakeMessageGateway implements HttpClientAdapter {
       ]),
       'GET /chat/chat/channels/10/messages' => await _list(uri.queryParameters),
       'POST /chat/chat/channels/10/messages' => _ok({'queued': true}),
+      'POST /chat/chat/channels/10/files/presigned-url' => _ok(
+        _presign(bodies[call]!),
+      ),
+      'POST /chat/chat/channels/10/files/confirm' => _ok(
+        _confirm(bodies[call]!['objectKey'] as String),
+      ),
       'GET /chat/chat/channels/10/messages/m1/attachments/0/download-url' =>
         _ok({'downloadUrl': 'https://files.test/a.pdf'}),
       'GET /chat/chat/channels/10/messages/img1/attachments/0/download-url' =>
@@ -160,6 +181,29 @@ class FakeMessageGateway implements HttpClientAdapter {
         ],
       }),
       _ => ResponseBody.fromString('', 204),
+    };
+  }
+
+  /// 업로드 주소. 임시 키 `tmp-N` 을 주고, PUT 은 `/upload/tmp-N` 으로 받는다.
+  Map<String, dynamic> _presign(Map<String, dynamic> body) {
+    final key = 'tmp-${_presigned.length + 1}';
+    _presigned[key] = body;
+    return {
+      'objectKey': key,
+      'uploadUrl': 'https://storage.test/upload/$key',
+      'expiresInSeconds': 300,
+      'headers': {'Content-Type': body['contentType']},
+    };
+  }
+
+  /// 업로드 확인. 임시 키 `tmp-N` 을 확정 키 `chat-files/N` 으로 바꿔 준다.
+  Map<String, dynamic> _confirm(String key) {
+    final file = _presigned[key]!;
+    return {
+      'objectKey': key.replaceFirst('tmp-', 'chat-files/'),
+      'name': file['filename'],
+      'size': file['size'],
+      'mimeType': file['contentType'],
     };
   }
 
@@ -270,6 +314,17 @@ Dio messageDio(FakeMessageGateway gateway, String service) => Dio(
     responseType: ResponseType.plain,
   ),
 )..httpClientAdapter = gateway;
+
+/// [gateway] 로 업로드 주소·확인 요청과 스토리지 PUT 을 보내는 파일 저장소.
+ChatFileRepository chatFileRepositoryOf(FakeMessageGateway gateway) =>
+    ChatFileRepository.withDio(
+      chat: messageDio(gateway, 'chat'),
+      uploader: messageDio(gateway, 'chat'),
+    );
+
+/// 바이트 [bytes] 를 담은 보낼 파일.
+UploadFile uploadFileOf(String name, [List<int> bytes = const [1, 2, 3]]) =>
+    (name: name, size: bytes.length, read: () => Stream.value(bytes));
 
 /// 1x1 PNG.
 final tinyPng = base64Decode(

@@ -14,8 +14,20 @@ sealed class ChannelMessageEvent extends Equatable {
   const factory ChannelMessageEvent.newerRequested() =
       ChannelMessageNewerRequested;
 
-  /// 입력한 메시지를 보낸다.
-  const factory ChannelMessageEvent.sent(String text) = ChannelMessageSent;
+  /// 입력한 메시지를 보낸다. [files] 가 있으면 글과 함께 한 메시지로 보내고, 이때는
+  /// 글이 비어도 된다.
+  const factory ChannelMessageEvent.sent(
+    String text, {
+    List<UploadFile> files,
+  }) = ChannelMessageSent;
+
+  /// 보내지 못한 파일 메시지를 다시 보낸다.
+  const factory ChannelMessageEvent.retried(String messageId) =
+      ChannelMessageRetried;
+
+  /// 보내지 못한 파일 메시지를 지운다.
+  const factory ChannelMessageEvent.discarded(String messageId) =
+      ChannelMessageDiscarded;
 
   /// 내 메시지 내용을 고친다.
   const factory ChannelMessageEvent.edited(String messageId, String text) =
@@ -42,12 +54,31 @@ final class ChannelMessageNewerRequested extends ChannelMessageEvent {
 }
 
 final class ChannelMessageSent extends ChannelMessageEvent {
-  const ChannelMessageSent(this.text);
+  const ChannelMessageSent(this.text, {this.files = const []});
 
   final String text;
+  final List<UploadFile> files;
 
   @override
-  List<Object?> get props => [text];
+  List<Object?> get props => [text, files];
+}
+
+final class ChannelMessageRetried extends ChannelMessageEvent {
+  const ChannelMessageRetried(this.messageId);
+
+  final String messageId;
+
+  @override
+  List<Object?> get props => [messageId];
+}
+
+final class ChannelMessageDiscarded extends ChannelMessageEvent {
+  const ChannelMessageDiscarded(this.messageId);
+
+  final String messageId;
+
+  @override
+  List<Object?> get props => [messageId];
 }
 
 final class ChannelMessageEdited extends ChannelMessageEvent {

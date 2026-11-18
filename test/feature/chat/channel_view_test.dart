@@ -38,6 +38,7 @@ void main() {
               files: filesDio(files ?? FakeFilesServer()),
             ),
           ),
+          RepositoryProvider.value(value: chatFileRepositoryOf(gateway)),
           RepositoryProvider.value(
             value: ProfileRepository.withDio(messageDio(gateway, 'user')),
           ),

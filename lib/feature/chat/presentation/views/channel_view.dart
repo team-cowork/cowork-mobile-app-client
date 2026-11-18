@@ -14,6 +14,7 @@ import '../../../../shared/utils/external_url.dart';
 import '../../../../shared/widgets/bloc_scaffold.dart';
 import '../../../channel/data/repositories/channel_repository.dart';
 import '../../../profile/data/repositories/profile_repository.dart';
+import '../../data/repositories/chat_file_repository.dart';
 import '../../data/repositories/message_repository.dart';
 import '../../domain/chat_message.dart';
 import '../blocs/channel_message/channel_message_bloc.dart';
@@ -56,6 +57,7 @@ class ChannelView extends StatelessWidget {
         channelId: channelId,
         channelRepository: context.read<ChannelRepository>(),
         messageRepository: context.read<MessageRepository>(),
+        fileRepository: context.read<ChatFileRepository>(),
         profileRepository: context.read<ProfileRepository>(),
         socket: context.read<ChatSocket>(),
         lifecycle: appLifecycleStates(),
