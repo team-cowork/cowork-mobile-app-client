@@ -14,7 +14,8 @@ import '../model/responses/user_display_name_response.dart';
 import '../model/responses/user_response.dart';
 import '../profile_store.dart';
 
-/// `/users/me` 를 다루는 저장소. 내 프로필 조회·수정과 프로필 사진을 맡는다.
+/// `/users/me` 를 다루는 저장소. 내 프로필 조회·수정과 프로필 사진을 맡고, 다른
+/// 사용자의 표시 이름 조회(`/users/batch`)도 맡는다.
 ///
 /// 조회·수정·상태 변경이 모두 같은 사용자 표현을 돌려주므로 [UserResponse] 하나로
 /// 받는다. 프로필 화면과 편집 화면이 같은 응답에서 서로 다른 필드를 쓰기 때문에,
@@ -38,6 +39,9 @@ class ProfileRepository {
   final Dio _uploader;
 
   /// 내 프로필 조회.
+  Future<UserResponse> fetchMe() async =>
+      _cache(await _get(_dio.get<String>('/users/me')));
+
   /// [userIds] 사용자의 표시 이름. 서버 상한([_batchSize])에 맞춰 나눠 읽는다.
   Future<List<UserDisplayNameResponse>> fetchDisplayNames(
     Iterable<int> userIds,
@@ -68,9 +72,6 @@ class ProfileRepository {
 
   /// `/users/batch` 가 한 번에 받는 id 수의 서버 상한.
   static const _batchSize = 100;
-
-  Future<UserResponse> fetchMe() async =>
-      _cache(await _get(_dio.get<String>('/users/me')));
 
   /// 내 프로필 수정. 서버가 갱신된 프로필을 그대로 돌려준다.
   ///
