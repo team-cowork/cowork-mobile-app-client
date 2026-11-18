@@ -2,6 +2,7 @@ import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../../core/utils/logger.dart';
+import '../../../data/model/issue_mapping.dart';
 import '../../../data/repositories/issue_repository.dart';
 import '../../../domain/issue_target.dart';
 
@@ -43,7 +44,7 @@ class NewIssueBloc extends Bloc<NewIssueEvent, NewIssueForm> {
           labels: [
             for (final label in labels)
               // 진행중은 상태를 뜻하는 라벨이라 고르지 않는다. 만든 이슈는 계획됨이다.
-              if (label.name != '진행중') label.name,
+              if (label.name != inProgressLabel) label.name,
           ],
         ),
       );
