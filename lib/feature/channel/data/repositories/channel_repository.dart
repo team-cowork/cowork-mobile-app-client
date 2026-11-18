@@ -53,21 +53,47 @@ class ChannelRepository {
         ),
       );
 
-  /// 채널의 스레드. 보관된 것도 포함한다. 부모 메시지로 바로 찾는 API 는 없어, 한 번에
-  /// 서버 상한만큼 읽는다.
-  Future<List<ThreadResponse>> fetchThreads(int channelId) async {
-    final page = unwrapPayload(
+  /// 채널의 스레드 한 쪽. 보관된 것도 포함한다. [page] 는 0 부터 센다.
+  Future<List<ThreadResponse>> fetchThreads(
+    int channelId, {
+    int page = 0,
+  }) async {
+    final content = unwrapPayload(
       (await _dio.get<String>(
             '/channels/$channelId/threads',
-            queryParameters: {'includeArchived': true, 'size': _threadPageSize},
+            queryParameters: {
+              'includeArchived': true,
+              'size': _threadPageSize,
+              'page': page,
+            },
           )).data ??
           '',
     )['content'];
-    if (page is! List) return const [];
+    if (content is! List) return const [];
     return [
-      for (final json in page.whereType<Map<String, dynamic>>())
+      for (final json in content.whereType<Map<String, dynamic>>())
         ThreadResponse.fromJson(json),
     ];
+  }
+
+  /// [parentMessageId] 메시지에 붙은 스레드. 만든 적이 없으면 null.
+  ///
+  /// 부모 메시지로 바로 찾는 API 는 없고 서버가 한 쪽에 [_threadPageSize] 개까지만 줘서,
+  /// 찾을 때까지 쪽을 넘겨 읽는다.
+  Future<ThreadResponse?> fetchThread(
+    int channelId,
+    String parentMessageId,
+  ) async {
+    final seen = <int>{};
+    for (var page = 0; ; page++) {
+      final threads = await fetchThreads(channelId, page: page);
+      for (final thread in threads) {
+        if (thread.parentMessageId == parentMessageId) return thread;
+      }
+      // 마지막 쪽이거나, 서버가 쪽을 무시해 같은 목록을 되풀이하면 그만 읽는다.
+      final unseen = threads.where((thread) => seen.add(thread.id)).length;
+      if (threads.length < _threadPageSize || unseen == 0) return null;
+    }
   }
 
   /// [request.parentMessageId] 메시지에 이름을 붙여 스레드를 만든다.
