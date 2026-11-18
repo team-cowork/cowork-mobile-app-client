@@ -19,7 +19,8 @@ mixin _$ChannelResponse {
  int get id; String get name;/// 화면 종류. (예: TEXT, WEBHOOK, MEETING_NOTE)
  String? get viewType;/// 채널 설명. 채널 화면 머리에 보인다.
  String? get description;/// 채널이 속한 팀. DM 채널이면 없다.
- int? get teamId;/// 초대된 사람만 볼 수 있는 채널인지.
+ int? get teamId;/// 채널이 속한 프로젝트(카테고리). 속하지 않으면 null.
+ int? get projectId;/// 초대된 사람만 볼 수 있는 채널인지.
  bool get isPrivate;
 /// Create a copy of ChannelResponse
 /// with the given fields replaced by the non-null parameter values.
@@ -33,16 +34,16 @@ $ChannelResponseCopyWith<ChannelResponse> get copyWith => _$ChannelResponseCopyW
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ChannelResponse&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.viewType, viewType) || other.viewType == viewType)&&(identical(other.description, description) || other.description == description)&&(identical(other.teamId, teamId) || other.teamId == teamId)&&(identical(other.isPrivate, isPrivate) || other.isPrivate == isPrivate));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ChannelResponse&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.viewType, viewType) || other.viewType == viewType)&&(identical(other.description, description) || other.description == description)&&(identical(other.teamId, teamId) || other.teamId == teamId)&&(identical(other.projectId, projectId) || other.projectId == projectId)&&(identical(other.isPrivate, isPrivate) || other.isPrivate == isPrivate));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,name,viewType,description,teamId,isPrivate);
+int get hashCode => Object.hash(runtimeType,id,name,viewType,description,teamId,projectId,isPrivate);
 
 @override
 String toString() {
-  return 'ChannelResponse(id: $id, name: $name, viewType: $viewType, description: $description, teamId: $teamId, isPrivate: $isPrivate)';
+  return 'ChannelResponse(id: $id, name: $name, viewType: $viewType, description: $description, teamId: $teamId, projectId: $projectId, isPrivate: $isPrivate)';
 }
 
 
@@ -53,7 +54,7 @@ abstract mixin class $ChannelResponseCopyWith<$Res>  {
   factory $ChannelResponseCopyWith(ChannelResponse value, $Res Function(ChannelResponse) _then) = _$ChannelResponseCopyWithImpl;
 @useResult
 $Res call({
- int id, String name, String? viewType, String? description, int? teamId, bool isPrivate
+ int id, String name, String? viewType, String? description, int? teamId, int? projectId, bool isPrivate
 });
 
 
@@ -70,13 +71,14 @@ class _$ChannelResponseCopyWithImpl<$Res>
 
 /// Create a copy of ChannelResponse
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? name = null,Object? viewType = freezed,Object? description = freezed,Object? teamId = freezed,Object? isPrivate = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? name = null,Object? viewType = freezed,Object? description = freezed,Object? teamId = freezed,Object? projectId = freezed,Object? isPrivate = null,}) {
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as int,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String,viewType: freezed == viewType ? _self.viewType : viewType // ignore: cast_nullable_to_non_nullable
 as String?,description: freezed == description ? _self.description : description // ignore: cast_nullable_to_non_nullable
 as String?,teamId: freezed == teamId ? _self.teamId : teamId // ignore: cast_nullable_to_non_nullable
+as int?,projectId: freezed == projectId ? _self.projectId : projectId // ignore: cast_nullable_to_non_nullable
 as int?,isPrivate: null == isPrivate ? _self.isPrivate : isPrivate // ignore: cast_nullable_to_non_nullable
 as bool,
   ));
@@ -163,10 +165,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( int id,  String name,  String? viewType,  String? description,  int? teamId,  bool isPrivate)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( int id,  String name,  String? viewType,  String? description,  int? teamId,  int? projectId,  bool isPrivate)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _ChannelResponse() when $default != null:
-return $default(_that.id,_that.name,_that.viewType,_that.description,_that.teamId,_that.isPrivate);case _:
+return $default(_that.id,_that.name,_that.viewType,_that.description,_that.teamId,_that.projectId,_that.isPrivate);case _:
   return orElse();
 
 }
@@ -184,10 +186,10 @@ return $default(_that.id,_that.name,_that.viewType,_that.description,_that.teamI
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( int id,  String name,  String? viewType,  String? description,  int? teamId,  bool isPrivate)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( int id,  String name,  String? viewType,  String? description,  int? teamId,  int? projectId,  bool isPrivate)  $default,) {final _that = this;
 switch (_that) {
 case _ChannelResponse():
-return $default(_that.id,_that.name,_that.viewType,_that.description,_that.teamId,_that.isPrivate);case _:
+return $default(_that.id,_that.name,_that.viewType,_that.description,_that.teamId,_that.projectId,_that.isPrivate);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -204,10 +206,10 @@ return $default(_that.id,_that.name,_that.viewType,_that.description,_that.teamI
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( int id,  String name,  String? viewType,  String? description,  int? teamId,  bool isPrivate)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( int id,  String name,  String? viewType,  String? description,  int? teamId,  int? projectId,  bool isPrivate)?  $default,) {final _that = this;
 switch (_that) {
 case _ChannelResponse() when $default != null:
-return $default(_that.id,_that.name,_that.viewType,_that.description,_that.teamId,_that.isPrivate);case _:
+return $default(_that.id,_that.name,_that.viewType,_that.description,_that.teamId,_that.projectId,_that.isPrivate);case _:
   return null;
 
 }
@@ -219,7 +221,7 @@ return $default(_that.id,_that.name,_that.viewType,_that.description,_that.teamI
 @JsonSerializable()
 
 class _ChannelResponse extends ChannelResponse {
-  const _ChannelResponse({required this.id, this.name = '', this.viewType, this.description, this.teamId, this.isPrivate = false}): super._();
+  const _ChannelResponse({required this.id, this.name = '', this.viewType, this.description, this.teamId, this.projectId, this.isPrivate = false}): super._();
   factory _ChannelResponse.fromJson(Map<String, dynamic> json) => _$ChannelResponseFromJson(json);
 
 /// 없으면 fromJson 이 던진다.
@@ -231,6 +233,8 @@ class _ChannelResponse extends ChannelResponse {
 @override final  String? description;
 /// 채널이 속한 팀. DM 채널이면 없다.
 @override final  int? teamId;
+/// 채널이 속한 프로젝트(카테고리). 속하지 않으면 null.
+@override final  int? projectId;
 /// 초대된 사람만 볼 수 있는 채널인지.
 @override@JsonKey() final  bool isPrivate;
 
@@ -247,16 +251,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ChannelResponse&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.viewType, viewType) || other.viewType == viewType)&&(identical(other.description, description) || other.description == description)&&(identical(other.teamId, teamId) || other.teamId == teamId)&&(identical(other.isPrivate, isPrivate) || other.isPrivate == isPrivate));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ChannelResponse&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.viewType, viewType) || other.viewType == viewType)&&(identical(other.description, description) || other.description == description)&&(identical(other.teamId, teamId) || other.teamId == teamId)&&(identical(other.projectId, projectId) || other.projectId == projectId)&&(identical(other.isPrivate, isPrivate) || other.isPrivate == isPrivate));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,name,viewType,description,teamId,isPrivate);
+int get hashCode => Object.hash(runtimeType,id,name,viewType,description,teamId,projectId,isPrivate);
 
 @override
 String toString() {
-  return 'ChannelResponse(id: $id, name: $name, viewType: $viewType, description: $description, teamId: $teamId, isPrivate: $isPrivate)';
+  return 'ChannelResponse(id: $id, name: $name, viewType: $viewType, description: $description, teamId: $teamId, projectId: $projectId, isPrivate: $isPrivate)';
 }
 
 
@@ -267,7 +271,7 @@ abstract mixin class _$ChannelResponseCopyWith<$Res> implements $ChannelResponse
   factory _$ChannelResponseCopyWith(_ChannelResponse value, $Res Function(_ChannelResponse) _then) = __$ChannelResponseCopyWithImpl;
 @override @useResult
 $Res call({
- int id, String name, String? viewType, String? description, int? teamId, bool isPrivate
+ int id, String name, String? viewType, String? description, int? teamId, int? projectId, bool isPrivate
 });
 
 
@@ -284,13 +288,14 @@ class __$ChannelResponseCopyWithImpl<$Res>
 
 /// Create a copy of ChannelResponse
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? name = null,Object? viewType = freezed,Object? description = freezed,Object? teamId = freezed,Object? isPrivate = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? name = null,Object? viewType = freezed,Object? description = freezed,Object? teamId = freezed,Object? projectId = freezed,Object? isPrivate = null,}) {
   return _then(_ChannelResponse(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as int,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String,viewType: freezed == viewType ? _self.viewType : viewType // ignore: cast_nullable_to_non_nullable
 as String?,description: freezed == description ? _self.description : description // ignore: cast_nullable_to_non_nullable
 as String?,teamId: freezed == teamId ? _self.teamId : teamId // ignore: cast_nullable_to_non_nullable
+as int?,projectId: freezed == projectId ? _self.projectId : projectId // ignore: cast_nullable_to_non_nullable
 as int?,isPrivate: null == isPrivate ? _self.isPrivate : isPrivate // ignore: cast_nullable_to_non_nullable
 as bool,
   ));

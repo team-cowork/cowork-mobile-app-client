@@ -28,6 +28,9 @@ abstract class ChannelResponse with _$ChannelResponse {
     /// 채널이 속한 팀. DM 채널이면 없다.
     int? teamId,
 
+    /// 채널이 속한 프로젝트(카테고리). 속하지 않으면 null.
+    int? projectId,
+
     /// 초대된 사람만 볼 수 있는 채널인지.
     @Default(false) bool isPrivate,
   }) = _ChannelResponse;
@@ -35,6 +38,10 @@ abstract class ChannelResponse with _$ChannelResponse {
   factory ChannelResponse.fromJson(Map<String, dynamic> json) =>
       _$ChannelResponseFromJson(json);
 
-  Channel toChannel() =>
-      Channel(id: '$id', name: name, type: channelTypeOf(viewType));
+  Channel toChannel() => Channel(
+    id: '$id',
+    name: name,
+    type: channelTypeOf(viewType),
+    projectId: projectId,
+  );
 }

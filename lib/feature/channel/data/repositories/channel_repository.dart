@@ -150,11 +150,42 @@ class ChannelRepository {
   ];
 
   /// 채널을 만들고 서버가 저장한 채널을 돌려준다.
-  Future<Channel> createChannel(CreateChannelRequest request) async =>
-      ChannelResponse.fromJson(
-        unwrapPayload(
-          (await _dio.post<String>('/channels', data: request.toJson())).data ??
-              '',
-        ),
-      ).toChannel();
+  ///
+  /// [projectId] 를 주면 그 프로젝트에 넣는다. 채널 생성 요청에는 `projectId` 가
+  /// 없어서 웹처럼 만든 뒤 `PATCH /channels/{id}` 로 붙인다. 붙이다 실패하면 채널은
+  /// 이미 만들어졌으므로 [ChannelProjectLinkFailure] 에 만든 채널을 실어 던진다.
+  Future<Channel> createChannel(
+    CreateChannelRequest request, {
+    int? projectId,
+  }) async {
+    final channel = ChannelResponse.fromJson(
+      unwrapPayload(
+        (await _dio.post<String>('/channels', data: request.toJson())).data ??
+            '',
+      ),
+    ).toChannel();
+    if (projectId == null) return channel;
+    try {
+      return (await updateChannel(
+        int.parse(channel.id),
+        UpdateChannelRequest(projectId: projectId),
+      )).toChannel();
+    } catch (e) {
+      throw ChannelProjectLinkFailure(channel, cause: e);
+    }
+  }
+}
+
+/// 채널은 만들었지만 프로젝트에 넣지 못했다. [channel] 은 프로젝트 밖에 있다.
+class ChannelProjectLinkFailure implements Exception {
+  const ChannelProjectLinkFailure(this.channel, {this.cause});
+
+  /// 서버가 만든 채널.
+  final Channel channel;
+
+  /// 프로젝트에 넣는 요청이 던진 원래 예외. 로그로 원인을 찾을 때 쓴다.
+  final Object? cause;
+
+  @override
+  String toString() => 'ChannelProjectLinkFailure(${channel.id}): $cause';
 }

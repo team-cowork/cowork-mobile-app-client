@@ -12,6 +12,7 @@ _UpdateChannelRequest _$UpdateChannelRequestFromJson(
   name: json['name'] as String?,
   description: json['description'] as String?,
   isPrivate: json['isPrivate'] as bool?,
+  projectId: (json['projectId'] as num?)?.toInt(),
 );
 
 Map<String, dynamic> _$UpdateChannelRequestToJson(
@@ -20,4 +21,5 @@ Map<String, dynamic> _$UpdateChannelRequestToJson(
   'name': ?instance.name,
   'description': ?instance.description,
   'isPrivate': ?instance.isPrivate,
+  'projectId': ?instance.projectId,
 };

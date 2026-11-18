@@ -14,7 +14,8 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$UpdateChannelRequest {
 
- String? get name; String? get description; bool? get isPrivate;
+ String? get name; String? get description; bool? get isPrivate;/// 채널을 넣을 프로젝트. 채널 생성 요청에는 이 필드가 없어 만든 뒤 붙인다.
+ int? get projectId;
 /// Create a copy of UpdateChannelRequest
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -27,16 +28,16 @@ $UpdateChannelRequestCopyWith<UpdateChannelRequest> get copyWith => _$UpdateChan
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is UpdateChannelRequest&&(identical(other.name, name) || other.name == name)&&(identical(other.description, description) || other.description == description)&&(identical(other.isPrivate, isPrivate) || other.isPrivate == isPrivate));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is UpdateChannelRequest&&(identical(other.name, name) || other.name == name)&&(identical(other.description, description) || other.description == description)&&(identical(other.isPrivate, isPrivate) || other.isPrivate == isPrivate)&&(identical(other.projectId, projectId) || other.projectId == projectId));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,name,description,isPrivate);
+int get hashCode => Object.hash(runtimeType,name,description,isPrivate,projectId);
 
 @override
 String toString() {
-  return 'UpdateChannelRequest(name: $name, description: $description, isPrivate: $isPrivate)';
+  return 'UpdateChannelRequest(name: $name, description: $description, isPrivate: $isPrivate, projectId: $projectId)';
 }
 
 
@@ -47,7 +48,7 @@ abstract mixin class $UpdateChannelRequestCopyWith<$Res>  {
   factory $UpdateChannelRequestCopyWith(UpdateChannelRequest value, $Res Function(UpdateChannelRequest) _then) = _$UpdateChannelRequestCopyWithImpl;
 @useResult
 $Res call({
- String? name, String? description, bool? isPrivate
+ String? name, String? description, bool? isPrivate, int? projectId
 });
 
 
@@ -64,12 +65,13 @@ class _$UpdateChannelRequestCopyWithImpl<$Res>
 
 /// Create a copy of UpdateChannelRequest
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? name = freezed,Object? description = freezed,Object? isPrivate = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? name = freezed,Object? description = freezed,Object? isPrivate = freezed,Object? projectId = freezed,}) {
   return _then(_self.copyWith(
 name: freezed == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String?,description: freezed == description ? _self.description : description // ignore: cast_nullable_to_non_nullable
 as String?,isPrivate: freezed == isPrivate ? _self.isPrivate : isPrivate // ignore: cast_nullable_to_non_nullable
-as bool?,
+as bool?,projectId: freezed == projectId ? _self.projectId : projectId // ignore: cast_nullable_to_non_nullable
+as int?,
   ));
 }
 
@@ -154,10 +156,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String? name,  String? description,  bool? isPrivate)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String? name,  String? description,  bool? isPrivate,  int? projectId)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _UpdateChannelRequest() when $default != null:
-return $default(_that.name,_that.description,_that.isPrivate);case _:
+return $default(_that.name,_that.description,_that.isPrivate,_that.projectId);case _:
   return orElse();
 
 }
@@ -175,10 +177,10 @@ return $default(_that.name,_that.description,_that.isPrivate);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String? name,  String? description,  bool? isPrivate)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String? name,  String? description,  bool? isPrivate,  int? projectId)  $default,) {final _that = this;
 switch (_that) {
 case _UpdateChannelRequest():
-return $default(_that.name,_that.description,_that.isPrivate);case _:
+return $default(_that.name,_that.description,_that.isPrivate,_that.projectId);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -195,10 +197,10 @@ return $default(_that.name,_that.description,_that.isPrivate);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String? name,  String? description,  bool? isPrivate)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String? name,  String? description,  bool? isPrivate,  int? projectId)?  $default,) {final _that = this;
 switch (_that) {
 case _UpdateChannelRequest() when $default != null:
-return $default(_that.name,_that.description,_that.isPrivate);case _:
+return $default(_that.name,_that.description,_that.isPrivate,_that.projectId);case _:
   return null;
 
 }
@@ -210,12 +212,14 @@ return $default(_that.name,_that.description,_that.isPrivate);case _:
 
 @JsonSerializable(includeIfNull: false)
 class _UpdateChannelRequest implements UpdateChannelRequest {
-  const _UpdateChannelRequest({this.name, this.description, this.isPrivate});
+  const _UpdateChannelRequest({this.name, this.description, this.isPrivate, this.projectId});
   
 
 @override final  String? name;
 @override final  String? description;
 @override final  bool? isPrivate;
+/// 채널을 넣을 프로젝트. 채널 생성 요청에는 이 필드가 없어 만든 뒤 붙인다.
+@override final  int? projectId;
 
 /// Create a copy of UpdateChannelRequest
 /// with the given fields replaced by the non-null parameter values.
@@ -230,16 +234,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _UpdateChannelRequest&&(identical(other.name, name) || other.name == name)&&(identical(other.description, description) || other.description == description)&&(identical(other.isPrivate, isPrivate) || other.isPrivate == isPrivate));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _UpdateChannelRequest&&(identical(other.name, name) || other.name == name)&&(identical(other.description, description) || other.description == description)&&(identical(other.isPrivate, isPrivate) || other.isPrivate == isPrivate)&&(identical(other.projectId, projectId) || other.projectId == projectId));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,name,description,isPrivate);
+int get hashCode => Object.hash(runtimeType,name,description,isPrivate,projectId);
 
 @override
 String toString() {
-  return 'UpdateChannelRequest(name: $name, description: $description, isPrivate: $isPrivate)';
+  return 'UpdateChannelRequest(name: $name, description: $description, isPrivate: $isPrivate, projectId: $projectId)';
 }
 
 
@@ -250,7 +254,7 @@ abstract mixin class _$UpdateChannelRequestCopyWith<$Res> implements $UpdateChan
   factory _$UpdateChannelRequestCopyWith(_UpdateChannelRequest value, $Res Function(_UpdateChannelRequest) _then) = __$UpdateChannelRequestCopyWithImpl;
 @override @useResult
 $Res call({
- String? name, String? description, bool? isPrivate
+ String? name, String? description, bool? isPrivate, int? projectId
 });
 
 
@@ -267,12 +271,13 @@ class __$UpdateChannelRequestCopyWithImpl<$Res>
 
 /// Create a copy of UpdateChannelRequest
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? name = freezed,Object? description = freezed,Object? isPrivate = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? name = freezed,Object? description = freezed,Object? isPrivate = freezed,Object? projectId = freezed,}) {
   return _then(_UpdateChannelRequest(
 name: freezed == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String?,description: freezed == description ? _self.description : description // ignore: cast_nullable_to_non_nullable
 as String?,isPrivate: freezed == isPrivate ? _self.isPrivate : isPrivate // ignore: cast_nullable_to_non_nullable
-as bool?,
+as bool?,projectId: freezed == projectId ? _self.projectId : projectId // ignore: cast_nullable_to_non_nullable
+as int?,
   ));
 }
 
