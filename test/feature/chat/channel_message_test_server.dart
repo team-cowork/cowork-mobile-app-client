@@ -108,6 +108,10 @@ class FakeMessageGateway implements HttpClientAdapter {
         _ok({'downloadUrl': 'https://files.test/a.pdf'}),
       'GET /chat/chat/channels/10/messages/img1/attachments/0/download-url' =>
         _ok({'downloadUrl': 'https://files.test/img1.png'}),
+      'GET /chat/chat/channels/10/messages/img2/attachments/0/download-url' =>
+        _ok({'downloadUrl': 'https://files.test/img2.png'}),
+      'GET /chat/chat/channels/10/messages/img3/attachments/0/download-url' =>
+        _ok({'downloadUrl': 'https://files.test/img3.png'}),
       'GET /chat/chat/channels/10/messages/r1/attachments/0/download-url' =>
         _ok({'downloadUrl': 'https://files.test/reply.pdf'}),
       'GET /user/users/me' => _ok({'id': 1, 'name': '나'}),

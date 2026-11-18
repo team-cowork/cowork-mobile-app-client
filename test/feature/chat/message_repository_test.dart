@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
@@ -69,11 +70,13 @@ void main() {
   group('이미지 첨부', () {
     MessageRepository repositoryOf(
       FakeMessageGateway gateway,
-      FakeFilesServer files,
-    ) => MessageRepository.withDio(
+      FakeFilesServer files, {
+      int imageCacheLimit = MessageRepository.defaultImageCacheLimit,
+    }) => MessageRepository.withDio(
       chat: messageDio(gateway, 'chat'),
       user: messageDio(gateway, 'user'),
       files: filesDio(files),
+      imageCacheLimit: imageCacheLimit,
     );
 
     test('임시 주소를 받아 이미지를 내려받는다', () async {
@@ -106,15 +109,52 @@ void main() {
 
     test('같은 이미지를 받는 중이면 그 요청을 같이 기다린다', () async {
       final gateway = FakeMessageGateway();
-      final files = FakeFilesServer();
+      final gate = Completer<void>();
+      final files = FakeFilesServer()..gate = gate.future;
       final repository = repositoryOf(gateway, files);
 
-      await Future.wait([
-        repository.fetchAttachmentImage(10, 'img1', 0),
-        repository.fetchAttachmentImage(10, 'img1', 0),
-      ]);
+      // 첫 요청이 아직 끝나지 않은 사이에 같은 이미지를 또 부른다.
+      final first = repository.fetchAttachmentImage(10, 'img1', 0);
+      await pumpEventQueue();
+      final second = repository.fetchAttachmentImage(10, 'img1', 0);
+      gate.complete();
+      await Future.wait([first, second]);
 
       expect(files.requests, hasLength(1));
+    });
+
+    test('상한을 넘으면 가장 오래 안 쓴 이미지부터 버린다', () async {
+      final gateway = FakeMessageGateway();
+      final files = FakeFilesServer();
+      // 두 장까지만 들어가는 상한.
+      final repository = repositoryOf(
+        gateway,
+        files,
+        imageCacheLimit: tinyPng.length * 2,
+      );
+
+      await repository.fetchAttachmentImage(10, 'img1', 0);
+      await repository.fetchAttachmentImage(10, 'img2', 0);
+      // img1 을 다시 쓰면 가장 최근에 쓴 것이 된다. 이제 img2 가 가장 오래됐다.
+      expect(repository.cachedAttachmentImage(10, 'img1', 0), isNotNull);
+      await repository.fetchAttachmentImage(10, 'img3', 0);
+
+      expect(repository.cachedAttachmentImage(10, 'img1', 0), isNotNull);
+      expect(repository.cachedAttachmentImage(10, 'img3', 0), isNotNull);
+      expect(repository.cachedAttachmentImage(10, 'img2', 0), isNull);
+    });
+
+    test('한 장이 상한보다 커도 방금 받은 한 장은 남긴다', () async {
+      final gateway = FakeMessageGateway();
+      final repository = repositoryOf(
+        gateway,
+        FakeFilesServer(),
+        imageCacheLimit: 1,
+      );
+
+      await repository.fetchAttachmentImage(10, 'img1', 0);
+
+      expect(repository.cachedAttachmentImage(10, 'img1', 0), tinyPng);
     });
 
     test('받지 못하면 저장하지 않고, 다시 부르면 새 주소로 받는다', () async {
