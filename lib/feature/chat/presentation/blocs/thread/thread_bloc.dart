@@ -81,6 +81,11 @@ class ThreadBloc extends Bloc<ThreadEvent, ThreadState> {
   /// 이 부모 메시지에 이름을 붙여 만든 스레드. 만든 적이 없거나 못 읽었으면 null.
   ThreadResponse? _thread;
 
+  /// [_thread] 가 null 인 게 '만든 적 없음'이 맞는지. 스레드 조회가 실패했으면 false 다.
+  /// 이미 있는 스레드를 모르고 새로 만들면 서버가 부모 메시지 하나에 스레드 하나만
+  /// 허용해서 실패한다.
+  bool _threadKnown = false;
+
   /// 부모 메시지. 불러오기에 성공하면 채워진다.
   MessageResponse? _root;
 
@@ -106,9 +111,12 @@ class ThreadBloc extends Bloc<ThreadEvent, ThreadState> {
     emit(const ThreadState.loading());
     _root = null;
     _rootDeleted = false;
+    _threadKnown = false;
     _pending.clear();
     try {
       final headerRequest = _channelRepository.fetchChannelHeader(channelId);
+      // 안에서 실패를 받아 던지지 않으므로, 다른 요청과 같이 보내 두고 기다리기만 한다.
+      final threadRequest = _lookUpThread();
       final rootRequest = _messageRepository.fetchMessage(
         channelId,
         parentMessageId,
@@ -128,9 +136,11 @@ class ThreadBloc extends Bloc<ThreadEvent, ThreadState> {
       final replies = await repliesRequest;
       await _fetchAuthors([root, ...replies]);
 
+      final lookup = await threadRequest;
       _channelName = header.name;
       _root = root;
-      _thread = await _fetchThread();
+      _thread = lookup.thread;
+      _threadKnown = lookup.known;
       _replies
         ..clear()
         ..addAll(replies.reversed);
@@ -147,23 +157,34 @@ class ThreadBloc extends Bloc<ThreadEvent, ThreadState> {
     _emit(emit);
   }
 
-  /// 이 스레드의 이름·보관 정보. 못 읽어도 답글은 보이도록 null 로 둔다.
-  Future<ThreadResponse?> _fetchThread() async {
+  /// 이 스레드의 이름·보관 정보. 못 읽어도 답글은 보이도록 null 로 두되, 못 읽은 것과
+  /// 없는 것을 `known` 으로 가른다.
+  Future<({ThreadResponse? thread, bool known})> _lookUpThread() async {
     try {
-      return (await _channelRepository.fetchThreads(channelId))
-          .where((thread) => thread.parentMessageId == parentMessageId)
-          .firstOrNull;
+      final thread = await _channelRepository.fetchThread(
+        channelId,
+        parentMessageId,
+      );
+      return (thread: thread, known: true);
     } catch (e, s) {
       Logger.e('스레드 이름 조회 실패', tag: 'Chat', error: e, stackTrace: s);
-      return null;
+      return (thread: null, known: false);
     }
   }
 
   Future<void> _onRename(ThreadRenamed event, Emitter<ThreadState> emit) async {
     final name = event.name.trim();
     if (_root == null || name.isEmpty) return;
-    final before = _thread;
     try {
+      // 스레드를 읽지 못했던 채로는 새로 만들지 않는다. 이미 있으면 만들기가 실패한다.
+      if (!_threadKnown) {
+        _thread = await _channelRepository.fetchThread(
+          channelId,
+          parentMessageId,
+        );
+        _threadKnown = true;
+      }
+      final before = _thread;
       _thread = before == null
           ? await _channelRepository.createThread(
               channelId,
