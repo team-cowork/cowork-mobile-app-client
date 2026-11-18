@@ -41,6 +41,15 @@ class ProfileRepository {
   Future<UserResponse> fetchMe() async =>
       _cache(await _get(_dio.get<String>('/users/me')));
 
+  /// 내 계정 id. 로그인 직후 [fetchMe] 가 채워 둔 값을 쓰고, 아직 없으면 한 번 읽는다.
+  Future<int> fetchMyId() async {
+    final cached = ProfileStore.instance.currentUserId;
+    if (cached != null) return cached;
+    final id = (await fetchMe()).id;
+    if (id == null) throw StateError('내 계정 id 를 알 수 없다');
+    return id;
+  }
+
   /// 내 프로필 수정. 서버가 갱신된 프로필을 그대로 돌려준다.
   ///
   /// 프로필 사진은 여기서 못 바꾼다. 업로드는 [uploadProfileImage] 가 맡는다.

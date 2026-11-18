@@ -18,6 +18,7 @@ import '../feature/notifications/presentation/views/notifications_view.dart';
 import '../feature/profile/presentation/views/edit_profile_view.dart';
 import '../feature/search/presentation/views/search_view.dart';
 import '../feature/setting/presentation/views/settings_view.dart';
+import '../feature/team/presentation/views/team_settings_view.dart';
 import 'auth_gate.dart';
 
 /// 채널 대화와 그 하위 화면. 채널 id 를 경로에 담아 딥링크·앱 복원으로 들어와도
@@ -67,6 +68,9 @@ String? _parentMessageIdOf(GoRouterState state) {
 
 int? _teamIdOf(GoRouterState state) =>
     int.tryParse(state.uri.queryParameters['teamId'] ?? '');
+
+int? _teamPathIdOf(GoRouterState state) =>
+    int.tryParse(state.pathParameters['teamId'] ?? '');
 
 final GoRouter appRouter = GoRouter(
   initialLocation: '/',
@@ -122,5 +126,12 @@ final GoRouter appRouter = GoRouter(
           IssueDetailView(issue: state.extra! as Issue),
     ),
     GoRoute(path: '/dm', builder: (context, state) => const DmListView()),
+    // 팀을 지우면 true 로 닫힌다. id 가 숫자가 아니면 홈으로 보낸다.
+    GoRoute(
+      path: '/teams/:teamId/settings',
+      redirect: (context, state) => _teamPathIdOf(state) == null ? '/' : null,
+      builder: (context, state) =>
+          TeamSettingsView(teamId: _teamPathIdOf(state)!),
+    ),
   ],
 );
