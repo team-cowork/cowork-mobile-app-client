@@ -16,6 +16,19 @@ Future<UploadFile?> pickUploadFile() async {
   return _uploadFileOf(file);
 }
 
+/// 올릴 파일을 여러 개 고르는 함수. 취소하면 빈 목록. [images] 면 사진만 고르게 한다.
+///
+/// 테스트가 기기 파일 선택 창 대신 가짜 파일을 넣을 수 있게 함수로 받는다.
+typedef UploadFilesPicker = Future<List<UploadFile>> Function({bool images});
+
+/// 기본 [UploadFilesPicker]. 형식·크기는 [pickUploadFile] 처럼 거르지 않는다.
+Future<List<UploadFile>> pickUploadFiles({bool images = false}) async {
+  final files = await FilePicker.pickFiles(
+    type: images ? FileType.image : FileType.any,
+  );
+  return [for (final file in files) await _uploadFileOf(file)];
+}
+
 Future<UploadFile> _uploadFileOf(PlatformFile file) async {
   final size = file.lengthSync() ?? await file.length();
   if (size == null) throw StateError('고른 파일의 크기를 알 수 없다: ${file.name}');

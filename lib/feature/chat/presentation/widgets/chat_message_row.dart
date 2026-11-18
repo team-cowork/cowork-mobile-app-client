@@ -46,31 +46,55 @@ class ChatMessageRow extends StatelessWidget {
         foregroundColor: AppColors.white,
       ),
       // 본문 칸 안에 그려야 파일만 있는 메시지도 머리줄 바로 아래에 붙는다.
-      footer: message.attachments.isEmpty
-          ? null
-          : Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              spacing: AppSpacing.s8,
-              children: [
-                for (final (index, attachment) in message.attachments.indexed)
-                  if (imageBuilder != null && attachment.isPreviewableImage)
-                    imageBuilder!(index, attachment)
-                  else
-                    CoworkAttachmentCard(
-                      filename: attachment.name,
-                      subtitle: _sizeLabel(attachment.size),
-                      icon: _iconFor(attachment),
-                      onTap: onAttachmentTap == null
-                          ? null
-                          : () => onAttachmentTap!(index),
-                    ),
-              ],
-            ),
+      footer: _footer(),
     );
 
     if (onTap == null && onLongPress == null) return item;
     return InkWell(onTap: onTap, onLongPress: onLongPress, child: item);
   }
+
+  Widget? _footer() {
+    final upload = message.upload;
+    // 올리는 중에는 파일 카드 대신 진행률 하나로 보인다.
+    if (upload != null && !upload.failed) {
+      return CoworkFileUploadProgress(
+        filename: _uploadName(message.attachments),
+        progress: upload.progress,
+      );
+    }
+    if (message.attachments.isEmpty) return null;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      spacing: AppSpacing.s8,
+      children: [
+        for (final (index, attachment) in message.attachments.indexed)
+          if (imageBuilder != null && attachment.isPreviewableImage)
+            imageBuilder!(index, attachment)
+          else
+            CoworkAttachmentCard(
+              filename: attachment.name,
+              subtitle: _sizeLabel(attachment.size),
+              icon: _iconFor(attachment),
+              onTap: onAttachmentTap == null
+                  ? null
+                  : () => onAttachmentTap!(index),
+            ),
+        if (upload != null)
+          Text(
+            '보내지 못했어요. 눌러서 다시 보내거나 지울 수 있어요.',
+            style: AppFont.subtextM.copyWith(color: AppColors.red400),
+          ),
+      ],
+    );
+  }
+
+  /// `회의자료.pdf` / `회의자료.pdf 외 2개`.
+  static String _uploadName(List<ChatAttachment> attachments) =>
+      switch (attachments) {
+        [] => '',
+        [final only] => only.name,
+        [final first, ...] => '${first.name} 외 ${attachments.length - 1}개',
+      };
 
   static IconData _iconFor(ChatAttachment attachment) =>
       switch (attachment.mimeType.split('/').first) {
