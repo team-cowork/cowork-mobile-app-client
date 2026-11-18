@@ -106,7 +106,9 @@ class TeamSettingsView extends StatelessWidget {
                               ),
                             ],
                           ),
-                        if (!settings.canManage && !settings.canDelete)
+                        if (settings.permissionsFailed)
+                          _permissionsRetry(context, settings)
+                        else if (!settings.canManage && !settings.canDelete)
                           Text(
                             '팀 정보는 관리 권한이 있는 멤버만 바꿀 수 있어요.',
                             style: AppFont.subtextM.copyWith(
@@ -124,6 +126,31 @@ class TeamSettingsView extends StatelessWidget {
       },
     );
   }
+
+  /// 권한을 못 읽었을 때. 팀 정보는 위에 그대로 두고 권한만 다시 읽게 한다.
+  Widget _permissionsRetry(BuildContext context, TeamSettings settings) =>
+      SettingsSection(
+        title: '권한을 불러오지 못했어요',
+        children: [
+          SettingsTile(
+            label: '권한 다시 불러오기',
+            trailing: settings.retryingPermissions
+                ? const SizedBox.square(
+                    dimension: 18,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: AppColors.neutral300,
+                    ),
+                  )
+                : null,
+            onTap: settings.retryingPermissions
+                ? null
+                : () => context.read<TeamSettingsBloc>().add(
+                    const TeamSettingsEvent.permissionsRetried(),
+                  ),
+          ),
+        ],
+      );
 
   Widget _profileSection(BuildContext context, TeamSettings settings) {
     final bloc = context.read<TeamSettingsBloc>();

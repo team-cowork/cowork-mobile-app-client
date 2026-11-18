@@ -6,6 +6,10 @@ sealed class TeamSettingsEvent extends Equatable {
   /// 설정을 처음 불러온다. 다시 시도에도 쓴다.
   const factory TeamSettingsEvent.requested() = TeamSettingsRequested;
 
+  /// 읽지 못한 내 권한만 다시 읽는다. 팀 정보는 그대로 둔다.
+  const factory TeamSettingsEvent.permissionsRetried() =
+      TeamSettingsPermissionsRetried;
+
   /// 팀 이름을 바꾼다. 앞뒤 공백을 떼고 비면 무시한다.
   const factory TeamSettingsEvent.nameChanged(String name) =
       TeamSettingsNameChanged;
@@ -27,6 +31,10 @@ sealed class TeamSettingsEvent extends Equatable {
 
 final class TeamSettingsRequested extends TeamSettingsEvent {
   const TeamSettingsRequested();
+}
+
+final class TeamSettingsPermissionsRetried extends TeamSettingsEvent {
+  const TeamSettingsPermissionsRetried();
 }
 
 final class TeamSettingsNameChanged extends TeamSettingsEvent {

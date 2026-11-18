@@ -233,13 +233,55 @@ void main() {
       expect(server.calls, contains('GET /team/teams/1/members/1/roles'));
     });
 
-    test('역할을 못 읽으면 불러오기 실패다', () async {
+    test('역할을 못 읽으면 팀 정보는 읽기 전용으로 둔다', () async {
       final server = FakeTeamServer()
         ..failing.add('GET /team/teams/1/members/1/roles');
       final bloc = await _loaded(server);
       addTearDown(bloc.close);
 
-      expect(bloc.state, isA<AsyncFailure<TeamSettingsData>>());
+      final settings = _data(bloc).settings;
+      expect(settings.name, '코워크');
+      expect(settings.permissionsFailed, isTrue);
+      expect(settings.canManage, isFalse);
+      expect(settings.canDelete, isFalse);
+    });
+
+    test('권한만 다시 읽어 할 수 있는 일을 정한다', () async {
+      final server = FakeTeamServer()
+        ..roles = [_admin]
+        ..failing.add('GET /team/teams/1/members/1/roles');
+      final bloc = await _loaded(server);
+      addTearDown(bloc.close);
+      server.failing.clear();
+
+      bloc.add(const TeamSettingsEvent.permissionsRetried());
+      await bloc.stream.firstWhere(
+        (s) =>
+            s is AsyncSuccess<TeamSettingsData> &&
+            !s.data.settings.permissionsFailed,
+      );
+
+      // 팀 상세는 다시 읽지 않는다.
+      expect(server.calls, ['GET /team/teams/1/members/1/roles']);
+      expect(_data(bloc).settings.canManage, isTrue);
+      expect(_data(bloc).settings.canDelete, isTrue);
+    });
+
+    test('권한 다시 읽기가 또 실패하면 읽기 전용을 두고 사유를 알린다', () async {
+      final server = FakeTeamServer()
+        ..failing.add('GET /team/teams/1/members/1/roles');
+      final bloc = await _loaded(server);
+      addTearDown(bloc.close);
+
+      bloc.add(const TeamSettingsEvent.permissionsRetried());
+      await bloc.stream.firstWhere(
+        (s) =>
+            s is AsyncSuccess<TeamSettingsData> && s.data.errorMessage != null,
+      );
+
+      expect(_data(bloc).errorMessage, '권한을 불러오지 못했어요.');
+      expect(_data(bloc).settings.permissionsFailed, isTrue);
+      expect(_data(bloc).settings.retryingPermissions, isFalse);
     });
 
     test('이름 바꾸기가 실패하면 이전 이름으로 되돌리고 사유를 알린다', () async {
@@ -377,6 +419,26 @@ void main() {
       expect(find.text('팀 아이콘 변경'), findsNothing);
       expect(find.text('팀 삭제'), findsNothing);
       expect(find.text('팀 정보는 관리 권한이 있는 멤버만 바꿀 수 있어요.'), findsOneWidget);
+    });
+
+    testWidgets('권한을 못 읽으면 팀 정보를 두고 권한만 다시 불러온다', (tester) async {
+      final server = FakeTeamServer()
+        ..roles = [_admin]
+        ..failing.add('GET /team/teams/1/members/1/roles');
+      await pumpSettings(tester, server);
+
+      expect(find.text('코워크'), findsOneWidget);
+      expect(find.text('권한을 불러오지 못했어요'), findsOneWidget);
+      expect(find.text('팀 이름'), findsNothing);
+      expect(find.text('팀 정보는 관리 권한이 있는 멤버만 바꿀 수 있어요.'), findsNothing);
+
+      server.failing.clear();
+      await tester.tap(find.text('권한 다시 불러오기'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('권한 다시 불러오기'), findsNothing);
+      expect(find.text('팀 이름'), findsOneWidget);
+      expect(find.text('팀 삭제'), findsOneWidget);
     });
 
     testWidgets('관리 권한만 있으면 팀 삭제는 숨긴다', (tester) async {
