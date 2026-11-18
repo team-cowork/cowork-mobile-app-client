@@ -43,6 +43,9 @@ class FakeMessageGateway implements HttpClientAdapter {
     'muted_until': null,
   };
 
+  /// 채널 10 의 스레드. `POST`·`PATCH /channels/10/threads` 가 바꾼다.
+  List<Map<String, dynamic>> threads = [];
+
   /// `GET /teams/1/members` 로 읽는 팀 멤버와 역할.
   List<Map<String, dynamic>> teamMembers = [
     {
@@ -119,6 +122,15 @@ class FakeMessageGateway implements HttpClientAdapter {
       'PUT /preference/preferences/account/1/channels/10/notification' => _ok(
         notification = {...bodies[call]!, 'notification': true},
       ),
+      'GET /channel/channels/10/threads' => _ok({
+        'content': _threadPage(uri.queryParameters),
+      }),
+      'POST /channel/channels/10/threads' => _ok(
+        _addThread({...bodies[call]!, 'id': 5, 'channelId': 10}),
+      ),
+      'PATCH /channel/channels/10/threads/5' => _ok(
+        threads.single..addAll(bodies[call]!),
+      ),
       'GET /team/teams/1/members' => _ok(teamMembers),
       'GET /channel/channels/10/members' => _ok([
         for (final id in memberIds) {'channelId': 10, 'userId': id},
@@ -149,6 +161,18 @@ class FakeMessageGateway implements HttpClientAdapter {
       }),
       _ => ResponseBody.fromString('', 204),
     };
+  }
+
+  /// 서버처럼 `page`(0 부터)와 `size` 로 스레드를 나눠 준다. 없으면 전부 준다.
+  List<Map<String, dynamic>> _threadPage(Map<String, String> query) {
+    final size = int.tryParse(query['size'] ?? '') ?? threads.length;
+    final page = int.tryParse(query['page'] ?? '') ?? 0;
+    return threads.skip(page * size).take(size).toList();
+  }
+
+  Map<String, dynamic> _addThread(Map<String, dynamic> thread) {
+    threads = [...threads, thread];
+    return thread;
   }
 
   /// 서버처럼 `before`, `after`, `around` 커서 중 하나로 최신순 한 페이지를 준다.
