@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/network/chat_socket.dart';
 import '../../../../shared/widgets/bloc_scaffold.dart';
 import '../../../notifications/data/repositories/notification_repository.dart';
+import '../../../project/data/repositories/project_repository.dart';
 import '../../../team/data/repositories/team_repository.dart';
 import '../../../team/presentation/widgets/add_team_sheet.dart';
 import '../../../team/presentation/widgets/join_team_sheet.dart';
@@ -28,6 +29,7 @@ class ChatView extends StatelessWidget {
       create: (context) => ChannelListBloc(
         context.read<TeamRepository>(),
         context.read<ChannelRepository>(),
+        context.read<ProjectRepository>(),
         context.read<ChatSocket>(),
         invitedTeams: context.read<NotificationRepository>().invitedTeamIds,
       )..add(const ChannelListRequested()),

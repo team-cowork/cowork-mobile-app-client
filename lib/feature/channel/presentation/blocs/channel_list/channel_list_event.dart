@@ -18,6 +18,10 @@ sealed class ChannelListEvent extends Equatable {
   const factory ChannelListEvent.channelAdded(Channel channel) =
       ChannelListChannelAdded;
 
+  /// 프로젝트 생성 시트가 서버에 프로젝트를 만들었다.
+  const factory ChannelListEvent.projectAdded(ProjectSummaryResponse project) =
+      ChannelListProjectAdded;
+
   @override
   List<Object?> get props => [];
 }
@@ -51,6 +55,15 @@ final class ChannelListChannelAdded extends ChannelListEvent {
 
   @override
   List<Object?> get props => [channel];
+}
+
+final class ChannelListProjectAdded extends ChannelListEvent {
+  const ChannelListProjectAdded(this.project);
+
+  final ProjectSummaryResponse project;
+
+  @override
+  List<Object?> get props => [project];
 }
 
 /// 소켓으로 홈에 반영할 이벤트가 왔다. 화면이 아니라 Bloc 이 스스로 넣는다.

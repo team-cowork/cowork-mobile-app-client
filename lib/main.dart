@@ -16,6 +16,7 @@ import 'package:cowork_app/feature/notifications/data/repositories/notification_
 import 'package:cowork_app/feature/profile/data/repositories/github_repository.dart';
 import 'package:cowork_app/feature/issues/data/repositories/issue_repository.dart';
 import 'package:cowork_app/feature/profile/data/repositories/profile_repository.dart';
+import 'package:cowork_app/feature/project/data/repositories/project_repository.dart';
 import 'package:cowork_app/feature/search/data/repositories/recent_search_repository.dart';
 import 'package:cowork_app/feature/search/data/repositories/search_repository.dart';
 import 'package:cowork_app/feature/search/presentation/widgets/clear_recent_search_on_logout.dart';
@@ -69,6 +70,10 @@ class CoworkApp extends StatelessWidget {
         RepositoryProvider(
           create: (context) =>
               ChannelRepository(context.read<AuthRepository>()),
+        ),
+        RepositoryProvider(
+          create: (context) =>
+              ProjectRepository(context.read<AuthRepository>()),
         ),
         RepositoryProvider(
           create: (context) =>

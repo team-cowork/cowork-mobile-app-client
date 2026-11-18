@@ -365,8 +365,15 @@ class FakeChatSocket implements ChatSocket {
   final joined = <int>{};
 
   /// 서버가 [name] 이벤트를 보낸 것처럼 흘린다.
-  void push(String name, Map<String, dynamic> data) =>
-      _events.add((name: name, data: data));
+  ///
+  /// 실제 [ChatSocket] 은 [ChatSocket.listenedEvents] 에 없는 이벤트를 받지 않는다.
+  /// 가짜가 그 목록을 건너뛰면 목록에 빠진 이벤트도 테스트가 통과하므로 똑같이 막는다.
+  void push(String name, Map<String, dynamic> data) {
+    if (!ChatSocket.listenedEvents.contains(name)) {
+      throw ArgumentError.value(name, 'name', 'ChatSocket 이 받지 않는 이벤트');
+    }
+    _events.add((name: name, data: data));
+  }
 
   @override
   Stream<SocketEvent> get events => _events.stream;
