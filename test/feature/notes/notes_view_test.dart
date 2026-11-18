@@ -106,4 +106,54 @@ void main() {
       expect(find.byType(SnackBar), findsOneWidget);
     });
   });
+
+  group('당겨서 새로고침', () {
+    late FakeNotesServer server;
+
+    setUp(() => server = FakeNotesServer());
+
+    /// [finder] 를 아래로 당긴다. 조회가 끝나지 않으면 인디케이터가 계속 돌아
+    /// `pumpAndSettle` 이 시간 초과로 실패한다.
+    Future<void> pullDown(WidgetTester tester, Finder finder) async {
+      await tester.fling(finder, const Offset(0, 400), 1000);
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('서버 목록을 다시 읽어 반영한다', (tester) async {
+      await tester.pumpWidget(notesTestApp(const NotesView(), server));
+      await tester.pumpAndSettle();
+      server.notes.first['title'] = '다른 사람이 고친 제목';
+
+      await pullDown(tester, find.text(_mine));
+
+      expect(find.text('다른 사람이 고친 제목'), findsOneWidget);
+      expect(find.text(_mine), findsNothing);
+      expect(find.byType(RefreshProgressIndicator), findsNothing);
+    });
+
+    testWidgets('빈 화면에서도 당겨서 다시 읽는다', (tester) async {
+      final seeded = [...server.notes];
+      server.notes.clear();
+      await tester.pumpWidget(notesTestApp(const NotesView(), server));
+      await tester.pumpAndSettle();
+      expect(find.text('아직 회의록이 없어요'), findsOneWidget);
+      server.notes.addAll(seeded);
+
+      await pullDown(tester, find.text('아직 회의록이 없어요'));
+
+      expect(find.text(_mine), findsOneWidget);
+    });
+
+    testWidgets('실패하면 보던 목록은 두고 사유를 알린 뒤 인디케이터를 멈춘다', (tester) async {
+      await tester.pumpWidget(notesTestApp(const NotesView(), server));
+      await tester.pumpAndSettle();
+      server.failList = (500, '잠시 후 다시 시도해 주세요.');
+
+      await pullDown(tester, find.text(_mine));
+
+      expect(find.text('(500) 잠시 후 다시 시도해 주세요.'), findsOneWidget);
+      expect(find.text(_mine), findsOneWidget);
+      expect(find.byType(RefreshProgressIndicator), findsNothing);
+    });
+  });
 }

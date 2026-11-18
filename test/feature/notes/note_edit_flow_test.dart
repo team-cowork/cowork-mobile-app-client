@@ -117,6 +117,25 @@ void main() {
     expect(find.text('2026 1분기 킥오프 회의'), findsNothing);
   });
 
+  testWidgets('편집하고 돌아왔는데 목록을 다시 읽지 못하면 보던 목록은 두고 사유를 알린다', (tester) async {
+    final server = FakeNotesServer();
+    await _openNote(tester, '2026 1분기 킥오프 회의', server);
+    await tester.tap(find.byIcon(Icons.edit_outlined));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField).first, '3월 스프린트 플래닝 (수정)');
+    await tester.tap(find.text('저장'));
+    await tester.pumpAndSettle();
+
+    server.failList = (500, '잠시 후 다시 시도해 주세요.');
+    await tester.tap(find.byIcon(AppIcon.back));
+    await tester.pumpAndSettle();
+
+    expect(find.text('(500) 잠시 후 다시 시도해 주세요.'), findsOneWidget);
+    // 오류 화면으로 바꾸지 않고, 다시 읽지 못한 카드는 고치기 전 제목 그대로다.
+    expect(find.text('회의록을 불러오지 못했어요'), findsNothing);
+    expect(find.text('2026 1분기 킥오프 회의'), findsOneWidget);
+  });
+
   testWidgets('편집하지 않고 상세에서 돌아오면 목록을 다시 읽지 않는다', (tester) async {
     final server = FakeNotesServer();
     await _openNote(tester, '2026 1분기 킥오프 회의', server);
