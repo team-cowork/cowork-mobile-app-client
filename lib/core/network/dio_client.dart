@@ -20,6 +20,7 @@ enum ApiService {
   chat,
   preference,
   notification,
+  project,
 }
 
 /// [service] 를 향하는 Cowork API 게이트웨이 dio 인스턴스를 만든다.
