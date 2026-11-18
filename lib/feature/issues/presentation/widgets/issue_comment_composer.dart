@@ -13,6 +13,7 @@ class IssueCommentComposer extends StatefulWidget {
 
 class _IssueCommentComposerState extends State<IssueCommentComposer> {
   final _controller = TextEditingController();
+  bool _sending = false;
 
   @override
   void dispose() {
@@ -20,10 +21,15 @@ class _IssueCommentComposerState extends State<IssueCommentComposer> {
     super.dispose();
   }
 
-  void _send() {
-    if (_controller.text.trim().isEmpty) return;
-    context.read<IssueCommentsCubit>().send(_controller.text);
-    _controller.clear();
+  /// 서버가 접수했을 때만 입력창을 비운다. 못 보냈으면 쓴 내용을 두어 다시 보낼 수 있다.
+  Future<void> _send() async {
+    final text = _controller.text;
+    if (_sending || text.trim().isEmpty) return;
+    final cubit = context.read<IssueCommentsCubit>();
+    _sending = true;
+    final sent = await cubit.send(text);
+    _sending = false;
+    if (sent && mounted && _controller.text == text) _controller.clear();
   }
 
   @override
