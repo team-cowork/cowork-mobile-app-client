@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../chat/data/repositories/message_repository.dart';
+import '../../../team/data/repositories/team_repository.dart';
 import '../../../../shared/domain/enums/chat_avatar_color.dart';
 import '../../../../shared/widgets/bloc_scaffold.dart';
 import '../../data/repositories/channel_repository.dart';
@@ -22,6 +23,7 @@ class MembersView extends StatelessWidget {
         channelId: channelId,
         channelRepository: context.read<ChannelRepository>(),
         messageRepository: context.read<MessageRepository>(),
+        teamRepository: context.read<TeamRepository>(),
       )..add(const ChannelMembersEvent.requested()),
       errorTitle: '멤버를 불러오지 못했어요',
       onRetry: (context) => context.read<ChannelMembersBloc>().add(
@@ -111,6 +113,13 @@ class _ChannelMemberTile extends StatelessWidget {
 
   final ChannelMember member;
 
+  /// 소유자·관리자만 배지로 보인다. 일반 멤버는 따로 보이지 않는다.
+  static String? _roleLabel(ChannelMemberRole role) => switch (role) {
+    ChannelMemberRole.owner => '소유자',
+    ChannelMemberRole.admin => '관리자',
+    ChannelMemberRole.member => null,
+  };
+
   static Color _colorFor(ChatAvatarColor color) => switch (color) {
     ChatAvatarColor.blue => AppColors.blue500,
     ChatAvatarColor.green => AppColors.green500,
@@ -135,11 +144,30 @@ class _ChannelMemberTile extends StatelessWidget {
           ),
           const SizedBox(width: AppSpacing.s12),
           Expanded(
-            child: Text(
-              member.profile.name,
-              style: AppFont.subtextL.copyWith(color: AppColors.darkOnSurface),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              spacing: 2,
+              children: [
+                Text(
+                  member.profile.name,
+                  style: AppFont.subtextL.copyWith(
+                    color: AppColors.darkOnSurface,
+                  ),
+                ),
+                if (member.roleNames.isNotEmpty)
+                  Text(
+                    member.roleNames.join(' · '),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppFont.subtextS.copyWith(
+                      color: AppColors.neutral300,
+                    ),
+                  ),
+              ],
             ),
           ),
+          if (_roleLabel(member.role) case final label?)
+            CoworkBadge(label: label),
         ],
       ),
     );
