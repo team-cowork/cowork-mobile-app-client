@@ -46,31 +46,55 @@ class NotesView extends StatelessWidget {
         ],
       ),
       builder: (context, notes) => _FailureSnackBar(
-        child: notes.isEmpty
-            ? const Center(
-                child: Padding(
-                  padding: EdgeInsets.all(AppSpacing.s16),
-                  child: CoworkEmptyState(
-                    icon: Icons.description_outlined,
-                    title: '아직 회의록이 없어요',
-                    description: '첫 회의록을 작성해 팀 기록을 남겨보세요.',
+        child: RefreshIndicator(
+          onRefresh: () => _refresh(context),
+          // 당기려면 스크롤이 되어야 하므로, 화면을 다 채우지 못하는 짧은 목록과
+          // 빈 화면도 항상 스크롤되게 둔다.
+          child: notes.isEmpty
+              ? const CustomScrollView(
+                  physics: AlwaysScrollableScrollPhysics(),
+                  slivers: [
+                    SliverFillRemaining(
+                      hasScrollBody: false,
+                      child: Center(
+                        child: Padding(
+                          padding: EdgeInsets.all(AppSpacing.s16),
+                          child: CoworkEmptyState(
+                            icon: Icons.description_outlined,
+                            title: '아직 회의록이 없어요',
+                            description: '첫 회의록을 작성해 팀 기록을 남겨보세요.',
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                )
+              : ListView.separated(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.s16,
+                    AppSpacing.s12,
+                    AppSpacing.s16,
+                    AppSpacing.s16,
                   ),
+                  itemCount: notes.length,
+                  separatorBuilder: (_, __) =>
+                      const SizedBox(height: AppSpacing.s10),
+                  itemBuilder: (_, i) => _NoteCard(note: notes[i]),
                 ),
-              )
-            : ListView.separated(
-                padding: const EdgeInsets.fromLTRB(
-                  AppSpacing.s16,
-                  AppSpacing.s12,
-                  AppSpacing.s16,
-                  AppSpacing.s16,
-                ),
-                itemCount: notes.length,
-                separatorBuilder: (_, __) =>
-                    const SizedBox(height: AppSpacing.s10),
-                itemBuilder: (_, i) => _NoteCard(note: notes[i]),
-              ),
+        ),
       ),
     );
+  }
+
+  /// 당겨서 새로고침. 조회가 끝날 때까지 인디케이터를 돌린다.
+  ///
+  /// 목록이 있으니 로딩 화면으로 바꾸지 않고, 실패하면 보던 목록을 둔 채
+  /// SnackBar 로 알린다([NotesBloc.failures]).
+  static Future<void> _refresh(BuildContext context) {
+    final done = Completer<void>();
+    context.read<NotesBloc>().add(NotesRequested(done: done));
+    return done.future;
   }
 }
 
@@ -141,7 +165,8 @@ class _NewNoteButton extends StatelessWidget {
   }
 }
 
-/// [NotesBloc.failures] 를 SnackBar 로 띄운다. 삭제가 실패해 카드가 되돌아올 때 쓴다.
+/// [NotesBloc.failures] 를 SnackBar 로 띄운다. 삭제가 실패해 카드가 되돌아올 때와
+/// 목록을 다시 읽지 못해 보던 목록이 그대로 남을 때 쓴다.
 ///
 /// 마지막 카드를 지우면 목록이 빈 화면으로 바뀌므로, 구독이 끊기지 않게 목록과
 /// 빈 화면을 함께 감싼다.

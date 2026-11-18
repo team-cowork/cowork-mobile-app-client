@@ -8,10 +8,14 @@ import '../../../../core/utils/async_state.dart';
 import '../../../../shared/utils/external_url.dart';
 import '../../../../shared/widgets/bloc_scaffold.dart';
 import '../../../channel/data/repositories/channel_repository.dart';
+import '../../../profile/data/repositories/profile_repository.dart';
 import '../../data/repositories/message_repository.dart';
+import '../../domain/chat_attachment.dart';
 import '../../domain/chat_message.dart';
+import '../../domain/message_thread.dart';
 import '../blocs/thread/thread_bloc.dart';
 import '../utils/attachment_opener.dart';
+import '../widgets/attachment_image_preview.dart';
 import '../widgets/chat_message_row.dart';
 
 class ThreadView extends StatefulWidget {
@@ -55,6 +59,54 @@ class _ThreadViewState extends State<ThreadView> {
     if (failure != null && mounted) _notify(failure);
   }
 
+  /// 이름 바꾸기·보관 메뉴. 보관은 이름을 붙여 만든 스레드만 할 수 있다.
+  Future<void> _showMenu(BuildContext context, MessageThread thread) async {
+    final bloc = context.read<ThreadBloc>();
+    final action = await showModalBottomSheet<_ThreadAction>(
+      context: context,
+      backgroundColor: AppColors.neutral800,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              title: const Text('이름 바꾸기'),
+              onTap: () => Navigator.of(sheetContext).pop(_ThreadAction.rename),
+            ),
+            if (thread.name != null)
+              ListTile(
+                title: Text(thread.isArchived ? '보관 풀기' : '스레드 보관'),
+                onTap: () =>
+                    Navigator.of(sheetContext).pop(_ThreadAction.archive),
+              ),
+          ],
+        ),
+      ),
+    );
+    if (!context.mounted || action == null) return;
+    switch (action) {
+      case _ThreadAction.rename:
+        final name = await _RenameThreadSheet.show(context, thread.name ?? '');
+        if (name != null) bloc.add(ThreadEvent.renamed(name));
+      case _ThreadAction.archive:
+        bloc.add(ThreadEvent.archivedChanged(!thread.isArchived));
+    }
+  }
+
+  Widget _image(ChatMessage message, int index, ChatAttachment attachment) =>
+      AttachmentImagePreview(
+        key: ValueKey('${message.id}/$index'),
+        repository: context.read<MessageRepository>(),
+        channelId: widget.channelId,
+        messageId: message.id,
+        attachmentIndex: index,
+        name: attachment.name,
+        onTap: () => _openAttachment(message, index),
+      );
+
   @override
   Widget build(BuildContext context) {
     final channelId = widget.channelId;
@@ -65,6 +117,7 @@ class _ThreadViewState extends State<ThreadView> {
         parentMessageId: parentMessageId,
         channelRepository: context.read<ChannelRepository>(),
         messageRepository: context.read<MessageRepository>(),
+        profileRepository: context.read<ProfileRepository>(),
         socket: context.read<ChatSocket>(),
       )..add(const ThreadEvent.requested()),
       errorTitle: '스레드를 불러오지 못했어요',
@@ -84,7 +137,10 @@ class _ThreadViewState extends State<ThreadView> {
             children: [
               _ThreadHeader(
                 channelName: conversation.thread.channelName,
+                name: conversation.thread.name,
+                isArchived: conversation.thread.isArchived,
                 onBack: () => context.pop(),
+                onMore: () => _showMenu(context, conversation.thread),
               ),
               Expanded(
                 child: ListView(
@@ -99,6 +155,11 @@ class _ThreadViewState extends State<ThreadView> {
                         onAttachmentTap: (index) => _openAttachment(
                           conversation.thread.rootMessage,
                           index,
+                        ),
+                        imageBuilder: (index, attachment) => _image(
+                          conversation.thread.rootMessage,
+                          index,
+                          attachment,
                         ),
                       ),
                     ),
@@ -140,6 +201,8 @@ class _ThreadViewState extends State<ThreadView> {
                               avatarSize: 32,
                               onAttachmentTap: (index) =>
                                   _openAttachment(reply, index),
+                              imageBuilder: (index, attachment) =>
+                                  _image(reply, index, attachment),
                             ),
                         ],
                       ),
@@ -200,11 +263,100 @@ class _ReplyComposerState extends State<_ReplyComposer> {
   }
 }
 
+enum _ThreadAction { rename, archive }
+
+/// 스레드 이름을 적는 시트. 적은 이름을 돌려주고, 취소하면 null.
+class _RenameThreadSheet extends StatefulWidget {
+  const _RenameThreadSheet({required this.initialName});
+
+  final String initialName;
+
+  static Future<String?> show(BuildContext context, String initialName) =>
+      showModalBottomSheet<String>(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: AppColors.neutral800,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        builder: (_) => _RenameThreadSheet(initialName: initialName),
+      );
+
+  @override
+  State<_RenameThreadSheet> createState() => _RenameThreadSheetState();
+}
+
+class _RenameThreadSheetState extends State<_RenameThreadSheet> {
+  late final _controller = TextEditingController(text: widget.initialName);
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _save() {
+    final name = _controller.text.trim();
+    if (name.isEmpty) return;
+    Navigator.of(context).pop(name);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(
+          AppSpacing.s20,
+          AppSpacing.s16,
+          AppSpacing.s20,
+          AppSpacing.s24 + MediaQuery.viewInsetsOf(context).bottom,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          spacing: AppSpacing.s16,
+          children: [
+            Text(
+              '스레드 이름',
+              style: AppFont.labelM.copyWith(color: AppColors.darkOnSurface),
+            ),
+            CoworkTextField(
+              controller: _controller,
+              textInputAction: TextInputAction.done,
+              onSubmitted: (_) => _save(),
+            ),
+            ValueListenableBuilder(
+              valueListenable: _controller,
+              builder: (context, value, _) => CoworkButton(
+                label: '저장',
+                size: CoworkButtonSize.large,
+                enabled: value.text.trim().isNotEmpty,
+                onPressed: _save,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _ThreadHeader extends StatelessWidget {
-  const _ThreadHeader({required this.channelName, this.onBack});
+  const _ThreadHeader({
+    required this.channelName,
+    required this.isArchived,
+    this.name,
+    this.onBack,
+    this.onMore,
+  });
 
   final String channelName;
+
+  /// 스레드에 붙인 이름. 없으면 `스레드` 로 보인다.
+  final String? name;
+  final bool isArchived;
   final VoidCallback? onBack;
+  final VoidCallback? onMore;
 
   @override
   Widget build(BuildContext context) {
@@ -232,18 +384,38 @@ class _ThreadHeader extends StatelessWidget {
             ),
           ),
           const SizedBox(width: AppSpacing.s10),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                '스레드',
-                style: AppFont.labelS.copyWith(color: AppColors.darkOnSurface),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  name ?? '스레드',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppFont.labelS.copyWith(
+                    color: AppColors.darkOnSurface,
+                  ),
+                ),
+                Text(
+                  '# $channelName',
+                  style: AppFont.subtextS.copyWith(color: AppColors.neutral300),
+                ),
+              ],
+            ),
+          ),
+          if (isArchived) const CoworkBadge(label: '보관됨'),
+          Semantics(
+            button: true,
+            label: '더보기',
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: onMore,
+              child: SizedBox(
+                width: 32,
+                height: 44,
+                child: Center(child: AppIcon.more()),
               ),
-              Text(
-                '# $channelName',
-                style: AppFont.subtextS.copyWith(color: AppColors.neutral300),
-              ),
-            ],
+            ),
           ),
         ],
       ),

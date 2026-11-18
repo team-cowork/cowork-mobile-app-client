@@ -5,6 +5,10 @@ import '../../../../shared/extensions/chat_avatar_color_mapping.dart';
 import '../../domain/chat_attachment.dart';
 import '../../domain/chat_message.dart';
 
+/// [attachment] 이미지를 그릴 위젯. [index] 는 메시지 안에서 몇 번째 첨부인지.
+typedef AttachmentImageBuilder =
+    Widget Function(int index, ChatAttachment attachment);
+
 class ChatMessageRow extends StatelessWidget {
   const ChatMessageRow({
     required this.message,
@@ -12,6 +16,7 @@ class ChatMessageRow extends StatelessWidget {
     this.onTap,
     this.onLongPress,
     this.onAttachmentTap,
+    this.imageBuilder,
     super.key,
   });
 
@@ -22,6 +27,10 @@ class ChatMessageRow extends StatelessWidget {
 
   /// 첨부파일 카드를 눌렀다. 몇 번째 첨부인지 넘긴다.
   final ValueChanged<int>? onAttachmentTap;
+
+  /// 주면 대화 안에서 볼 수 있는 이미지 첨부([ChatAttachment.isPreviewableImage])를
+  /// 카드 대신 이 위젯으로 그린다.
+  final AttachmentImageBuilder? imageBuilder;
 
   @override
   Widget build(BuildContext context) {
@@ -44,14 +53,17 @@ class ChatMessageRow extends StatelessWidget {
               spacing: AppSpacing.s8,
               children: [
                 for (final (index, attachment) in message.attachments.indexed)
-                  CoworkAttachmentCard(
-                    filename: attachment.name,
-                    subtitle: _sizeLabel(attachment.size),
-                    icon: _iconFor(attachment),
-                    onTap: onAttachmentTap == null
-                        ? null
-                        : () => onAttachmentTap!(index),
-                  ),
+                  if (imageBuilder != null && attachment.isPreviewableImage)
+                    imageBuilder!(index, attachment)
+                  else
+                    CoworkAttachmentCard(
+                      filename: attachment.name,
+                      subtitle: _sizeLabel(attachment.size),
+                      icon: _iconFor(attachment),
+                      onTap: onAttachmentTap == null
+                          ? null
+                          : () => onAttachmentTap!(index),
+                    ),
               ],
             ),
     );

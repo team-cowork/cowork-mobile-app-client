@@ -3,6 +3,7 @@ import 'package:dio/dio.dart';
 import '../../../../core/network/dio_client.dart';
 import '../../../auth/data/auth_repository.dart';
 import '../model/requests/create_team_request.dart';
+import '../model/responses/team_member_response.dart';
 import '../model/responses/team_summary_response.dart';
 
 /// team 서비스의 팀 저장소.
@@ -20,6 +21,14 @@ class TeamRepository {
       (await _dio.get<String>('/teams')).data ?? '',
     ))
       TeamSummaryResponse.fromJson(json),
+  ];
+
+  /// [teamId] 팀의 멤버와 역할. 팀 멤버면 누구나 읽을 수 있다.
+  Future<List<TeamMemberResponse>> fetchMembers(int teamId) async => [
+    for (final json in unwrapListPayload(
+      (await _dio.get<String>('/teams/$teamId/members')).data ?? '',
+    ))
+      TeamMemberResponse.fromJson(json),
   ];
 
   /// 팀을 만들고 서버가 저장한 팀을 돌려준다. 만든 사람이 소유자가 된다.

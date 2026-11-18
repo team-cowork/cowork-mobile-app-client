@@ -9,6 +9,13 @@ sealed class ThreadEvent extends Equatable {
   /// 입력한 답글을 보낸다.
   const factory ThreadEvent.replySent(String text) = ThreadReplySent;
 
+  /// 스레드 이름을 정한다. 이름을 붙인 적이 없으면 스레드를 만든다.
+  const factory ThreadEvent.renamed(String name) = ThreadRenamed;
+
+  /// 스레드를 보관하거나 보관을 푼다. 이름을 붙여 만든 스레드만 보관할 수 있다.
+  const factory ThreadEvent.archivedChanged(bool archived) =
+      ThreadArchivedChanged;
+
   @override
   List<Object?> get props => [];
 }
@@ -24,6 +31,24 @@ final class ThreadReplySent extends ThreadEvent {
 
   @override
   List<Object?> get props => [text];
+}
+
+final class ThreadRenamed extends ThreadEvent {
+  const ThreadRenamed(this.name);
+
+  final String name;
+
+  @override
+  List<Object?> get props => [name];
+}
+
+final class ThreadArchivedChanged extends ThreadEvent {
+  const ThreadArchivedChanged(this.archived);
+
+  final bool archived;
+
+  @override
+  List<Object?> get props => [archived];
 }
 
 /// 소켓으로 스레드에 반영할 이벤트가 왔다. 화면이 아니라 Bloc 이 스스로 넣는다.

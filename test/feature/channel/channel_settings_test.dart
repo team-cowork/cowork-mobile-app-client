@@ -6,7 +6,6 @@ import 'package:cowork_app/feature/channel/data/repositories/channel_repository.
 import 'package:cowork_app/feature/channel/domain/channel_notification.dart';
 import 'package:cowork_app/feature/channel/presentation/blocs/channel_settings/channel_settings_bloc.dart';
 import 'package:cowork_app/feature/channel/presentation/views/channel_settings_view.dart';
-import 'package:cowork_app/feature/chat/data/repositories/message_repository.dart';
 import 'package:cowork_app/feature/profile/data/profile_store.dart';
 import 'package:cowork_app/feature/profile/data/repositories/profile_repository.dart';
 import 'package:cowork_app/feature/setting/data/preference_repository.dart';
@@ -30,18 +29,11 @@ PreferenceRepository _preferences(FakeMessageGateway gateway) =>
 ProfileRepository _profiles(FakeMessageGateway gateway) =>
     ProfileRepository.withDio(messageDio(gateway, 'user'));
 
-MessageRepository _messages(FakeMessageGateway gateway) =>
-    MessageRepository.withDio(
-      chat: messageDio(gateway, 'chat'),
-      user: messageDio(gateway, 'user'),
-    );
-
 ChannelSettingsBloc _bloc(FakeMessageGateway gateway) => ChannelSettingsBloc(
   channelId: 10,
   channelRepository: _channels(gateway),
   preferenceRepository: _preferences(gateway),
   profileRepository: _profiles(gateway),
-  messageRepository: _messages(gateway),
 );
 
 /// 불러오기까지 마친 Bloc. 이후 요청만 보도록 불러오기 기록은 비운다.
@@ -344,9 +336,6 @@ void main() {
             ),
             RepositoryProvider<ProfileRepository>.value(
               value: _profiles(gateway),
-            ),
-            RepositoryProvider<MessageRepository>.value(
-              value: _messages(gateway),
             ),
           ],
           child: MaterialApp(

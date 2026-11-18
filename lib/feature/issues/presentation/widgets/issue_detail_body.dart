@@ -1,6 +1,7 @@
 import 'package:cowork_design_system/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../shared/widgets/base_scaffold.dart';
 import '../../domain/issue.dart';
@@ -83,21 +84,17 @@ class IssueDetailBody extends StatelessWidget {
                   ),
                   const SizedBox(height: AppSpacing.s20),
                   IssueMetaCard(issue: issue),
-                  const SizedBox(height: AppSpacing.s20),
-                  Text(
-                    '설명',
-                    style: AppFont.subtextS.copyWith(
-                      fontWeight: AppFont.semiBold,
-                      color: AppColors.neutral300,
+                  const SizedBox(height: AppSpacing.s12),
+                  GestureDetector(
+                    onTap: () => launchUrl(
+                      Uri.parse(issue.htmlUrl),
+                      mode: LaunchMode.externalApplication,
                     ),
-                  ),
-                  const SizedBox(height: AppSpacing.s10),
-                  Text(
-                    issue.description,
-                    style: AppFont.subtextM.copyWith(
-                      fontSize: 14,
-                      height: 1.5,
-                      color: AppColors.darkOnSurface.withValues(alpha: 0.9),
+                    child: Text(
+                      'GitHub에서 열기',
+                      style: AppFont.subtextM.copyWith(
+                        color: AppColors.blue300,
+                      ),
                     ),
                   ),
                   const SizedBox(height: AppSpacing.s20),
