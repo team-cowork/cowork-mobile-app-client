@@ -17,6 +17,7 @@ import '../../data/repositories/message_repository.dart';
 import '../../domain/chat_message.dart';
 import '../blocs/channel_message/channel_message_bloc.dart';
 import '../utils/attachment_opener.dart';
+import '../widgets/attachment_image_preview.dart';
 import '../widgets/chat_message_row.dart';
 
 class ChannelView extends StatelessWidget {
@@ -391,6 +392,15 @@ class _MessageListState extends State<_MessageList> {
           ? () => _showMessageActions(context, message)
           : null,
       onAttachmentTap: (index) => _openAttachment(context, message, index),
+      imageBuilder: (index, attachment) => AttachmentImagePreview(
+        key: ValueKey('${message.id}/$index'),
+        repository: context.read<MessageRepository>(),
+        channelId: context.read<ChannelMessageBloc>().channelId,
+        messageId: message.id,
+        attachmentIndex: index,
+        name: attachment.name,
+        onTap: () => _openAttachment(context, message, index),
+      ),
     );
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s4),

@@ -71,6 +71,17 @@ String serviceBaseUrl(String apiBaseUrl, ApiService service) {
   return '$base/${service.name}';
 }
 
+/// 서명된 임시 주소의 파일을 받는 dio. 인증 헤더도 게이트웨이 prefix 도 없다.
+///
+/// [createDio] 와 같은 이유로 응답이 멈춰도 끝없이 기다리지 않게 시간 제한을 둔다.
+/// 파일은 JSON 보다 크므로 받는 시간만 조금 더 준다.
+Dio createFileDio() => Dio(
+  BaseOptions(
+    connectTimeout: const Duration(seconds: 10),
+    receiveTimeout: const Duration(seconds: 30),
+  ),
+);
+
 /// 인증이 필요한 API 용 dio. access token 을 붙이고 401 이면 갱신해 재시도한다.
 ///
 /// 갱신은 [AuthRepository.restoreSession] 이 그대로 맡는다. 저장된 refresh token 으로

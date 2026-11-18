@@ -106,6 +106,12 @@ class FakeMessageGateway implements HttpClientAdapter {
       'POST /chat/chat/channels/10/messages' => _ok({'queued': true}),
       'GET /chat/chat/channels/10/messages/m1/attachments/0/download-url' =>
         _ok({'downloadUrl': 'https://files.test/a.pdf'}),
+      'GET /chat/chat/channels/10/messages/img1/attachments/0/download-url' =>
+        _ok({'downloadUrl': 'https://files.test/img1.png'}),
+      'GET /chat/chat/channels/10/messages/img2/attachments/0/download-url' =>
+        _ok({'downloadUrl': 'https://files.test/img2.png'}),
+      'GET /chat/chat/channels/10/messages/img3/attachments/0/download-url' =>
+        _ok({'downloadUrl': 'https://files.test/img3.png'}),
       'GET /chat/chat/channels/10/messages/r1/attachments/0/download-url' =>
         _ok({'downloadUrl': 'https://files.test/reply.pdf'}),
       'GET /user/users/me' => _ok({'id': 1, 'name': '나'}),
@@ -219,3 +225,36 @@ Dio messageDio(FakeMessageGateway gateway, String service) => Dio(
     responseType: ResponseType.plain,
   ),
 )..httpClientAdapter = gateway;
+
+/// 1x1 PNG.
+final tinyPng = base64Decode(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==',
+);
+
+/// 임시 주소(`https://files.test/...`)의 파일을 주는 가짜 서버. 받은 요청 주소를 적어 둔다.
+class FakeFilesServer implements HttpClientAdapter {
+  final requests = <String>[];
+
+  /// true 면 500 으로 응답한다.
+  bool failing = false;
+
+  /// 걸어 두면 응답을 이 Future 가 끝날 때까지 붙잡는다.
+  Future<void>? gate;
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<Uint8List>? requestStream,
+    Future<void>? cancelFuture,
+  ) async {
+    requests.add(options.uri.toString());
+    await gate;
+    if (failing) return ResponseBody.fromString('', 500);
+    return ResponseBody.fromBytes(tinyPng, 200);
+  }
+
+  @override
+  void close({bool force = false}) {}
+}
+
+Dio filesDio(FakeFilesServer server) => Dio()..httpClientAdapter = server;
