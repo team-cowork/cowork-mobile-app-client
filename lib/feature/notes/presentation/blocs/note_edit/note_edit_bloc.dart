@@ -22,7 +22,15 @@ part 'note_edit_state.dart';
 ///
 /// 첨부는 파일을 고르는 즉시 올리고, 회의록에는 저장할 때 목록째 반영한다. 업로드에는
 /// 회의록 id 가 필요 없어서(채널만 있으면 된다) 아직 만들어지지 않은 새 회의록에도
-/// 붙일 수 있다. 저장하지 않고 나가면 붙지 않은 업로드는 서버가 나중에 지운다.
+/// 붙일 수 있다.
+///
+/// 저장하지 않고 나가거나 첨부를 빼고 저장해도 스토리지에 파일이 쌓이지 않는다.
+/// cowork-chat 의 첨부 정리 워커(`attachment-cleanup.poller.ts`)가 지운다(서버 코드로
+/// 확인, 실제로 지워지는 것은 보지 못했다).
+/// - 확인 전 임시 파일(`chat-uploads/`): 버킷 수명 주기 규칙이 지운다.
+/// - 확인했지만 어디에도 안 붙은 파일: 올린 지 8일(보관 7일 + 1일) 뒤 메시지·회의록이
+///   참조하지 않으면 지운다(`reclaimUpload`).
+/// - 회의록에서 뺀 파일: 정리 기록을 남겼다가 8일 뒤 참조가 없으면 지운다.
 class NoteEditBloc extends Bloc<NoteEditEvent, NoteEditState> {
   /// 이미 있는 [note] 를 고친다. 템플릿은 [NoteEditStarted] 때 읽는다.
   NoteEditBloc(
@@ -68,7 +76,11 @@ class NoteEditBloc extends Bloc<NoteEditEvent, NoteEditState> {
     on<NoteEditAttachmentRemoved>(_onAttachmentRemoved);
   }
 
-  /// 서버가 한 회의록에 받는 첨부 수.
+  /// 한 회의록에 붙일 수 있는 첨부 수.
+  ///
+  /// 서버(`MeetingNoteAttachmentSupport`)의 상한과 같은 값이다. 서버는 저장할 때에야
+  /// 개수를 거절해서, 그대로 두면 다 올린 뒤에 실패한다. 그래서 고르는 자리에서 막는다.
+  /// 서버가 상한을 바꾸면 여기도 바꿔야 한다.
   static const maxAttachments = 20;
 
   /// 새 회의록이면 시트에서 고른 템플릿. 이미 있는 회의록이면 null 이다.
@@ -237,18 +249,15 @@ class NoteEditBloc extends Bloc<NoteEditEvent, NoteEditState> {
 
   /// 올리기 전에 걸러 낼 수 있는 사유. 올려도 되면 null.
   ///
-  /// 형식과 개수는 서버도 거절하지만, 업로드까지 마친 뒤 저장할 때에야 알게 되는
-  /// 것보다 고르는 자리에서 알려 주는 편이 낫다. 크기 한도는 서버 설정이라 서버가
-  /// 업로드 주소를 줄 때 거절하게 둔다.
+  /// 형식·크기 한도는 서버가 정하고 업로드 주소를 줄 때 거절하므로 여기서 따로 보지
+  /// 않는다. 개수만 저장할 때에야 거절되어 미리 막는다([maxAttachments]).
   String? _whyNotAttachable(NoteUploadFile file) {
     if (_saving) return '저장하는 중이에요. 저장한 뒤 다시 붙여 주세요.';
     if (state.note.attachments.length + state.uploads.length >=
         maxAttachments) {
       return '첨부파일은 $maxAttachments개까지 붙일 수 있어요.';
     }
-    if (!noteAttachmentContentTypes.containsKey(extensionOf(file.name))) {
-      return '이미지·영상·오디오·PDF·텍스트 파일만 붙일 수 있어요.';
-    }
+    // 크기가 0 이면 업로드 주소 요청을 만들 수 없다(서버는 1 바이트 이상만 받는다).
     if (file.size <= 0) return '빈 파일은 붙일 수 없어요.';
     return null;
   }

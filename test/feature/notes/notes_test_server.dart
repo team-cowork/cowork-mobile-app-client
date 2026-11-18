@@ -284,12 +284,34 @@ class FakeNotesServer implements HttpClientAdapter {
   /// 임시 키 → 업로드 주소를 받을 때 보낸 파일 이름. 확인 응답이 돌려준다.
   final Map<String, String> _uploadNames = {};
 
-  /// 업로드 주소 발급과 업로드 확인. 서버처럼 확인하면 `chat-uploads/` 임시 키가
-  /// `chat-files/` 확정 키로 바뀐다.
+  /// cowork-chat 이 기본으로 받는 첨부 형식(`S3_CHAT_ALLOWED_CONTENT_TYPES`).
+  static const _allowedTypes = {
+    'video/mp4',
+    'video/quicktime',
+    'video/x-msvideo',
+    'audio/mpeg',
+    'audio/ogg',
+    'audio/wav',
+    'audio/mp4',
+    'image/jpeg',
+    'image/png',
+    'image/gif',
+    'image/webp',
+    'application/pdf',
+    'text/plain',
+  };
+
+  /// 업로드 주소 발급과 업로드 확인. 서버처럼 받지 않는 형식은 주소를 주지 않고
+  /// 거절하고, 확인하면 `chat-uploads/` 임시 키가 `chat-files/` 확정 키로 바뀐다.
   ResponseBody _file(int channelId, String step, Map<String, dynamic> body) {
     if (step == 'presigned-url') {
       if (failUpload case (final statusCode, final message)) {
         return _json({'message': message}, statusCode);
+      }
+      if (!_allowedTypes.contains(body['contentType'])) {
+        return _json({
+          'message': '허용되지 않은 파일 형식입니다. 허용 형식: ${_allowedTypes.join(', ')}',
+        }, 400);
       }
       final name = body['filename'] as String;
       final key =

@@ -78,6 +78,8 @@ dependencies:
   url_launcher: ^6.3.2
   share_plus: ^13.3.1
   file_picker: ^13.4.0
+  # 첨부 파일 이름으로 MIME 타입을 정한다. Android 파일 선택기는 MIME 을 주지 않는다.
+  mime: ^2.0.0
 
 dev_dependencies:
   flutter_test:

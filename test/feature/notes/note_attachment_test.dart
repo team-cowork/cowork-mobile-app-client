@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:cowork_app/feature/notes/data/repositories/note_attachment_repository.dart';
 import 'package:cowork_app/feature/notes/domain/note.dart';
 import 'package:cowork_app/feature/notes/domain/note_attachment.dart';
 import 'package:cowork_app/feature/notes/presentation/utils/note_file_picker.dart';
@@ -58,6 +59,21 @@ void main() {
   setUp(() => ProfileStore.instance.currentUserId = 1);
 
   group('저장소', () {
+    test('MIME 은 이름으로 정하고, 서버와 이름이 다른 형식은 서버 이름으로 보낸다', () {
+      expect(
+        NoteAttachmentRepository.contentTypeOf('자료.pdf'),
+        'application/pdf',
+      );
+      expect(NoteAttachmentRepository.contentTypeOf('사진.JPG'), 'image/jpeg');
+      // mime 패키지는 audio/x-wav, 서버는 audio/wav 로 부른다.
+      expect(NoteAttachmentRepository.contentTypeOf('녹음.wav'), 'audio/wav');
+      // 모르는 형식도 서버에 묻는다.
+      expect(
+        NoteAttachmentRepository.contentTypeOf('확장자없음'),
+        'application/octet-stream',
+      );
+    });
+
     test('주소 발급 → 스토리지 PUT → 확인 순서로 올리고 확정 키를 돌려준다', () async {
       final server = FakeNotesServer();
       final progress = <double>[];
@@ -203,7 +219,7 @@ void main() {
       );
     });
 
-    testWidgets('받지 않는 형식은 올리지 않고 알린다', (tester) async {
+    testWidgets('서버가 받지 않는 형식이면 서버 사유를 알리고 파일은 올리지 않는다', (tester) async {
       _tall(tester);
       final server = FakeNotesServer();
       await _openEditor(
@@ -215,7 +231,28 @@ void main() {
       await tester.tap(find.byIcon(Icons.attach_file));
       await tester.pumpAndSettle();
 
-      expect(find.text('이미지·영상·오디오·PDF·텍스트 파일만 붙일 수 있어요.'), findsOneWidget);
+      // 형식은 앱이 거르지 않고 서버에 묻는다. 서버는 주소를 주지 않고 거절한다.
+      expect(_paths(server, 'POST'), [
+        '/chat/chat/channels/10/files/presigned-url',
+      ]);
+      expect(find.textContaining('허용되지 않은 파일 형식'), findsOneWidget);
+      expect(server.stored, isEmpty);
+      expect(find.byType(CoworkFileUploadProgress), findsNothing);
+    });
+
+    testWidgets('20개가 붙어 있으면 더 고른 파일은 올리지 않고 알린다', (tester) async {
+      _tall(tester);
+      final server = FakeNotesServer();
+      server.notes.first['attachments'] = [
+        for (var i = 0; i < 20; i++)
+          {'objectKey': 'chat-files/10/1/f$i.png', 'name': '사진$i.png'},
+      ];
+      await _openEditor(tester, server, pickFile: () async => _file('하나더.png'));
+
+      await tester.tap(find.byIcon(Icons.attach_file));
+      await tester.pumpAndSettle();
+
+      expect(find.text('첨부파일은 20개까지 붙일 수 있어요.'), findsOneWidget);
       expect(_paths(server, 'POST'), isEmpty);
     });
 

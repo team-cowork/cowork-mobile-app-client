@@ -1,4 +1,6 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
+import 'package:mime/mime.dart';
 
 import '../../../../core/network/dio_client.dart';
 import '../../../auth/data/auth_repository.dart';
@@ -43,17 +45,16 @@ class NoteAttachmentRepository {
   /// [file] 을 [channelId] 채널에 올리고 회의록에 붙일 수 있게 확정한다.
   ///
   /// 업로드 주소 발급 → 스토리지 PUT → 업로드 확인 3단계다. [onProgress] 는 PUT 이
-  /// 보낸 비율(0~1)을 받는다. 형식은 [noteAttachmentContentTypes] 에 있는 것만 받으며,
-  /// 거르는 일은 부르는 쪽이 먼저 한다.
+  /// 보낸 비율(0~1)을 받는다.
+  ///
+  /// 어떤 형식을 받을지는 서버가 정한다. 서버는 받지 않는 형식이면 업로드 주소를 주지
+  /// 않고 400 으로 거절하므로, 파일을 올리기 전에 끝난다.
   Future<NoteAttachment> upload(
     int channelId,
     NoteUploadFile file, {
     void Function(double progress)? onProgress,
   }) async {
-    final contentType = noteAttachmentContentTypes[extensionOf(file.name)];
-    if (contentType == null) {
-      throw ArgumentError.value(file.name, 'file', '첨부할 수 없는 형식');
-    }
+    final contentType = contentTypeOf(file.name);
 
     final target = FileUploadUrlResponse.fromJson(
       unwrapPayload(
@@ -99,6 +100,22 @@ class NoteAttachmentRepository {
       name: confirmed.name.isEmpty ? file.name : confirmed.name,
     );
   }
+
+  /// 업로드 주소를 받을 때 신고할 MIME 타입. 이름의 확장자로 정한다.
+  ///
+  /// Android 파일 선택기는 MIME 을 주지 않아 이름으로 알아낸다. 모르는 확장자면
+  /// `application/octet-stream` 을 보내 서버가 받을지 정하게 한다.
+  @visibleForTesting
+  static String contentTypeOf(String name) {
+    final type = lookupMimeType(name) ?? 'application/octet-stream';
+    return _serverAliases[type] ?? type;
+  }
+
+  /// 같은 형식인데 `mime` 패키지와 서버(cowork-chat)가 다르게 부르는 이름.
+  ///
+  /// 서버는 형식 이름을 글자 그대로 비교하므로, 서버가 쓰는 이름으로 바꿔 보낸다.
+  /// 어떤 형식을 받을지는 바꾸지 않는다. 서버가 두 이름을 다 받게 되면 지운다.
+  static const _serverAliases = {'audio/x-wav': 'audio/wav'};
 
   /// [note] 에 붙은 [attachment] 를 받을 임시 주소.
   ///
