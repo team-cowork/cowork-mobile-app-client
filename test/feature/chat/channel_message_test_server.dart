@@ -102,7 +102,9 @@ class FakeMessageGateway implements HttpClientAdapter {
       'PUT /preference/preferences/account/1/channels/10/notification' => _ok(
         notification = {...bodies[call]!, 'notification': true},
       ),
-      'GET /channel/channels/10/threads' => _ok({'content': threads}),
+      'GET /channel/channels/10/threads' => _ok({
+        'content': _threadPage(uri.queryParameters),
+      }),
       'POST /channel/channels/10/threads' => _ok(
         _addThread({...bodies[call]!, 'id': 5, 'channelId': 10}),
       ),
@@ -132,6 +134,13 @@ class FakeMessageGateway implements HttpClientAdapter {
       }),
       _ => ResponseBody.fromString('', 204),
     };
+  }
+
+  /// 서버처럼 `page`(0 부터)와 `size` 로 스레드를 나눠 준다. 없으면 전부 준다.
+  List<Map<String, dynamic>> _threadPage(Map<String, String> query) {
+    final size = int.tryParse(query['size'] ?? '') ?? threads.length;
+    final page = int.tryParse(query['page'] ?? '') ?? 0;
+    return threads.skip(page * size).take(size).toList();
   }
 
   Map<String, dynamic> _addThread(Map<String, dynamic> thread) {

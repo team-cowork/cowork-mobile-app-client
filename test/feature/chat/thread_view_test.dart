@@ -96,6 +96,66 @@ void main() {
       expect(messageText('첫 답글'), findsOneWidget);
     });
 
+    testWidgets('스레드가 100개를 넘어도 이 스레드의 이름을 찾는다', (tester) async {
+      final server = gateway()
+        ..threads = [
+          for (var i = 0; i < 100; i++)
+            {
+              'id': 100 + i,
+              'channelId': 10,
+              'name': '다른 스레드 $i',
+              'parentMessageId': 'other$i',
+              'isArchived': false,
+            },
+          namedThread(),
+        ];
+      await pumpThread(tester, server, FakeChatSocket());
+
+      expect(find.text('배포 논의'), findsOneWidget);
+    });
+
+    testWidgets('스레드를 읽지 못한 채 이름을 바꾸면 다시 읽어 이미 있는 스레드를 고친다', (tester) async {
+      final server = gateway()
+        ..threads = [namedThread()]
+        ..failingOnce.add('GET /channel/channels/10/threads');
+      await pumpThread(tester, server, FakeChatSocket());
+      expect(find.text('스레드'), findsOneWidget);
+
+      await chooseMenu(tester, '이름 바꾸기');
+      await tester.enterText(find.byType(TextField).last, '새 이름');
+      await tester.pump();
+      await tester.tap(find.text('저장'));
+      await tester.pumpAndSettle();
+
+      expect(
+        server.bodies.containsKey('POST /channel/channels/10/threads'),
+        isFalse,
+      );
+      expect(server.bodies['PATCH /channel/channels/10/threads/5'], {
+        'name': '새 이름',
+      });
+      expect(find.text('새 이름'), findsOneWidget);
+    });
+
+    testWidgets('스레드를 계속 못 읽으면 새로 만들지 않고 사유를 알린다', (tester) async {
+      final server = gateway()
+        ..threads = [namedThread()]
+        ..failing = 'GET /channel/channels/10/threads';
+      await pumpThread(tester, server, FakeChatSocket());
+
+      await chooseMenu(tester, '이름 바꾸기');
+      await tester.enterText(find.byType(TextField).last, '새 이름');
+      await tester.pump();
+      await tester.tap(find.text('저장'));
+      await tester.pumpAndSettle();
+
+      expect(
+        server.bodies.containsKey('POST /channel/channels/10/threads'),
+        isFalse,
+      );
+      expect(find.byType(SnackBar), findsOneWidget);
+    });
+
     testWidgets('이름을 붙인 적이 없으면 이름을 적어 스레드를 만든다', (tester) async {
       final server = gateway();
       await pumpThread(tester, server, FakeChatSocket());
@@ -138,6 +198,30 @@ void main() {
         'isArchived': true,
       });
       expect(find.text('보관됨'), findsOneWidget);
+    });
+
+    testWidgets('보관된 스레드는 보관을 풀 수 있다', (tester) async {
+      final server = gateway()..threads = [namedThread(archived: true)];
+      await pumpThread(tester, server, FakeChatSocket());
+
+      await chooseMenu(tester, '보관 풀기');
+
+      expect(server.bodies['PATCH /channel/channels/10/threads/5'], {
+        'isArchived': false,
+      });
+      expect(find.text('보관됨'), findsNothing);
+    });
+
+    testWidgets('보관하지 못하면 사유를 알리고 보관 상태는 그대로다', (tester) async {
+      final server = gateway()
+        ..threads = [namedThread()]
+        ..failing = 'PATCH /channel/channels/10/threads/5';
+      await pumpThread(tester, server, FakeChatSocket());
+
+      await chooseMenu(tester, '스레드 보관');
+
+      expect(find.text('보관됨'), findsNothing);
+      expect(find.byType(SnackBar), findsOneWidget);
     });
 
     testWidgets('이름을 붙인 적이 없으면 보관 메뉴가 없다', (tester) async {
