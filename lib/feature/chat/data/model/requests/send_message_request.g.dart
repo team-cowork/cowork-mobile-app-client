@@ -11,4 +11,6 @@ Map<String, dynamic> _$SendMessageRequestToJson(_SendMessageRequest instance) =>
       'content': instance.content,
       'clientMessageId': instance.clientMessageId,
       'parentMessageId': ?instance.parentMessageId,
+      'type': ?instance.type,
+      'attachments': ?instance.attachments?.map((e) => e.toJson()).toList(),
     };
