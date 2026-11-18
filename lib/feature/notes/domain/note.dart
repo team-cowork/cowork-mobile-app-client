@@ -1,5 +1,7 @@
 import 'package:equatable/equatable.dart';
 
+import 'note_attachment.dart';
+
 /// 회의록 화면에서 사용하는 도메인 모델.
 ///
 /// UI 색상 등은 위젯 쪽에서 매핑한다. 여기서는 표시할 데이터만 담는다.
@@ -13,6 +15,7 @@ class Note extends Equatable {
     required this.author,
     this.participants = const [],
     this.sections = const {},
+    this.attachments = const [],
   });
 
   /// 회의록 식별자. 서버가 준 회의록 id 다.
@@ -41,6 +44,9 @@ class Note extends Equatable {
   /// 서버는 저장한 키 순서를 그대로 돌려준다. 상세 화면도 이 순서로 보여준다.
   final Map<String, String> sections;
 
+  /// 붙인 파일. 서버가 준 순서 그대로다.
+  final List<NoteAttachment> attachments;
+
   /// 카드에 보이는 본문 요약 (2줄 내외).
   ///
   /// 예전 회의록이 쓰던 `요약`·`내용` 섹션이 있으면 그것을, 없으면 모든 섹션을
@@ -48,12 +54,26 @@ class Note extends Equatable {
   String get summary =>
       sections['요약'] ?? sections['내용'] ?? sections.values.join(' ').trim();
 
+  /// OS 공유 시트로 내보낼 텍스트.
+  ///
+  /// 제목을 `# `, 내용이 있는 섹션 제목을 `## ` 로 두고 본문을 그대로 잇는다.
+  /// 본문이 이미 마크다운이라 받는 쪽에서 구조가 유지된다.
+  String get shareText {
+    final buffer = StringBuffer('# $title');
+    for (final MapEntry(key: name, value: body) in sections.entries) {
+      if (body.trim().isEmpty) continue;
+      buffer.write('\n\n## $name\n${body.trim()}');
+    }
+    return buffer.toString();
+  }
+
   Note copyWith({
     String? title,
     List<String>? tags,
     NoteAuthor? author,
     List<String>? participants,
     Map<String, String>? sections,
+    List<NoteAttachment>? attachments,
   }) => Note(
     id: id,
     channelId: channelId,
@@ -63,6 +83,7 @@ class Note extends Equatable {
     author: author ?? this.author,
     participants: participants ?? this.participants,
     sections: sections ?? this.sections,
+    attachments: attachments ?? this.attachments,
   );
 
   @override
@@ -75,6 +96,7 @@ class Note extends Equatable {
     author,
     participants,
     sections,
+    attachments,
   ];
 }
 

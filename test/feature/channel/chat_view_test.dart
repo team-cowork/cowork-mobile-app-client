@@ -18,11 +18,13 @@ void main() {
     WidgetTester tester,
     FakeChatServer server, {
     FakeChatSocket? socket,
+    NotificationRepository? notifications,
   }) async {
     await tester.pumpWidget(
       chatTestApp(
         server,
         socket: socket,
+        notifications: notifications,
         theme: AppTheme.dark(),
         home: const ChatView(),
       ),
@@ -253,7 +255,97 @@ void main() {
     expect(find.text('홈을 불러오지 못했어요'), findsNothing);
   });
 
-  testWidgets('팀이 없어도 초대 알림을 누르면 그 팀으로 들어간다', (tester) async {
+  group('다른 사람이 나를 팀에 넣으면(MEMBER_INVITED)', () {
+    /// 알림을 받기 시작한 저장소. testWidgets 본문 안에서 불러야 한다. setUp 에서
+    /// 만들면 구독이 가짜 시간 밖에서 열려 pumpAndSettle 로 알림이 흘러가지 않는다.
+    (FakeNotificationStream, NotificationRepository) startNotifications() {
+      final stream = FakeNotificationStream();
+      final notifications = NotificationRepository(stream)..start();
+      addTearDown(notifications.dispose);
+      return (stream, notifications);
+    }
+
+    /// 서버 팀 목록에 [teamId] 팀을 넣고 초대 알림을 보낸다.
+    Future<void> inviteTo(
+      WidgetTester tester,
+      FakeNotificationStream stream,
+      FakeChatServer server,
+      int teamId,
+      String name,
+    ) async {
+      server.teams.add({
+        'id': teamId,
+        'name': name,
+        'iconUrl': null,
+        'myRole': 'MEMBER',
+      });
+      server.channels[teamId] = [
+        {'id': 50, 'name': '초대-채널', 'type': 'TEXT', 'viewType': 'TEXT'},
+      ];
+      stream.push({
+        'type': 'MEMBER_INVITED',
+        'title': '팀 초대',
+        'teamId': teamId,
+      });
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('팀이 없던 홈은 바로 그 팀으로 들어간다', (tester) async {
+      final server = FakeChatServer(teams: []);
+      final (stream, notifications) = startNotifications();
+      await pumpChat(tester, server, notifications: notifications);
+      expect(find.text('아직 속한 팀이 없어요'), findsOneWidget);
+
+      await inviteTo(tester, stream, server, 5, '초대받은 팀');
+
+      expect(find.text('아직 속한 팀이 없어요'), findsNothing);
+      expect(find.text('초대받은 팀'), findsOneWidget);
+      expect(find.text('초대-채널'), findsOneWidget);
+    });
+
+    testWidgets('보던 팀이 있으면 보던 화면은 두고 단축 바에만 붙인다', (tester) async {
+      final server = FakeChatServer();
+      final (stream, notifications) = startNotifications();
+      await pumpChat(tester, server, notifications: notifications);
+      expect(find.byType(CoworkAvatar), findsNWidgets(2));
+
+      await inviteTo(tester, stream, server, 5, '초대받은 팀');
+
+      expect(find.text('코워크'), findsOneWidget);
+      expect(find.text('일반'), findsOneWidget);
+      expect(find.text('초대-채널'), findsNothing);
+      expect(find.byType(CoworkAvatar), findsNWidgets(3));
+    });
+
+    testWidgets('이미 아는 팀이면 팀 목록을 다시 읽지 않는다', (tester) async {
+      final server = FakeChatServer();
+      final (stream, notifications) = startNotifications();
+      await pumpChat(tester, server, notifications: notifications);
+
+      stream.push({'type': 'MEMBER_INVITED', 'title': '팀 초대', 'teamId': 2});
+      await tester.pumpAndSettle();
+
+      expect(
+        server.requests.where((r) => r == 'GET /team/teams'),
+        hasLength(1),
+      );
+    });
+
+    testWidgets('다시 읽기에 실패하면 보던 화면을 그대로 둔다', (tester) async {
+      final server = FakeChatServer();
+      final (stream, notifications) = startNotifications();
+      await pumpChat(tester, server, notifications: notifications);
+
+      server.failTeams = const ServerFailure.offline();
+      await inviteTo(tester, stream, server, 5, '초대받은 팀');
+
+      expect(find.text('홈을 불러오지 못했어요'), findsNothing);
+      expect(find.text('일반'), findsOneWidget);
+      expect(find.byType(CoworkAvatar), findsNWidgets(2));
+    });
+  });
+
+  testWidgets('팀 알림을 누르면 아직 모르는 팀이어도 그 팀으로 옮긴다', (tester) async {
     final server = FakeChatServer(teams: []);
     final stream = FakeNotificationStream();
     final notifications = NotificationRepository(stream)..start();
@@ -289,19 +381,24 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('아직 속한 팀이 없어요'), findsOneWidget);
 
-    // 홈을 연 뒤에 초대받았다.
+    // SSE 가 끊긴 사이 팀에 들어가 초대 알림은 놓쳤고, 그 팀의 다른 알림을 받았다.
     server.teams.add({
       'id': 5,
       'name': '초대받은 팀',
       'iconUrl': null,
       'myRole': 'MEMBER',
     });
-    stream.push({'type': 'MEMBER_INVITED', 'title': '팀 초대', 'teamId': 5});
+    stream.push({
+      'type': 'PROJECT_TASK_ASSIGNED',
+      'title': '할 일 배정',
+      'teamId': 5,
+    });
     await tester.pumpAndSettle();
+    expect(find.text('아직 속한 팀이 없어요'), findsOneWidget);
 
     await tester.tap(find.bySemanticsLabel('알림'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('팀 초대'));
+    await tester.tap(find.text('할 일 배정'));
     await tester.pumpAndSettle();
 
     expect(find.text('초대받은 팀'), findsOneWidget);

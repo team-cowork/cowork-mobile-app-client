@@ -8,11 +8,13 @@ import 'package:cowork_app/feature/auth/presentation/blocs/auth/auth_bloc.dart';
 import 'package:cowork_app/feature/channel/data/repositories/channel_repository.dart';
 import 'package:cowork_app/feature/chat/data/repositories/dm_repository.dart';
 import 'package:cowork_app/feature/chat/data/repositories/message_repository.dart';
+import 'package:cowork_app/feature/notes/data/repositories/note_attachment_repository.dart';
 import 'package:cowork_app/feature/notes/data/repositories/notes_repository.dart';
 import 'package:cowork_app/feature/notes/data/repositories/note_template_repository.dart';
 import 'package:cowork_app/feature/notifications/data/notification_stream.dart';
 import 'package:cowork_app/feature/notifications/data/repositories/notification_repository.dart';
 import 'package:cowork_app/feature/profile/data/repositories/github_repository.dart';
+import 'package:cowork_app/feature/issues/data/repositories/issue_repository.dart';
 import 'package:cowork_app/feature/profile/data/repositories/profile_repository.dart';
 import 'package:cowork_app/feature/search/data/repositories/recent_search_repository.dart';
 import 'package:cowork_app/feature/search/data/repositories/search_repository.dart';
@@ -81,6 +83,10 @@ class CoworkApp extends StatelessWidget {
         ),
         RepositoryProvider(
           create: (context) =>
+              NoteAttachmentRepository(context.read<AuthRepository>()),
+        ),
+        RepositoryProvider(
+          create: (context) =>
               MessageRepository(context.read<AuthRepository>()),
         ),
         RepositoryProvider(
@@ -98,6 +104,9 @@ class CoworkApp extends StatelessWidget {
         RepositoryProvider(
           create: (context) =>
               PreferenceRepository(context.read<AuthRepository>()),
+        ),
+        RepositoryProvider(
+          create: (context) => IssueRepository(context.read<AuthRepository>()),
         ),
         RepositoryProvider(
           create: (context) => PushRepository(context.read<AuthRepository>()),

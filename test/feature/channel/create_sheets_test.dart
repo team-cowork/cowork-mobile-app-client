@@ -33,6 +33,14 @@ void main() {
     await tester.pumpAndSettle();
   }
 
+  /// 팀 목록 끝 `+` → `새 팀 만들기` 로 새 팀 시트를 연다.
+  Future<void> openTeamSheet(WidgetTester tester) async {
+    await tester.tap(find.bySemanticsLabel('팀 추가'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('새 팀 만들기'));
+    await tester.pumpAndSettle();
+  }
+
   /// 새 채널 시트를 열고 이름을 넣는다.
   Future<void> openChannelSheet(WidgetTester tester, String name) async {
     await tapCreateChannel(tester);
@@ -161,8 +169,7 @@ void main() {
       final server = FakeChatServer();
       await pumpChat(tester, server);
 
-      await tester.tap(find.bySemanticsLabel('새 팀'));
-      await tester.pumpAndSettle();
+      await openTeamSheet(tester);
 
       // 이름이 비면 만들 수 없다.
       expect(tester.widget<CoworkButton>(createTeam).enabled, isFalse);
@@ -187,8 +194,7 @@ void main() {
       final server = FakeChatServer();
       await pumpChat(tester, server);
 
-      await tester.tap(find.bySemanticsLabel('새 팀'));
-      await tester.pumpAndSettle();
+      await openTeamSheet(tester);
       await tester.enterText(teamName, '디자인');
       await tester.enterText(teamDescription, '   ');
       await tester.pumpAndSettle();
@@ -204,8 +210,8 @@ void main() {
 
       // 팀 생성 진입점은 + 하나다. 빈 화면에 따로 버튼을 두지 않는다.
       expect(createTeam, findsNothing);
-      await tester.tap(find.bySemanticsLabel('새 팀'));
-      await tester.pumpAndSettle();
+      expect(find.text('새 팀 만들기'), findsNothing);
+      await openTeamSheet(tester);
       await tester.enterText(teamName, '첫 팀');
       await tester.pumpAndSettle();
       await tester.tap(createTeam);
@@ -213,7 +219,7 @@ void main() {
 
       expect(find.text('아직 속한 팀이 없어요'), findsNothing);
       expect(find.text('첫 팀'), findsOneWidget);
-      expect(find.bySemanticsLabel('새 팀'), findsOneWidget);
+      expect(find.bySemanticsLabel('팀 추가'), findsOneWidget);
     });
 
     testWidgets('팀 생성이 실패하면 시트에 팀 생성 실패와 사유를 보여준다', (tester) async {
@@ -221,8 +227,7 @@ void main() {
         ..failCreateTeam = const ServerFailure.offline();
       await pumpChat(tester, server);
 
-      await tester.tap(find.bySemanticsLabel('새 팀'));
-      await tester.pumpAndSettle();
+      await openTeamSheet(tester);
       await tester.enterText(teamName, '백엔드팀');
       await tester.pumpAndSettle();
       await tester.tap(createTeam);
@@ -240,6 +245,138 @@ void main() {
       );
       // 홈은 원래 팀 그대로다.
       expect(find.text('코워크'), findsOneWidget);
+    });
+  });
+
+  group('초대 코드로 참여', () {
+    final codeField = find.widgetWithText(CoworkTextField, '초대 코드');
+    final join = find.widgetWithText(CoworkButton, '참여하기');
+
+    /// 백엔드팀(id 3, 채널 `api`)에 들어가는 코드 `aB3xK9mZ` 를 가진 서버.
+    FakeChatServer serverWithInvite({List<Map<String, dynamic>>? teams}) =>
+        FakeChatServer(teams: teams)
+          ..joinableTeams['aB3xK9mZ'] = {
+            'id': 3,
+            'name': '백엔드팀',
+            'iconUrl': null,
+            'myRole': 'MEMBER',
+          }
+          ..channels[3] = [
+            {'id': 30, 'name': 'api', 'type': 'TEXT', 'viewType': 'TEXT'},
+          ];
+
+    Future<void> openJoinSheet(WidgetTester tester) async {
+      await tester.tap(find.bySemanticsLabel('팀 추가'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('초대 코드로 참여'));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('코드로 참여하면 팀 목록을 다시 읽고 그 팀으로 옮긴다', (tester) async {
+      final server = serverWithInvite();
+      await pumpChat(tester, server);
+
+      await openJoinSheet(tester);
+      // 코드가 비면 참여할 수 없다.
+      expect(tester.widget<CoworkButton>(join).enabled, isFalse);
+
+      // 메신저에서 복사해 붙인 앞뒤 공백은 잘라 보낸다.
+      await tester.enterText(codeField, '  aB3xK9mZ  ');
+      await tester.pumpAndSettle();
+      await tester.tap(join);
+      await tester.pumpAndSettle();
+
+      expect(server.requests, contains('POST /team/teams/join/aB3xK9mZ'));
+      // 응답에 팀 이름이 없어 팀 목록을 다시 읽어 이름을 얻는다.
+      expect(
+        server.requests.where((r) => r == 'GET /team/teams'),
+        hasLength(2),
+      );
+      expect(find.text('백엔드팀'), findsOneWidget);
+      expect(find.text('api'), findsOneWidget);
+      expect(find.text('일반'), findsNothing);
+      expect(find.text('팀에 참여했어요.'), findsOneWidget);
+    });
+
+    testWidgets('팀이 없는 빈 화면에서도 코드로 참여하면 그 팀 홈이 된다', (tester) async {
+      final server = serverWithInvite(teams: []);
+      await pumpChat(tester, server);
+      expect(find.text('아직 속한 팀이 없어요'), findsOneWidget);
+
+      await openJoinSheet(tester);
+      await tester.enterText(codeField, 'aB3xK9mZ');
+      await tester.pumpAndSettle();
+      await tester.tap(join);
+      await tester.pumpAndSettle();
+
+      expect(find.text('아직 속한 팀이 없어요'), findsNothing);
+      expect(find.text('백엔드팀'), findsOneWidget);
+      expect(find.text('api'), findsOneWidget);
+    });
+
+    testWidgets('참여가 실패하면 시트에 서버 사유를 보여주고 입력값을 남긴다', (tester) async {
+      final server = serverWithInvite()
+        ..failJoin = const ServerFailure(410, '만료된 초대 링크입니다.');
+      await pumpChat(tester, server);
+
+      await openJoinSheet(tester);
+      await tester.enterText(codeField, 'aB3xK9mZ');
+      await tester.pumpAndSettle();
+      await tester.tap(join);
+      await tester.pumpAndSettle();
+
+      expect(find.text('팀에 참여하지 못했어요'), findsOneWidget);
+      expect(find.text('(410) 만료된 초대 링크입니다.'), findsOneWidget);
+      expect(find.text('aB3xK9mZ'), findsOneWidget);
+      expect(tester.widget<CoworkButton>(join).enabled, isTrue);
+
+      // 다시 누르면 다시 보낸다.
+      server.failJoin = null;
+      await tester.tap(join);
+      await tester.pumpAndSettle();
+
+      expect(find.text('팀에 참여하지 못했어요'), findsNothing);
+      expect(find.text('백엔드팀'), findsOneWidget);
+    });
+
+    testWidgets('참여 직후 채널 목록이 실패해도 다시 시도하면 참여한 팀이 열린다', (tester) async {
+      // 채널 서비스가 새 멤버십을 이벤트로 늦게 알면 바로 읽을 때 403 이 날 수 있다.
+      final server = serverWithInvite();
+      await pumpChat(tester, server);
+
+      await openJoinSheet(tester);
+      await tester.enterText(codeField, 'aB3xK9mZ');
+      await tester.pumpAndSettle();
+      server.failChannels = const ServerFailure(403, '팀 멤버만 접근할 수 있습니다.');
+      await tester.tap(join);
+      await tester.pumpAndSettle();
+
+      expect(find.text('홈을 불러오지 못했어요'), findsOneWidget);
+
+      server.failChannels = null;
+      await tester.tap(find.text('다시 시도'));
+      await tester.pumpAndSettle();
+
+      // 첫 팀(코워크)으로 튀지 않고 참여한 팀을 연다.
+      expect(find.text('백엔드팀'), findsOneWidget);
+      expect(find.text('api'), findsOneWidget);
+    });
+
+    testWidgets('없는 코드면 서버 사유를 보여주고 홈은 그대로다', (tester) async {
+      final server = serverWithInvite();
+      await pumpChat(tester, server);
+
+      await openJoinSheet(tester);
+      await tester.enterText(codeField, 'wrong');
+      await tester.pumpAndSettle();
+      await tester.tap(join);
+      await tester.pumpAndSettle();
+
+      expect(find.text('(404) 유효하지 않은 초대 코드입니다.'), findsOneWidget);
+      await tester.tap(find.bySemanticsLabel('닫기'));
+      await tester.pumpAndSettle();
+      expect(find.text('코워크'), findsOneWidget);
+      expect(find.text('일반'), findsOneWidget);
     });
   });
 

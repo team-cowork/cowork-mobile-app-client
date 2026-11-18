@@ -6,6 +6,7 @@ class TeamMenuSheet extends StatelessWidget {
     required this.teamName,
     this.canInviteMembers = true,
     this.onOpenSettings,
+    this.onInviteMembers,
     this.onCreateChannel,
     this.onCreateProject,
     this.onLeaveTeam,
@@ -19,6 +20,9 @@ class TeamMenuSheet extends StatelessWidget {
 
   /// '팀 설정' 을 눌렀을 때. 시트가 닫힌 뒤에 불린다.
   final VoidCallback? onOpenSettings;
+
+  /// '멤버 초대' 를 눌렀을 때. 시트가 닫힌 뒤에 불린다.
+  final VoidCallback? onInviteMembers;
 
   /// '채널 만들기' 를 눌렀을 때. 시트가 닫힌 뒤에 불린다.
   final VoidCallback? onCreateChannel;
@@ -38,6 +42,7 @@ class TeamMenuSheet extends StatelessWidget {
     required String teamName,
     bool canInviteMembers = true,
     VoidCallback? onOpenSettings,
+    VoidCallback? onInviteMembers,
     VoidCallback? onCreateChannel,
     VoidCallback? onCreateProject,
     VoidCallback? onLeaveTeam,
@@ -52,6 +57,7 @@ class TeamMenuSheet extends StatelessWidget {
         teamName: teamName,
         canInviteMembers: canInviteMembers,
         onOpenSettings: onOpenSettings,
+        onInviteMembers: onInviteMembers,
         onCreateChannel: onCreateChannel,
         onCreateProject: onCreateProject,
         onLeaveTeam: onLeaveTeam,
@@ -108,7 +114,8 @@ class TeamMenuSheet extends StatelessWidget {
               ),
             ),
             _MenuRow(emoji: '⚙️', label: '팀 설정', onSelected: onOpenSettings),
-            if (canInviteMembers) const _MenuRow(emoji: '➕', label: '멤버 초대'),
+            if (canInviteMembers)
+              _MenuRow(emoji: '➕', label: '멤버 초대', onSelected: onInviteMembers),
             _MenuRow(emoji: '#', label: '채널 만들기', onSelected: onCreateChannel),
             _MenuRow(
               emoji: '📁',

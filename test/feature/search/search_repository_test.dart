@@ -103,6 +103,21 @@ void main() {
     );
   });
 
+  test('팀 없이 사람을 찾으면 teamId 를 보내지 않는다', () async {
+    final server = _SearchServer({
+      '/user/users/search': {
+        'data': {'items': <Object>[]},
+      },
+    });
+
+    await _repository(server).searchPeople(query: '도');
+
+    expect(server.calls.single.queryParameters, {
+      'q': '도',
+      'page_size': '${SearchRepository.peoplePageSize}',
+    });
+  });
+
   test('메시지 검색은 커서를 before 로 보내고 nextCursor 를 돌려준다', () async {
     final server = _SearchServer({
       '/chat/chat/search/messages': {

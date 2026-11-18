@@ -80,4 +80,20 @@ void main() {
     expect(repository.items, hasLength(NotificationRepository.maxItems));
     expect(repository.items.last.event.title, '알림 1');
   });
+
+  test('팀 초대 알림이면 그 팀 id 를 따로 흘린다', () async {
+    final invited = <int>[];
+    repository
+      ..invitedTeamIds.listen(invited.add)
+      ..start();
+
+    stream
+      ..push({'type': 'MEMBER_INVITED', 'title': '초대', 'teamId': 3})
+      ..push({'type': 'CHAT_MESSAGE', 'title': '메시지', 'teamId': 4})
+      // 이동할 팀이 없으면 서버가 0 을 보낸다.
+      ..push({'type': 'MEMBER_INVITED', 'title': '초대', 'teamId': 0});
+    await pumpEventQueue();
+
+    expect(invited, [3]);
+  });
 }

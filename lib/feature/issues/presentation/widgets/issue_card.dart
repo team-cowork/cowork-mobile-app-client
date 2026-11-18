@@ -2,7 +2,6 @@ import 'package:cowork_design_system/design_system.dart';
 import 'package:flutter/material.dart';
 
 import '../../domain/issue.dart';
-import 'issue_color_mapping.dart';
 import 'issue_label_chip.dart';
 
 class IssueCard extends StatelessWidget {
@@ -13,8 +12,6 @@ class IssueCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final assignee = issue.assignee;
-
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(AppRadius.r12),
@@ -38,7 +35,8 @@ class IssueCard extends StatelessWidget {
                 spacing: AppSpacing.s6,
                 runSpacing: AppSpacing.s6,
                 children: [
-                  for (final label in issue.labels) IssueLabelChip(label: label),
+                  for (final label in issue.labels)
+                    IssueLabelChip(label: label),
                 ],
               ),
             Text(
@@ -56,19 +54,16 @@ class IssueCard extends StatelessWidget {
                   '#${issue.number}',
                   style: AppFont.labelXs.copyWith(color: AppColors.neutral300),
                 ),
-                if (issue.dueDate != null)
-                  Text(
-                    '📅 ${issue.dueDate}',
-                    style: AppFont.subtextS.copyWith(color: AppColors.neutral300),
+                Expanded(
+                  child: Text(
+                    '${issue.author} · ${issue.createdAt}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppFont.subtextS.copyWith(
+                      color: AppColors.neutral300,
+                    ),
                   ),
-                const Expanded(child: SizedBox()),
-                if (assignee != null)
-                  CoworkAvatar(
-                    initials: assignee.avatarInitial,
-                    size: 22,
-                    backgroundColor: issueAssigneeColor(assignee.id),
-                    foregroundColor: AppColors.white,
-                  ),
+                ),
               ],
             ),
           ],

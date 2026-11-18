@@ -3,25 +3,15 @@ part of 'new_issue_bloc.dart';
 sealed class NewIssueEvent extends Equatable {
   const NewIssueEvent();
 
-  const factory NewIssueEvent.titleChanged(String title) =
-      NewIssueTitleChanged;
+  const factory NewIssueEvent.titleChanged(String title) = NewIssueTitleChanged;
 
-  const factory NewIssueEvent.statusChanged(IssueStatus status) =
-      NewIssueStatusChanged;
+  const factory NewIssueEvent.bodyChanged(String body) = NewIssueBodyChanged;
 
-  const factory NewIssueEvent.labelChanged(int index) = NewIssueLabelChanged;
+  /// 같은 라벨을 다시 누르면 고른 것을 푼다.
+  const factory NewIssueEvent.labelToggled(String name) = NewIssueLabelToggled;
 
-  const factory NewIssueEvent.assigneeToggled(int index) =
-      NewIssueAssigneeToggled;
-
-  const factory NewIssueEvent.priorityChanged(IssuePriority priority) =
-      NewIssuePriorityChanged;
-
-  const factory NewIssueEvent.dueDateChanged(String dueDate) =
-      NewIssueDueDateChanged;
-
-  const factory NewIssueEvent.milestoneChanged(String milestone) =
-      NewIssueMilestoneChanged;
+  /// 저장소의 라벨 목록을 읽는다.
+  const factory NewIssueEvent.labelsRequested() = NewIssueLabelsRequested;
 
   @override
   List<Object?> get props => [];
@@ -36,56 +26,24 @@ final class NewIssueTitleChanged extends NewIssueEvent {
   List<Object?> get props => [title];
 }
 
-final class NewIssueStatusChanged extends NewIssueEvent {
-  const NewIssueStatusChanged(this.status);
+final class NewIssueBodyChanged extends NewIssueEvent {
+  const NewIssueBodyChanged(this.body);
 
-  final IssueStatus status;
+  final String body;
 
   @override
-  List<Object?> get props => [status];
+  List<Object?> get props => [body];
 }
 
-final class NewIssueLabelChanged extends NewIssueEvent {
-  const NewIssueLabelChanged(this.index);
+final class NewIssueLabelToggled extends NewIssueEvent {
+  const NewIssueLabelToggled(this.name);
 
-  final int index;
+  final String name;
 
   @override
-  List<Object?> get props => [index];
+  List<Object?> get props => [name];
 }
 
-final class NewIssueAssigneeToggled extends NewIssueEvent {
-  const NewIssueAssigneeToggled(this.index);
-
-  final int index;
-
-  @override
-  List<Object?> get props => [index];
-}
-
-final class NewIssuePriorityChanged extends NewIssueEvent {
-  const NewIssuePriorityChanged(this.priority);
-
-  final IssuePriority priority;
-
-  @override
-  List<Object?> get props => [priority];
-}
-
-final class NewIssueDueDateChanged extends NewIssueEvent {
-  const NewIssueDueDateChanged(this.dueDate);
-
-  final String dueDate;
-
-  @override
-  List<Object?> get props => [dueDate];
-}
-
-final class NewIssueMilestoneChanged extends NewIssueEvent {
-  const NewIssueMilestoneChanged(this.milestone);
-
-  final String milestone;
-
-  @override
-  List<Object?> get props => [milestone];
+final class NewIssueLabelsRequested extends NewIssueEvent {
+  const NewIssueLabelsRequested();
 }

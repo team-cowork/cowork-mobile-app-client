@@ -12,4 +12,5 @@ Map<String, dynamic> _$CreateMeetingNoteRequestToJson(
   'templateId': instance.templateId,
   'title': instance.title,
   'content': encodeNoteContent(instance.sections),
+  'attachments': instance.attachments.map((e) => e.toJson()).toList(),
 };

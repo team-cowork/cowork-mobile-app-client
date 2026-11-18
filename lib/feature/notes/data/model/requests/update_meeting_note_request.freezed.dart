@@ -15,7 +15,9 @@ T _$identity<T>(T value) => value;
 mixin _$UpdateMeetingNoteRequest {
 
  String get title;/// 섹션 제목 → 내용. 서버에는 JSON 문자열 `content` 로 간다.
-@JsonKey(name: 'content', toJson: encodeNoteContent) Map<String, String> get sections;
+@JsonKey(name: 'content', toJson: encodeNoteContent) Map<String, String> get sections;/// 첨부 전체 목록. 서버는 이 목록으로 통째로 바꾼다(빈 배열이면 모두 해제).
+/// 편집 화면이 언제나 전체 목록을 들고 있으므로 생략(=유지)은 쓰지 않는다.
+ List<MeetingNoteAttachmentRequest> get attachments;
 /// Create a copy of UpdateMeetingNoteRequest
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -28,16 +30,16 @@ $UpdateMeetingNoteRequestCopyWith<UpdateMeetingNoteRequest> get copyWith => _$Up
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is UpdateMeetingNoteRequest&&(identical(other.title, title) || other.title == title)&&const DeepCollectionEquality().equals(other.sections, sections));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is UpdateMeetingNoteRequest&&(identical(other.title, title) || other.title == title)&&const DeepCollectionEquality().equals(other.sections, sections)&&const DeepCollectionEquality().equals(other.attachments, attachments));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,title,const DeepCollectionEquality().hash(sections));
+int get hashCode => Object.hash(runtimeType,title,const DeepCollectionEquality().hash(sections),const DeepCollectionEquality().hash(attachments));
 
 @override
 String toString() {
-  return 'UpdateMeetingNoteRequest(title: $title, sections: $sections)';
+  return 'UpdateMeetingNoteRequest(title: $title, sections: $sections, attachments: $attachments)';
 }
 
 
@@ -48,7 +50,7 @@ abstract mixin class $UpdateMeetingNoteRequestCopyWith<$Res>  {
   factory $UpdateMeetingNoteRequestCopyWith(UpdateMeetingNoteRequest value, $Res Function(UpdateMeetingNoteRequest) _then) = _$UpdateMeetingNoteRequestCopyWithImpl;
 @useResult
 $Res call({
- String title,@JsonKey(name: 'content', toJson: encodeNoteContent) Map<String, String> sections
+ String title,@JsonKey(name: 'content', toJson: encodeNoteContent) Map<String, String> sections, List<MeetingNoteAttachmentRequest> attachments
 });
 
 
@@ -65,11 +67,12 @@ class _$UpdateMeetingNoteRequestCopyWithImpl<$Res>
 
 /// Create a copy of UpdateMeetingNoteRequest
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? title = null,Object? sections = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? title = null,Object? sections = null,Object? attachments = null,}) {
   return _then(_self.copyWith(
 title: null == title ? _self.title : title // ignore: cast_nullable_to_non_nullable
 as String,sections: null == sections ? _self.sections : sections // ignore: cast_nullable_to_non_nullable
-as Map<String, String>,
+as Map<String, String>,attachments: null == attachments ? _self.attachments : attachments // ignore: cast_nullable_to_non_nullable
+as List<MeetingNoteAttachmentRequest>,
   ));
 }
 
@@ -154,10 +157,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String title, @JsonKey(name: 'content', toJson: encodeNoteContent)  Map<String, String> sections)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String title, @JsonKey(name: 'content', toJson: encodeNoteContent)  Map<String, String> sections,  List<MeetingNoteAttachmentRequest> attachments)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _UpdateMeetingNoteRequest() when $default != null:
-return $default(_that.title,_that.sections);case _:
+return $default(_that.title,_that.sections,_that.attachments);case _:
   return orElse();
 
 }
@@ -175,10 +178,10 @@ return $default(_that.title,_that.sections);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String title, @JsonKey(name: 'content', toJson: encodeNoteContent)  Map<String, String> sections)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String title, @JsonKey(name: 'content', toJson: encodeNoteContent)  Map<String, String> sections,  List<MeetingNoteAttachmentRequest> attachments)  $default,) {final _that = this;
 switch (_that) {
 case _UpdateMeetingNoteRequest():
-return $default(_that.title,_that.sections);case _:
+return $default(_that.title,_that.sections,_that.attachments);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -195,10 +198,10 @@ return $default(_that.title,_that.sections);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String title, @JsonKey(name: 'content', toJson: encodeNoteContent)  Map<String, String> sections)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String title, @JsonKey(name: 'content', toJson: encodeNoteContent)  Map<String, String> sections,  List<MeetingNoteAttachmentRequest> attachments)?  $default,) {final _that = this;
 switch (_that) {
 case _UpdateMeetingNoteRequest() when $default != null:
-return $default(_that.title,_that.sections);case _:
+return $default(_that.title,_that.sections,_that.attachments);case _:
   return null;
 
 }
@@ -207,10 +210,10 @@ return $default(_that.title,_that.sections);case _:
 }
 
 /// @nodoc
-@JsonSerializable(createFactory: false)
 
+@JsonSerializable(explicitToJson: true, createFactory: false)
 class _UpdateMeetingNoteRequest implements UpdateMeetingNoteRequest {
-  const _UpdateMeetingNoteRequest({required this.title, @JsonKey(name: 'content', toJson: encodeNoteContent) required final  Map<String, String> sections}): _sections = sections;
+  const _UpdateMeetingNoteRequest({required this.title, @JsonKey(name: 'content', toJson: encodeNoteContent) required final  Map<String, String> sections, required final  List<MeetingNoteAttachmentRequest> attachments}): _sections = sections,_attachments = attachments;
   
 
 @override final  String title;
@@ -221,6 +224,17 @@ class _UpdateMeetingNoteRequest implements UpdateMeetingNoteRequest {
   if (_sections is EqualUnmodifiableMapView) return _sections;
   // ignore: implicit_dynamic_type
   return EqualUnmodifiableMapView(_sections);
+}
+
+/// 첨부 전체 목록. 서버는 이 목록으로 통째로 바꾼다(빈 배열이면 모두 해제).
+/// 편집 화면이 언제나 전체 목록을 들고 있으므로 생략(=유지)은 쓰지 않는다.
+ final  List<MeetingNoteAttachmentRequest> _attachments;
+/// 첨부 전체 목록. 서버는 이 목록으로 통째로 바꾼다(빈 배열이면 모두 해제).
+/// 편집 화면이 언제나 전체 목록을 들고 있으므로 생략(=유지)은 쓰지 않는다.
+@override List<MeetingNoteAttachmentRequest> get attachments {
+  if (_attachments is EqualUnmodifiableListView) return _attachments;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_attachments);
 }
 
 
@@ -237,16 +251,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _UpdateMeetingNoteRequest&&(identical(other.title, title) || other.title == title)&&const DeepCollectionEquality().equals(other._sections, _sections));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _UpdateMeetingNoteRequest&&(identical(other.title, title) || other.title == title)&&const DeepCollectionEquality().equals(other._sections, _sections)&&const DeepCollectionEquality().equals(other._attachments, _attachments));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,title,const DeepCollectionEquality().hash(_sections));
+int get hashCode => Object.hash(runtimeType,title,const DeepCollectionEquality().hash(_sections),const DeepCollectionEquality().hash(_attachments));
 
 @override
 String toString() {
-  return 'UpdateMeetingNoteRequest(title: $title, sections: $sections)';
+  return 'UpdateMeetingNoteRequest(title: $title, sections: $sections, attachments: $attachments)';
 }
 
 
@@ -257,7 +271,7 @@ abstract mixin class _$UpdateMeetingNoteRequestCopyWith<$Res> implements $Update
   factory _$UpdateMeetingNoteRequestCopyWith(_UpdateMeetingNoteRequest value, $Res Function(_UpdateMeetingNoteRequest) _then) = __$UpdateMeetingNoteRequestCopyWithImpl;
 @override @useResult
 $Res call({
- String title,@JsonKey(name: 'content', toJson: encodeNoteContent) Map<String, String> sections
+ String title,@JsonKey(name: 'content', toJson: encodeNoteContent) Map<String, String> sections, List<MeetingNoteAttachmentRequest> attachments
 });
 
 
@@ -274,11 +288,12 @@ class __$UpdateMeetingNoteRequestCopyWithImpl<$Res>
 
 /// Create a copy of UpdateMeetingNoteRequest
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? title = null,Object? sections = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? title = null,Object? sections = null,Object? attachments = null,}) {
   return _then(_UpdateMeetingNoteRequest(
 title: null == title ? _self.title : title // ignore: cast_nullable_to_non_nullable
 as String,sections: null == sections ? _self._sections : sections // ignore: cast_nullable_to_non_nullable
-as Map<String, String>,
+as Map<String, String>,attachments: null == attachments ? _self._attachments : attachments // ignore: cast_nullable_to_non_nullable
+as List<MeetingNoteAttachmentRequest>,
   ));
 }
 

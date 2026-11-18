@@ -11,14 +11,17 @@ class IssueCommentRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final initial = comment.author.isEmpty
+        ? '?'
+        : String.fromCharCode(comment.author.runes.first).toUpperCase();
     return CoworkMessageItem(
-      username: comment.author.name,
+      username: comment.author,
       timestamp: comment.timestamp,
       message: comment.message,
-      initials: comment.author.avatarInitial,
+      initials: initial,
       avatar: CoworkAvatar(
-        initials: comment.author.avatarInitial,
-        backgroundColor: issueAssigneeColor(comment.author.id),
+        initials: initial,
+        backgroundColor: issueAuthorColor(comment.author),
         foregroundColor: AppColors.white,
       ),
     );

@@ -54,8 +54,11 @@ class SearchRepository {
   ];
 
   /// [teamId] 팀 멤버 중 이름·닉네임이 [query] 와 맞는 사람. 첫 페이지만 받는다.
+  ///
+  /// [teamId] 가 없으면 팀과 관계없이 모든 사용자에서 찾는다. 팀에 초대할 사람을
+  /// 고를 때 쓴다.
   Future<List<SearchPersonResult>> searchPeople({
-    required int teamId,
+    int? teamId,
     required String query,
   }) async {
     final response = UserSearchResponse.fromJson(
@@ -63,7 +66,7 @@ class SearchRepository {
         (await _user.get<String>(
               '/users/search',
               queryParameters: {
-                'teamId': teamId,
+                'teamId': ?teamId,
                 'q': query,
                 'page_size': peoplePageSize,
               },

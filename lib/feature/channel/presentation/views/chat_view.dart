@@ -5,8 +5,11 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/network/chat_socket.dart';
 import '../../../../shared/widgets/bloc_scaffold.dart';
+import '../../../notifications/data/repositories/notification_repository.dart';
 import '../../../profile/data/repositories/profile_repository.dart';
 import '../../../team/data/repositories/team_repository.dart';
+import '../../../team/presentation/widgets/add_team_sheet.dart';
+import '../../../team/presentation/widgets/join_team_sheet.dart';
 import '../../../team/presentation/widgets/new_team_sheet.dart';
 import '../../../team/presentation/widgets/team_action_dialog.dart';
 import '../../../team/presentation/widgets/team_menu_sheet.dart';
@@ -29,13 +32,14 @@ class ChatView extends StatelessWidget {
         context.read<ChannelRepository>(),
         context.read<ChatSocket>(),
         profileRepository: context.read<ProfileRepository>(),
+        invitedTeams: context.read<NotificationRepository>().invitedTeamIds,
       )..add(const ChannelListRequested()),
       // 어느 단계(팀/채널)가 실패했는지는 설명 문구에 실려 온다. (#94)
       errorTitle: '홈을 불러오지 못했어요',
       onRetry: (context) =>
           context.read<ChannelListBloc>().add(const ChannelListRequested()),
       builder: (context, data) => switch (data.teamId) {
-        // 팀이 없어도 단축 바는 둔다. 팀 생성 진입점을 `+` 하나로 맞추려는 것이다.
+        // 팀이 없어도 단축 바는 둔다. 팀 생성·참여 진입점을 `+` 하나로 맞추려는 것이다.
         null => SafeArea(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -63,7 +67,7 @@ class ChatView extends StatelessWidget {
               _ChatShortcutBar(
                 shortcuts: const [],
                 onDmHomeTap: () => context.push('/dm'),
-                onCreateTeam: () => _createTeam(context),
+                onAddTeam: () => _addTeam(context),
               ),
               const Expanded(
                 child: Center(
@@ -72,7 +76,7 @@ class ChatView extends StatelessWidget {
                     child: CoworkEmptyState(
                       icon: Icons.groups_outlined,
                       title: '아직 속한 팀이 없어요',
-                      description: '+ 로 팀을 만들거나 초대받으면 채널이 여기에 보여요.',
+                      description: '+ 로 팀을 만들거나 초대 코드로 참여하면 채널이 여기에 보여요.',
                     ),
                   ),
                 ),
@@ -91,6 +95,7 @@ class ChatView extends StatelessWidget {
                   teamName: data.workspaceName,
                   canInviteMembers: data.canInviteMembers,
                   onOpenSettings: () => _openTeamSettings(context, teamId),
+                  onInviteMembers: () => context.push('/teams/$teamId/invite'),
                   onCreateChannel: () => _createChannel(context, teamId),
                   onCreateProject: () => NewProjectSheet.show(context),
                   // 소유자는 소유권을 넘기기 전엔 나갈 수 없다(서버 403).
@@ -107,7 +112,7 @@ class ChatView extends StatelessWidget {
                 onTeamTap: (id) => context.read<ChannelListBloc>().add(
                   ChannelListEvent.teamSelected(id),
                 ),
-                onCreateTeam: () => _createTeam(context),
+                onAddTeam: () => _addTeam(context),
               ),
               Expanded(child: _ChannelList(channelGroups: data.channelGroups)),
             ],
@@ -124,6 +129,18 @@ class ChatView extends StatelessWidget {
     // 알림 화면에 있는 동안 홈이 사라졌으면(로그아웃 등) 옮길 곳이 없다.
     if (teamId != null && !bloc.isClosed) {
       bloc.add(ChannelListEvent.teamSelected(teamId));
+    }
+  }
+
+  /// 팀을 만들지 초대 코드로 참여할지 고르게 하고, 고른 시트를 띄운다.
+  static Future<void> _addTeam(BuildContext context) async {
+    final choice = await AddTeamSheet.show(context);
+    if (choice == null || !context.mounted) return;
+    switch (choice) {
+      case AddTeamChoice.create:
+        await _createTeam(context);
+      case AddTeamChoice.join:
+        await _joinTeam(context);
     }
   }
 
@@ -177,6 +194,19 @@ class ChatView extends StatelessWidget {
     if (!left || bloc.isClosed) return;
     bloc.add(ChannelListEvent.teamLeft(teamId));
     messenger.showSnackBar(SnackBar(content: Text('$teamName 팀에서 나왔어요.')));
+  }
+
+  /// 초대 코드 시트를 띄우고, 참여하면 그 팀으로 옮기고 알린다.
+  ///
+  /// 참여 응답에는 팀 이름이 없다. [ChannelListEvent.teamSelected] 는 모르는 팀이면
+  /// 팀 목록을 다시 읽어 찾으므로, 알림으로 들어온 팀과 같은 길로 옮긴다.
+  static Future<void> _joinTeam(BuildContext context) async {
+    final bloc = context.read<ChannelListBloc>();
+    final messenger = ScaffoldMessenger.of(context);
+    final joined = await JoinTeamSheet.show(context);
+    if (joined == null || bloc.isClosed) return;
+    bloc.add(ChannelListEvent.teamSelected(joined.teamId));
+    messenger.showSnackBar(const SnackBar(content: Text('팀에 참여했어요.')));
   }
 
   /// 채널 생성 시트를 띄우고, 만들어지면 목록 끝에 붙이고 알린다.
@@ -254,7 +284,7 @@ class _ChatShortcutBar extends StatelessWidget {
     required this.shortcuts,
     this.onDmHomeTap,
     this.onTeamTap,
-    this.onCreateTeam,
+    this.onAddTeam,
   });
 
   final List<WorkspaceShortcut> shortcuts;
@@ -266,7 +296,7 @@ class _ChatShortcutBar extends StatelessWidget {
   final ValueChanged<int>? onTeamTap;
 
   /// 팀 목록 끝 `+` 를 눌렀을 때. 웹 팀 레일의 `팀 추가` 와 같은 자리다.
-  final VoidCallback? onCreateTeam;
+  final VoidCallback? onAddTeam;
 
   @override
   Widget build(BuildContext context) {
@@ -302,8 +332,8 @@ class _ChatShortcutBar extends StatelessWidget {
               ),
             CoworkIconButton.custom(
               icon: AppIcon.plus(),
-              semanticLabel: '새 팀',
-              onPressed: onCreateTeam,
+              semanticLabel: '팀 추가',
+              onPressed: onAddTeam,
             ),
           ],
         ),

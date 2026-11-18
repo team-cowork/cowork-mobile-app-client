@@ -20,7 +20,8 @@ mixin _$MeetingNoteResponse {
  int get templateId; String get title;/// 섹션 이름 → 내용. 예: `{'안건': '1. ...', '결정 사항': '· ...'}`.
 @JsonKey(name: 'content', fromJson: parseNoteContent) Map<String, String> get sections;/// 작성자 사용자 id. 이름·사진은 `/users/{id}` 에서 따로 읽는다.
  int get createdBy;/// 정렬에만 쓰므로 못 읽으면 맨 뒤로 보낸다.
-@JsonKey(fromJson: _createdAtOf) DateTime get createdAt;
+@JsonKey(fromJson: _createdAtOf) DateTime get createdAt;/// 붙은 파일. 첨부가 생기기 전 서버 응답에는 없으므로 비어 있는 것으로 본다.
+ List<MeetingNoteAttachmentResponse> get attachments;
 /// Create a copy of MeetingNoteResponse
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -33,16 +34,16 @@ $MeetingNoteResponseCopyWith<MeetingNoteResponse> get copyWith => _$MeetingNoteR
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is MeetingNoteResponse&&(identical(other.id, id) || other.id == id)&&(identical(other.channelId, channelId) || other.channelId == channelId)&&(identical(other.templateId, templateId) || other.templateId == templateId)&&(identical(other.title, title) || other.title == title)&&const DeepCollectionEquality().equals(other.sections, sections)&&(identical(other.createdBy, createdBy) || other.createdBy == createdBy)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is MeetingNoteResponse&&(identical(other.id, id) || other.id == id)&&(identical(other.channelId, channelId) || other.channelId == channelId)&&(identical(other.templateId, templateId) || other.templateId == templateId)&&(identical(other.title, title) || other.title == title)&&const DeepCollectionEquality().equals(other.sections, sections)&&(identical(other.createdBy, createdBy) || other.createdBy == createdBy)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&const DeepCollectionEquality().equals(other.attachments, attachments));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,channelId,templateId,title,const DeepCollectionEquality().hash(sections),createdBy,createdAt);
+int get hashCode => Object.hash(runtimeType,id,channelId,templateId,title,const DeepCollectionEquality().hash(sections),createdBy,createdAt,const DeepCollectionEquality().hash(attachments));
 
 @override
 String toString() {
-  return 'MeetingNoteResponse(id: $id, channelId: $channelId, templateId: $templateId, title: $title, sections: $sections, createdBy: $createdBy, createdAt: $createdAt)';
+  return 'MeetingNoteResponse(id: $id, channelId: $channelId, templateId: $templateId, title: $title, sections: $sections, createdBy: $createdBy, createdAt: $createdAt, attachments: $attachments)';
 }
 
 
@@ -53,7 +54,7 @@ abstract mixin class $MeetingNoteResponseCopyWith<$Res>  {
   factory $MeetingNoteResponseCopyWith(MeetingNoteResponse value, $Res Function(MeetingNoteResponse) _then) = _$MeetingNoteResponseCopyWithImpl;
 @useResult
 $Res call({
- int id, int channelId, int templateId, String title,@JsonKey(name: 'content', fromJson: parseNoteContent) Map<String, String> sections, int createdBy,@JsonKey(fromJson: _createdAtOf) DateTime createdAt
+ int id, int channelId, int templateId, String title,@JsonKey(name: 'content', fromJson: parseNoteContent) Map<String, String> sections, int createdBy,@JsonKey(fromJson: _createdAtOf) DateTime createdAt, List<MeetingNoteAttachmentResponse> attachments
 });
 
 
@@ -70,7 +71,7 @@ class _$MeetingNoteResponseCopyWithImpl<$Res>
 
 /// Create a copy of MeetingNoteResponse
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? channelId = null,Object? templateId = null,Object? title = null,Object? sections = null,Object? createdBy = null,Object? createdAt = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? channelId = null,Object? templateId = null,Object? title = null,Object? sections = null,Object? createdBy = null,Object? createdAt = null,Object? attachments = null,}) {
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as int,channelId: null == channelId ? _self.channelId : channelId // ignore: cast_nullable_to_non_nullable
@@ -79,7 +80,8 @@ as int,title: null == title ? _self.title : title // ignore: cast_nullable_to_no
 as String,sections: null == sections ? _self.sections : sections // ignore: cast_nullable_to_non_nullable
 as Map<String, String>,createdBy: null == createdBy ? _self.createdBy : createdBy // ignore: cast_nullable_to_non_nullable
 as int,createdAt: null == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
-as DateTime,
+as DateTime,attachments: null == attachments ? _self.attachments : attachments // ignore: cast_nullable_to_non_nullable
+as List<MeetingNoteAttachmentResponse>,
   ));
 }
 
@@ -164,10 +166,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( int id,  int channelId,  int templateId,  String title, @JsonKey(name: 'content', fromJson: parseNoteContent)  Map<String, String> sections,  int createdBy, @JsonKey(fromJson: _createdAtOf)  DateTime createdAt)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( int id,  int channelId,  int templateId,  String title, @JsonKey(name: 'content', fromJson: parseNoteContent)  Map<String, String> sections,  int createdBy, @JsonKey(fromJson: _createdAtOf)  DateTime createdAt,  List<MeetingNoteAttachmentResponse> attachments)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _MeetingNoteResponse() when $default != null:
-return $default(_that.id,_that.channelId,_that.templateId,_that.title,_that.sections,_that.createdBy,_that.createdAt);case _:
+return $default(_that.id,_that.channelId,_that.templateId,_that.title,_that.sections,_that.createdBy,_that.createdAt,_that.attachments);case _:
   return orElse();
 
 }
@@ -185,10 +187,10 @@ return $default(_that.id,_that.channelId,_that.templateId,_that.title,_that.sect
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( int id,  int channelId,  int templateId,  String title, @JsonKey(name: 'content', fromJson: parseNoteContent)  Map<String, String> sections,  int createdBy, @JsonKey(fromJson: _createdAtOf)  DateTime createdAt)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( int id,  int channelId,  int templateId,  String title, @JsonKey(name: 'content', fromJson: parseNoteContent)  Map<String, String> sections,  int createdBy, @JsonKey(fromJson: _createdAtOf)  DateTime createdAt,  List<MeetingNoteAttachmentResponse> attachments)  $default,) {final _that = this;
 switch (_that) {
 case _MeetingNoteResponse():
-return $default(_that.id,_that.channelId,_that.templateId,_that.title,_that.sections,_that.createdBy,_that.createdAt);case _:
+return $default(_that.id,_that.channelId,_that.templateId,_that.title,_that.sections,_that.createdBy,_that.createdAt,_that.attachments);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -205,10 +207,10 @@ return $default(_that.id,_that.channelId,_that.templateId,_that.title,_that.sect
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( int id,  int channelId,  int templateId,  String title, @JsonKey(name: 'content', fromJson: parseNoteContent)  Map<String, String> sections,  int createdBy, @JsonKey(fromJson: _createdAtOf)  DateTime createdAt)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( int id,  int channelId,  int templateId,  String title, @JsonKey(name: 'content', fromJson: parseNoteContent)  Map<String, String> sections,  int createdBy, @JsonKey(fromJson: _createdAtOf)  DateTime createdAt,  List<MeetingNoteAttachmentResponse> attachments)?  $default,) {final _that = this;
 switch (_that) {
 case _MeetingNoteResponse() when $default != null:
-return $default(_that.id,_that.channelId,_that.templateId,_that.title,_that.sections,_that.createdBy,_that.createdAt);case _:
+return $default(_that.id,_that.channelId,_that.templateId,_that.title,_that.sections,_that.createdBy,_that.createdAt,_that.attachments);case _:
   return null;
 
 }
@@ -220,7 +222,7 @@ return $default(_that.id,_that.channelId,_that.templateId,_that.title,_that.sect
 @JsonSerializable()
 
 class _MeetingNoteResponse extends MeetingNoteResponse {
-  const _MeetingNoteResponse({this.id = 0, this.channelId = 0, this.templateId = 0, this.title = '', @JsonKey(name: 'content', fromJson: parseNoteContent) final  Map<String, String> sections = const {}, this.createdBy = 0, @JsonKey(fromJson: _createdAtOf) required this.createdAt}): _sections = sections,super._();
+  const _MeetingNoteResponse({this.id = 0, this.channelId = 0, this.templateId = 0, this.title = '', @JsonKey(name: 'content', fromJson: parseNoteContent) final  Map<String, String> sections = const {}, this.createdBy = 0, @JsonKey(fromJson: _createdAtOf) required this.createdAt, final  List<MeetingNoteAttachmentResponse> attachments = const []}): _sections = sections,_attachments = attachments,super._();
   factory _MeetingNoteResponse.fromJson(Map<String, dynamic> json) => _$MeetingNoteResponseFromJson(json);
 
 @override@JsonKey() final  int id;
@@ -242,6 +244,15 @@ class _MeetingNoteResponse extends MeetingNoteResponse {
 @override@JsonKey() final  int createdBy;
 /// 정렬에만 쓰므로 못 읽으면 맨 뒤로 보낸다.
 @override@JsonKey(fromJson: _createdAtOf) final  DateTime createdAt;
+/// 붙은 파일. 첨부가 생기기 전 서버 응답에는 없으므로 비어 있는 것으로 본다.
+ final  List<MeetingNoteAttachmentResponse> _attachments;
+/// 붙은 파일. 첨부가 생기기 전 서버 응답에는 없으므로 비어 있는 것으로 본다.
+@override@JsonKey() List<MeetingNoteAttachmentResponse> get attachments {
+  if (_attachments is EqualUnmodifiableListView) return _attachments;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_attachments);
+}
+
 
 /// Create a copy of MeetingNoteResponse
 /// with the given fields replaced by the non-null parameter values.
@@ -256,16 +267,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _MeetingNoteResponse&&(identical(other.id, id) || other.id == id)&&(identical(other.channelId, channelId) || other.channelId == channelId)&&(identical(other.templateId, templateId) || other.templateId == templateId)&&(identical(other.title, title) || other.title == title)&&const DeepCollectionEquality().equals(other._sections, _sections)&&(identical(other.createdBy, createdBy) || other.createdBy == createdBy)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _MeetingNoteResponse&&(identical(other.id, id) || other.id == id)&&(identical(other.channelId, channelId) || other.channelId == channelId)&&(identical(other.templateId, templateId) || other.templateId == templateId)&&(identical(other.title, title) || other.title == title)&&const DeepCollectionEquality().equals(other._sections, _sections)&&(identical(other.createdBy, createdBy) || other.createdBy == createdBy)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&const DeepCollectionEquality().equals(other._attachments, _attachments));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,channelId,templateId,title,const DeepCollectionEquality().hash(_sections),createdBy,createdAt);
+int get hashCode => Object.hash(runtimeType,id,channelId,templateId,title,const DeepCollectionEquality().hash(_sections),createdBy,createdAt,const DeepCollectionEquality().hash(_attachments));
 
 @override
 String toString() {
-  return 'MeetingNoteResponse(id: $id, channelId: $channelId, templateId: $templateId, title: $title, sections: $sections, createdBy: $createdBy, createdAt: $createdAt)';
+  return 'MeetingNoteResponse(id: $id, channelId: $channelId, templateId: $templateId, title: $title, sections: $sections, createdBy: $createdBy, createdAt: $createdAt, attachments: $attachments)';
 }
 
 
@@ -276,7 +287,7 @@ abstract mixin class _$MeetingNoteResponseCopyWith<$Res> implements $MeetingNote
   factory _$MeetingNoteResponseCopyWith(_MeetingNoteResponse value, $Res Function(_MeetingNoteResponse) _then) = __$MeetingNoteResponseCopyWithImpl;
 @override @useResult
 $Res call({
- int id, int channelId, int templateId, String title,@JsonKey(name: 'content', fromJson: parseNoteContent) Map<String, String> sections, int createdBy,@JsonKey(fromJson: _createdAtOf) DateTime createdAt
+ int id, int channelId, int templateId, String title,@JsonKey(name: 'content', fromJson: parseNoteContent) Map<String, String> sections, int createdBy,@JsonKey(fromJson: _createdAtOf) DateTime createdAt, List<MeetingNoteAttachmentResponse> attachments
 });
 
 
@@ -293,7 +304,7 @@ class __$MeetingNoteResponseCopyWithImpl<$Res>
 
 /// Create a copy of MeetingNoteResponse
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? channelId = null,Object? templateId = null,Object? title = null,Object? sections = null,Object? createdBy = null,Object? createdAt = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? channelId = null,Object? templateId = null,Object? title = null,Object? sections = null,Object? createdBy = null,Object? createdAt = null,Object? attachments = null,}) {
   return _then(_MeetingNoteResponse(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as int,channelId: null == channelId ? _self.channelId : channelId // ignore: cast_nullable_to_non_nullable
@@ -302,7 +313,8 @@ as int,title: null == title ? _self.title : title // ignore: cast_nullable_to_no
 as String,sections: null == sections ? _self._sections : sections // ignore: cast_nullable_to_non_nullable
 as Map<String, String>,createdBy: null == createdBy ? _self.createdBy : createdBy // ignore: cast_nullable_to_non_nullable
 as int,createdAt: null == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
-as DateTime,
+as DateTime,attachments: null == attachments ? _self._attachments : attachments // ignore: cast_nullable_to_non_nullable
+as List<MeetingNoteAttachmentResponse>,
   ));
 }
 

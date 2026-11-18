@@ -10,6 +10,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/network/chat_socket.dart';
 import '../../../../core/utils/app_lifecycle.dart';
 import '../../../../core/utils/async_state.dart';
+import '../../../../shared/utils/external_url.dart';
 import '../../../../shared/widgets/bloc_scaffold.dart';
 import '../../../channel/data/repositories/channel_repository.dart';
 import '../../../profile/data/repositories/profile_repository.dart';
@@ -17,6 +18,7 @@ import '../../data/repositories/message_repository.dart';
 import '../../domain/chat_message.dart';
 import '../blocs/channel_message/channel_message_bloc.dart';
 import '../utils/attachment_opener.dart';
+import '../widgets/attachment_image_preview.dart';
 import '../widgets/chat_message_row.dart';
 
 class ChannelView extends StatelessWidget {
@@ -391,6 +393,15 @@ class _MessageListState extends State<_MessageList> {
           ? () => _showMessageActions(context, message)
           : null,
       onAttachmentTap: (index) => _openAttachment(context, message, index),
+      imageBuilder: (index, attachment) => AttachmentImagePreview(
+        key: ValueKey('${message.id}/$index'),
+        repository: context.read<MessageRepository>(),
+        channelId: context.read<ChannelMessageBloc>().channelId,
+        messageId: message.id,
+        attachmentIndex: index,
+        name: attachment.name,
+        onTap: () => _openAttachment(context, message, index),
+      ),
     );
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s4),

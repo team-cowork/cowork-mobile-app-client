@@ -86,3 +86,13 @@ final class _ChannelListSocketEventReceived extends ChannelListEvent {
 final class _ChannelListReconnected extends ChannelListEvent {
   const _ChannelListReconnected();
 }
+
+/// 다른 사람이 나를 [teamId] 팀에 넣었다. 화면이 아니라 Bloc 이 스스로 넣는다.
+final class _ChannelListTeamInvited extends ChannelListEvent {
+  const _ChannelListTeamInvited(this.teamId);
+
+  final int teamId;
+
+  @override
+  List<Object?> get props => [teamId];
+}

@@ -11,6 +11,7 @@ import '../../../profile/data/model/responses/user_response.dart';
 import '../../../team/data/repositories/team_repository.dart';
 import '../../domain/note.dart';
 import '../model/requests/create_meeting_note_request.dart';
+import '../model/requests/meeting_note_attachment_request.dart';
 import '../model/requests/update_meeting_note_request.dart';
 import '../model/responses/meeting_note_response.dart';
 
@@ -87,6 +88,7 @@ class NotesRepository {
         templateId: note.templateId,
         title: note.title,
         sections: note.sections,
+        attachments: _attachmentsOf(note),
       ).toJson(),
     );
     final created = MeetingNoteResponse.fromJson(
@@ -96,14 +98,24 @@ class NotesRepository {
     return created.toNote(_authorOf(created, authors));
   }
 
-  /// 편집한 회의록을 저장한다. 서버는 보낸 필드만 반영한다.
+  /// 편집한 회의록을 저장한다. 서버는 보낸 필드만 반영한다. 첨부는 언제나 전체
+  /// 목록을 보내므로 [note] 에서 뺀 파일은 회의록에서 풀린다.
   Future<void> updateNote(Note note) => _dio.patch<String>(
     '/channels/${note.channelId}/meeting-notes/${note.id}',
     data: UpdateMeetingNoteRequest(
       title: note.title,
       sections: note.sections,
+      attachments: _attachmentsOf(note),
     ).toJson(),
   );
+
+  static List<MeetingNoteAttachmentRequest> _attachmentsOf(Note note) => [
+    for (final attachment in note.attachments)
+      MeetingNoteAttachmentRequest(
+        objectKey: attachment.objectKey,
+        name: attachment.name,
+      ),
+  ];
 
   /// 회의록을 지운다. 서버는 작성자가 아니면 403 으로 거절한다.
   ///

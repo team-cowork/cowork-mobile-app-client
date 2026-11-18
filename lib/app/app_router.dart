@@ -5,7 +5,7 @@ import '../feature/channel/presentation/views/members_view.dart';
 import '../feature/chat/presentation/views/channel_view.dart';
 import '../feature/chat/presentation/views/dm_list_view.dart';
 import '../feature/chat/presentation/views/thread_view.dart';
-import '../feature/issues/domain/issue.dart';
+import '../feature/issues/domain/issue_detail_args.dart';
 import '../feature/issues/presentation/views/issue_detail_view.dart';
 import '../feature/notes/domain/note.dart';
 import '../feature/notes/domain/note_draft.dart';
@@ -18,6 +18,7 @@ import '../feature/notifications/presentation/views/notifications_view.dart';
 import '../feature/profile/presentation/views/edit_profile_view.dart';
 import '../feature/search/presentation/views/search_view.dart';
 import '../feature/setting/presentation/views/settings_view.dart';
+import '../feature/team/presentation/views/team_invite_view.dart';
 import '../feature/team/presentation/views/team_settings_view.dart';
 import 'auth_gate.dart';
 
@@ -69,7 +70,7 @@ String? _parentMessageIdOf(GoRouterState state) {
 int? _teamIdOf(GoRouterState state) =>
     int.tryParse(state.uri.queryParameters['teamId'] ?? '');
 
-int? _teamPathIdOf(GoRouterState state) =>
+int? _teamIdPathOf(GoRouterState state) =>
     int.tryParse(state.pathParameters['teamId'] ?? '');
 
 final GoRouter appRouter = GoRouter(
@@ -123,15 +124,22 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/issues/detail',
       builder: (context, state) =>
-          IssueDetailView(issue: state.extra! as Issue),
+          IssueDetailView(args: state.extra! as IssueDetailArgs),
     ),
     GoRoute(path: '/dm', builder: (context, state) => const DmListView()),
     // 팀을 지우면 true 로 닫힌다. id 가 숫자가 아니면 홈으로 보낸다.
     GoRoute(
       path: '/teams/:teamId/settings',
-      redirect: (context, state) => _teamPathIdOf(state) == null ? '/' : null,
+      redirect: (context, state) => _teamIdPathOf(state) == null ? '/' : null,
       builder: (context, state) =>
-          TeamSettingsView(teamId: _teamPathIdOf(state)!),
+          TeamSettingsView(teamId: _teamIdPathOf(state)!),
+    ),
+    // 팀 메뉴 `멤버 초대`. id 가 숫자가 아니면 홈으로 보낸다.
+    GoRoute(
+      path: '/teams/:teamId/invite',
+      redirect: (context, state) => _teamIdPathOf(state) == null ? '/' : null,
+      builder: (context, state) =>
+          TeamInviteView(teamId: _teamIdPathOf(state)!),
     ),
   ],
 );

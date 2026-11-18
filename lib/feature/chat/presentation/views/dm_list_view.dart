@@ -5,10 +5,10 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/network/chat_socket.dart';
 import '../../../../core/utils/async_state.dart';
+import '../../../../shared/utils/chat_author.dart';
 import '../../../../shared/widgets/bloc_scaffold.dart';
-import '../../data/model/chat_message_mapping.dart';
+import '../../../profile/data/repositories/profile_repository.dart';
 import '../../data/repositories/dm_repository.dart';
-import '../../data/repositories/message_repository.dart';
 import '../../domain/direct_message_preview.dart';
 import '../blocs/personal_chat/personal_chat_bloc.dart';
 import '../widgets/dm_list_header.dart';
@@ -22,7 +22,7 @@ class DmListView extends StatelessWidget {
     return BlocScaffold<PersonalChatBloc, PersonalChatData>(
       create: (context) => PersonalChatBloc(
         dmRepository: context.read<DmRepository>(),
-        messageRepository: context.read<MessageRepository>(),
+        profileRepository: context.read<ProfileRepository>(),
         socket: context.read<ChatSocket>(),
       )..add(const PersonalChatEvent.requested()),
       errorTitle: 'DM 목록을 불러오지 못했어요',

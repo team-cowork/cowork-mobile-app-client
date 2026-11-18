@@ -1,8 +1,10 @@
 import 'package:cowork_app/core/utils/async_state.dart';
 import 'package:cowork_app/feature/channel/data/repositories/channel_repository.dart';
+import 'package:cowork_app/feature/channel/domain/channel_member.dart';
 import 'package:cowork_app/feature/channel/presentation/blocs/channel_members/channel_members_bloc.dart';
 import 'package:cowork_app/feature/channel/presentation/views/members_view.dart';
-import 'package:cowork_app/feature/chat/data/repositories/message_repository.dart';
+import 'package:cowork_app/feature/profile/data/repositories/profile_repository.dart';
+import 'package:cowork_app/feature/team/data/repositories/team_repository.dart';
 import 'package:cowork_design_system/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -13,16 +15,17 @@ import '../chat/channel_message_test_server.dart';
 ChannelRepository _channels(FakeMessageGateway gateway) =>
     ChannelRepository.withDio(messageDio(gateway, 'channel'));
 
-MessageRepository _messages(FakeMessageGateway gateway) =>
-    MessageRepository.withDio(
-      chat: messageDio(gateway, 'chat'),
-      user: messageDio(gateway, 'user'),
-    );
+ProfileRepository _profiles(FakeMessageGateway gateway) =>
+    ProfileRepository.withDio(messageDio(gateway, 'user'));
+
+TeamRepository _teams(FakeMessageGateway gateway) =>
+    TeamRepository.withDio(messageDio(gateway, 'team'));
 
 ChannelMembersBloc _bloc(FakeMessageGateway gateway) => ChannelMembersBloc(
   channelId: 10,
   channelRepository: _channels(gateway),
-  messageRepository: _messages(gateway),
+  profileRepository: _profiles(gateway),
+  teamRepository: _teams(gateway),
 );
 
 void main() {
@@ -71,6 +74,41 @@ void main() {
       );
     });
 
+    test('팀 역할을 함께 읽고, 기본 역할은 뺀다', () async {
+      final gateway = FakeMessageGateway();
+      final bloc = _bloc(gateway)..add(const ChannelMembersEvent.requested());
+      addTearDown(bloc.close);
+
+      final state = await bloc.stream.firstWhere(
+        (s) => s is AsyncSuccess<ChannelMembersData>,
+      );
+
+      final members = (state as AsyncSuccess<ChannelMembersData>).data.members;
+      expect(members.map((m) => m.role), [
+        ChannelMemberRole.owner,
+        ChannelMemberRole.admin,
+        ChannelMemberRole.member,
+      ]);
+      expect(members.first.roleNames, ['Backend']);
+      expect(members[1].roleNames, isEmpty);
+      expect(gateway.calls, contains('GET /team/teams/1/members'));
+    });
+
+    test('팀 역할을 못 읽어도 멤버 목록은 보여 준다', () async {
+      final gateway = FakeMessageGateway()
+        ..failing = 'GET /team/teams/1/members';
+      final bloc = _bloc(gateway)..add(const ChannelMembersEvent.requested());
+      addTearDown(bloc.close);
+
+      final state = await bloc.stream.firstWhere(
+        (s) => s is AsyncSuccess<ChannelMembersData>,
+      );
+
+      final members = (state as AsyncSuccess<ChannelMembersData>).data.members;
+      expect(members, hasLength(3));
+      expect(members.every((m) => m.role == ChannelMemberRole.member), isTrue);
+    });
+
     test('이름을 못 읽어도 멤버 목록은 보여 준다', () async {
       final gateway = FakeMessageGateway()..failing = 'GET /user/users/batch';
       final bloc = _bloc(gateway)..add(const ChannelMembersEvent.requested());
@@ -108,9 +146,10 @@ void main() {
             RepositoryProvider<ChannelRepository>.value(
               value: _channels(gateway),
             ),
-            RepositoryProvider<MessageRepository>.value(
-              value: _messages(gateway),
+            RepositoryProvider<ProfileRepository>.value(
+              value: _profiles(gateway),
             ),
+            RepositoryProvider<TeamRepository>.value(value: _teams(gateway)),
           ],
           child: MaterialApp(
             theme: AppTheme.dark(),
@@ -129,6 +168,14 @@ void main() {
       expect(find.text('나'), findsNWidgets(2));
       expect(find.text('도윤'), findsOneWidget);
       expect(find.text('서연'), findsOneWidget);
+    });
+
+    testWidgets('소유자·관리자는 배지로, 커스텀 역할은 이름 아래에 보인다', (tester) async {
+      await pumpMembers(tester, FakeMessageGateway());
+
+      expect(find.text('소유자'), findsOneWidget);
+      expect(find.text('관리자'), findsOneWidget);
+      expect(find.text('Backend'), findsOneWidget);
     });
 
     testWidgets('불러오지 못하면 에러 화면에서 다시 시도할 수 있다', (tester) async {
