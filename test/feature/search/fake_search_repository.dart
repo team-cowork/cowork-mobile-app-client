@@ -21,7 +21,7 @@ class FakeSearchRepository implements SearchRepository {
 
   @override
   Future<List<SearchPersonResult>> searchPeople({
-    required int teamId,
+    int? teamId,
     required String query,
   }) => people.putIfAbsent(query, Completer.new).future;
 

@@ -5,6 +5,7 @@ import 'package:cowork_app/core/network/chat_socket.dart';
 import 'package:cowork_app/feature/auth/data/auth_repository.dart';
 import 'package:cowork_app/feature/auth/presentation/blocs/auth/auth_bloc.dart';
 import 'package:cowork_app/feature/auth/presentation/views/login_view.dart';
+import 'package:cowork_app/feature/notifications/data/repositories/notification_repository.dart';
 import 'package:cowork_design_system/design_system.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
@@ -13,6 +14,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 
 import '../feature/channel/chat_test_server.dart';
+import '../feature/notifications/notification_test_stream.dart';
 
 /// 앱 시작 때 세션 복원 결과와 로그인 실패, 만료 알림을 테스트가 정한다.
 class _FakeAuthRepository extends Fake implements AuthRepository {
@@ -103,6 +105,9 @@ void main() {
           RepositoryProvider.value(value: teamRepositoryOf(server)),
           RepositoryProvider.value(value: channelRepositoryOf(server)),
           RepositoryProvider<ChatSocket>.value(value: FakeChatSocket()),
+          RepositoryProvider.value(
+            value: NotificationRepository(FakeNotificationStream()),
+          ),
         ],
         child: BlocProvider(
           create: (_) =>

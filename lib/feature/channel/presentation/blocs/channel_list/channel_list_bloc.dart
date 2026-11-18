@@ -26,19 +26,25 @@ part 'channel_list_state.dart';
 /// 채널 문제로 보이지 않게 한다.
 ///
 /// 읽은 뒤에는 다시 조회하지 않고, 보고 있는 팀 방을 소켓으로 구독해 다른 기기·
-/// 사람이 만들고 바꾸고 지운 채널을 목록에 반영한다.
+/// 사람이 만들고 바꾸고 지운 채널을 목록에 반영한다. 다른 사람이 나를 팀에 넣은 것은
+/// 소켓 이벤트가 없어 [invitedTeams] 로 받는다.
 ///
 /// ponytail: 실패 단계를 문자열로 붙이는 건 임시다. 화면 제목까지 단계별로 나누는
 /// 작업은 #94 에서 한다.
 class ChannelListBloc extends Bloc<ChannelListEvent, ChannelListState> {
-  ChannelListBloc(this._teamRepository, this._channelRepository, this._socket)
-    : super(const ChannelListState.initial()) {
+  ChannelListBloc(
+    this._teamRepository,
+    this._channelRepository,
+    this._socket, {
+    Stream<int> invitedTeams = const Stream.empty(),
+  }) : super(const ChannelListState.initial()) {
     on<ChannelListRequested>(_onLoad);
     on<ChannelListTeamSelected>(_onTeamSelected);
     on<ChannelListTeamCreated>(_onTeamCreated);
     on<ChannelListChannelAdded>(_onChannelAdded);
     on<_ChannelListSocketEventReceived>(_onSocketEvent);
     on<_ChannelListReconnected>(_onReconnected);
+    on<_ChannelListTeamInvited>(_onTeamInvited);
 
     _socketEvents = _socket.events
         .map(ChannelSocketEvent.from)
@@ -47,6 +53,9 @@ class ChannelListBloc extends Bloc<ChannelListEvent, ChannelListState> {
     _reconnects = _socket.reconnected.listen(
       (_) => add(const _ChannelListReconnected()),
     );
+    _invites = invitedTeams.listen(
+      (teamId) => add(_ChannelListTeamInvited(teamId)),
+    );
   }
 
   final TeamRepository _teamRepository;
@@ -54,6 +63,7 @@ class ChannelListBloc extends Bloc<ChannelListEvent, ChannelListState> {
   final ChatSocket _socket;
   late final StreamSubscription<ChannelSocketEvent?> _socketEvents;
   late final StreamSubscription<void> _reconnects;
+  late final StreamSubscription<int> _invites;
 
   /// 마지막으로 읽은 팀 목록. 팀을 바꿀 때는 다시 읽지 않고 여기서 고른다.
   List<TeamSummaryResponse> _teams = const [];
@@ -225,6 +235,49 @@ class ChannelListBloc extends Bloc<ChannelListEvent, ChannelListState> {
     }
   }
 
+  /// 다른 사람이 나를 [_ChannelListTeamInvited.teamId] 팀에 바로 넣었다(알림
+  /// `MEMBER_INVITED`). 팀 목록을 다시 읽어 그 팀을 보이게 한다.
+  ///
+  /// 팀이 없던 홈이면 그 팀으로 들어간다. 빈 화면이 초대받으면 여기에 보인다고
+  /// 안내하기 때문이다. 보던 팀이 있으면 보던 화면은 두고 단축 바에만 붙인다.
+  ///
+  /// 목록이 없으면(읽는 중·실패) 하지 않는다. 그 읽기나 다시 시도가 새 팀까지 읽는다.
+  /// 다시 읽기에 실패해도 보던 화면은 그대로 둔다.
+  Future<void> _onTeamInvited(
+    _ChannelListTeamInvited event,
+    Emitter<ChannelListState> emit,
+  ) async {
+    if (state is! AsyncSuccess<ChannelListData>) return;
+    if (_teams.any((team) => team.id == event.teamId)) return;
+
+    final List<TeamSummaryResponse> teams;
+    try {
+      teams = await _teamRepository.fetchMyTeams();
+    } catch (e, s) {
+      Logger.e('초대받은 팀 목록 조회 실패', tag: 'Chat', error: e, stackTrace: s);
+      return;
+    }
+    if (isClosed || state is! AsyncSuccess<ChannelListData>) return;
+
+    final viewing = _teamId;
+    if (viewing == null) {
+      _teams = teams;
+      final next =
+          teams.where((team) => team.id == event.teamId).firstOrNull ??
+          teams.firstOrNull;
+      if (next == null) return;
+      emit(const ChannelListState.loading());
+      await _loadChannels(next, emit);
+      return;
+    }
+    // 읽는 사이 만든 팀이 아직 응답에 없으면, 지금 보는 팀을 잃고 다른 팀 이름으로
+    // 그려진다. 그런 낡은 응답은 버린다. 정말 빠진 팀은 소켓·재연결이 처리한다.
+    if (!teams.any((team) => team.id == viewing)) return;
+    _teams = teams;
+    // 채널은 그대로 두고 단축 바만 다시 그린다.
+    _editChannels(emit, (channels) => channels);
+  }
+
   void _apply(ChannelListChange change, Emitter<ChannelListState> emit) {
     _resyncChanges?.add(change);
     switch (change) {
@@ -359,6 +412,7 @@ class ChannelListBloc extends Bloc<ChannelListEvent, ChannelListState> {
     _follow(null);
     await _socketEvents.cancel();
     await _reconnects.cancel();
+    await _invites.cancel();
     return super.close();
   }
 

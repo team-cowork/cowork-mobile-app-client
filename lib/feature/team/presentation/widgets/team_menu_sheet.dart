@@ -4,12 +4,16 @@ import 'package:flutter/material.dart';
 class TeamMenuSheet extends StatelessWidget {
   const TeamMenuSheet({
     required this.teamName,
+    this.onInviteMembers,
     this.onCreateChannel,
     this.onCreateProject,
     super.key,
   });
 
   final String teamName;
+
+  /// '멤버 초대' 를 눌렀을 때. 시트가 닫힌 뒤에 불린다.
+  final VoidCallback? onInviteMembers;
 
   /// '채널 만들기' 를 눌렀을 때. 시트가 닫힌 뒤에 불린다.
   final VoidCallback? onCreateChannel;
@@ -22,6 +26,7 @@ class TeamMenuSheet extends StatelessWidget {
   static Future<void> show(
     BuildContext context, {
     required String teamName,
+    VoidCallback? onInviteMembers,
     VoidCallback? onCreateChannel,
     VoidCallback? onCreateProject,
   }) {
@@ -33,6 +38,7 @@ class TeamMenuSheet extends StatelessWidget {
       ),
       builder: (_) => TeamMenuSheet(
         teamName: teamName,
+        onInviteMembers: onInviteMembers,
         onCreateChannel: onCreateChannel,
         onCreateProject: onCreateProject,
       ),
@@ -43,7 +49,10 @@ class TeamMenuSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     return SafeArea(
       child: Padding(
-        padding: const EdgeInsets.only(top: AppSpacing.s8, bottom: AppSpacing.s24),
+        padding: const EdgeInsets.only(
+          top: AppSpacing.s8,
+          bottom: AppSpacing.s24,
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -85,7 +94,7 @@ class TeamMenuSheet extends StatelessWidget {
               ),
             ),
             const _MenuRow(emoji: '⚙️', label: '팀 설정'),
-            const _MenuRow(emoji: '➕', label: '멤버 초대'),
+            _MenuRow(emoji: '➕', label: '멤버 초대', onSelected: onInviteMembers),
             _MenuRow(emoji: '#', label: '채널 만들기', onSelected: onCreateChannel),
             _MenuRow(
               emoji: '📁',

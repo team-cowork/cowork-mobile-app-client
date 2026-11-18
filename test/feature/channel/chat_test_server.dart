@@ -4,10 +4,13 @@ import 'dart:typed_data';
 
 import 'package:cowork_app/core/network/chat_socket.dart';
 import 'package:cowork_app/feature/channel/data/repositories/channel_repository.dart';
+import 'package:cowork_app/feature/notifications/data/repositories/notification_repository.dart';
 import 'package:cowork_app/feature/team/data/repositories/team_repository.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+
+import '../notifications/notification_test_stream.dart';
 
 /// 채팅 홈 테스트용 가짜 게이트웨이.
 ///
@@ -65,6 +68,24 @@ class FakeChatServer implements HttpClientAdapter {
   /// 팀 생성 요청 본문.
   final createdTeams = <Map<String, dynamic>>[];
 
+  /// 초대 코드 → 그 코드로 들어갈 팀. 가입하면 [teams] 에 이 팀이 붙는다.
+  final joinableTeams = <String, Map<String, dynamic>>{};
+
+  /// 팀 id → 멤버 사용자 id.
+  final members = <int, List<int>>{};
+
+  /// 팀 id → 초대 코드 목록(`GET /invites` 응답 원소).
+  final invites = <int, List<Map<String, dynamic>>>{};
+
+  /// 바로 초대 요청 본문.
+  final invitedMembers = <Map<String, dynamic>>[];
+
+  ServerFailure? failJoin;
+  ServerFailure? failInvite;
+  ServerFailure? failInvites;
+  ServerFailure? failRevoke;
+  ServerFailure? failMembers;
+
   int _nextId = 100;
 
   @override
@@ -82,6 +103,53 @@ class FakeChatServer implements HttpClientAdapter {
     }
     if (path == '/team/teams') {
       return _respond(options, failTeams, () => teams);
+    }
+    if (path.startsWith('/team/teams/join/')) {
+      final code = Uri.decodeComponent(path.split('/').last);
+      return _respond(options, failJoin, () => _join(code));
+    }
+    if (path.startsWith('/team/teams/')) {
+      final segments = path.split('/');
+      final teamId = int.parse(segments[3]);
+      final teamInvites = invites.putIfAbsent(teamId, () => []);
+      switch ((options.method, segments.length > 4 ? segments[4] : '')) {
+        case ('GET', 'members'):
+          return _respond(options, failMembers, () => _membersOf(teamId));
+        case ('POST', 'members'):
+          invitedMembers.add(body);
+          return _respond(options, failInvite, () {
+            members[teamId] = {
+              ...members[teamId] ?? const <int>[],
+              ...(body['userIds'] as List).cast<int>(),
+            }.toList();
+            return _membersOf(teamId);
+          });
+        case ('GET', 'invites'):
+          return _respond(options, failInvites, () => teamInvites);
+        case ('POST', 'invites'):
+          return _respond(options, failInvite, () {
+            final invite = {
+              'inviteCode': 'code${_nextId++}',
+              'teamId': teamId,
+              'duration': body['duration'],
+              'expiresAt': body['duration'] == 'never'
+                  ? null
+                  : '2026-11-24T03:00:00',
+              'expired': false,
+              'createdAt': '2026-11-17T03:00:00',
+            };
+            teamInvites.insert(0, invite);
+            return invite;
+          });
+        case ('DELETE', 'invites'):
+          final code = Uri.decodeComponent(segments[5]);
+          return _respond(options, failRevoke, () {
+            for (final invite in teamInvites) {
+              if (invite['inviteCode'] == code) invite['expired'] = true;
+            }
+            return null;
+          });
+      }
     }
     if (path.startsWith('/channel/teams/')) {
       final teamId = int.parse(path.split('/')[3]);
@@ -109,6 +177,26 @@ class FakeChatServer implements HttpClientAdapter {
     return team;
   }
 
+  /// 서버처럼 팀 이름 없이 팀 id 만 돌려준다. 모르는 코드는 404.
+  Object _join(String code) {
+    final team = joinableTeams[code];
+    if (team == null) throw const ServerFailure(404, '유효하지 않은 초대 코드입니다.');
+    teams.add(team);
+    return {
+      'teamId': team['id'],
+      'userId': 1,
+      'role': 'MEMBER',
+      'joinedAt': '2026-11-17T03:00:00',
+      'nicknameFormatEnforced': false,
+      'nicknameFormatExample': null,
+    };
+  }
+
+  List<Map<String, dynamic>> _membersOf(int teamId) => [
+    for (final userId in members[teamId] ?? const <int>[])
+      {'id': userId, 'userId': userId, 'role': 'MEMBER', 'nickname': null},
+  ];
+
   Map<String, dynamic> _create(Map<String, dynamic> body) {
     created.add(body);
     final channel = {
@@ -129,12 +217,17 @@ class FakeChatServer implements HttpClientAdapter {
     Object? Function() data,
   ) {
     if (failure == null) {
-      return _json({
-        'status': 'OK',
-        'code': 200,
-        'message': 'OK',
-        'data': data(),
-      });
+      try {
+        return _json({
+          'status': 'OK',
+          'code': 200,
+          'message': 'OK',
+          'data': data(),
+        });
+      } on ServerFailure catch (thrown) {
+        // 요청 내용에 따라 실패하는 경로(없는 초대 코드 등)는 data 가 던진다.
+        return _respond(options, thrown, data);
+      }
     }
     final statusCode = failure.statusCode;
     if (statusCode == null) {
@@ -241,16 +334,22 @@ class FakeChatSocket implements ChatSocket {
 }
 
 /// [home] 을 [server] 에 붙은 팀·채널 저장소와 [socket] 과 함께 띄우는 앱.
+///
+/// [notifications] 를 안 주면 알림이 오지 않는 저장소를 둔다.
 Widget chatTestApp(
   FakeChatServer server, {
   required Widget home,
   FakeChatSocket? socket,
+  NotificationRepository? notifications,
   ThemeData? theme,
 }) => MultiRepositoryProvider(
   providers: [
     RepositoryProvider.value(value: teamRepositoryOf(server)),
     RepositoryProvider.value(value: channelRepositoryOf(server)),
     RepositoryProvider<ChatSocket>.value(value: socket ?? FakeChatSocket()),
+    RepositoryProvider.value(
+      value: notifications ?? NotificationRepository(FakeNotificationStream()),
+    ),
   ],
   child: MaterialApp(theme: theme, home: home),
 );
