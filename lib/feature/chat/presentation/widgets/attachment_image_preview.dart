@@ -82,12 +82,16 @@ class _AttachmentImagePreviewState extends State<AttachmentImagePreview> {
           ),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(8),
-            child: Image.memory(
-              bytes,
+            child: Image(
+              image: ResizeImage(
+                MemoryImage(bytes),
+                // 가로·세로를 함께 제한해, 세로로 긴 이미지도 상자 안 크기로만 푼다.
+                width: (AttachmentImagePreview.maxWidth * 3).toInt(),
+                height: (AttachmentImagePreview.maxHeight * 3).toInt(),
+                policy: ResizeImagePolicy.fit,
+              ),
               semanticLabel: widget.name,
               fit: BoxFit.contain,
-              // 화면보다 훨씬 큰 원본을 그대로 풀지 않는다.
-              cacheWidth: (AttachmentImagePreview.maxWidth * 3).toInt(),
               errorBuilder: (_, _, _) => _Placeholder(
                 icon: Icons.broken_image_outlined,
                 label: widget.name,
