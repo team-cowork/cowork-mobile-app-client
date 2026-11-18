@@ -46,6 +46,26 @@ class FakeMessageGateway implements HttpClientAdapter {
   /// 채널 10 의 스레드. `POST`·`PATCH /channels/10/threads` 가 바꾼다.
   List<Map<String, dynamic>> threads = [];
 
+  /// `GET /teams/1/members` 로 읽는 팀 멤버와 역할.
+  List<Map<String, dynamic>> teamMembers = [
+    {
+      'userId': 1,
+      'role': 'OWNER',
+      'roles': [
+        {'name': 'Backend', 'isDefault': false},
+        {'name': 'everyone', 'isDefault': true},
+      ],
+    },
+    {
+      'userId': 2,
+      'role': 'ADMIN',
+      'roles': [
+        {'name': 'everyone', 'isDefault': true},
+      ],
+    },
+    {'userId': 3, 'role': 'MEMBER', 'roles': <Map<String, dynamic>>[]},
+  ];
+
   /// 사용자 id 별 닉네임. 이름(`users`)이 비어 있을 때 쓴다.
   final nicknames = <int, String>{};
 
@@ -111,6 +131,7 @@ class FakeMessageGateway implements HttpClientAdapter {
       'PATCH /channel/channels/10/threads/5' => _ok(
         threads.single..addAll(bodies[call]!),
       ),
+      'GET /team/teams/1/members' => _ok(teamMembers),
       'GET /channel/channels/10/members' => _ok([
         for (final id in memberIds) {'channelId': 10, 'userId': id},
       ]),
@@ -118,6 +139,12 @@ class FakeMessageGateway implements HttpClientAdapter {
       'POST /chat/chat/channels/10/messages' => _ok({'queued': true}),
       'GET /chat/chat/channels/10/messages/m1/attachments/0/download-url' =>
         _ok({'downloadUrl': 'https://files.test/a.pdf'}),
+      'GET /chat/chat/channels/10/messages/img1/attachments/0/download-url' =>
+        _ok({'downloadUrl': 'https://files.test/img1.png'}),
+      'GET /chat/chat/channels/10/messages/img2/attachments/0/download-url' =>
+        _ok({'downloadUrl': 'https://files.test/img2.png'}),
+      'GET /chat/chat/channels/10/messages/img3/attachments/0/download-url' =>
+        _ok({'downloadUrl': 'https://files.test/img3.png'}),
       'GET /chat/chat/channels/10/messages/r1/attachments/0/download-url' =>
         _ok({'downloadUrl': 'https://files.test/reply.pdf'}),
       'GET /user/users/me' => _ok({'id': 1, 'name': '나'}),
@@ -243,3 +270,36 @@ Dio messageDio(FakeMessageGateway gateway, String service) => Dio(
     responseType: ResponseType.plain,
   ),
 )..httpClientAdapter = gateway;
+
+/// 1x1 PNG.
+final tinyPng = base64Decode(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==',
+);
+
+/// 임시 주소(`https://files.test/...`)의 파일을 주는 가짜 서버. 받은 요청 주소를 적어 둔다.
+class FakeFilesServer implements HttpClientAdapter {
+  final requests = <String>[];
+
+  /// true 면 500 으로 응답한다.
+  bool failing = false;
+
+  /// 걸어 두면 응답을 이 Future 가 끝날 때까지 붙잡는다.
+  Future<void>? gate;
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<Uint8List>? requestStream,
+    Future<void>? cancelFuture,
+  ) async {
+    requests.add(options.uri.toString());
+    await gate;
+    if (failing) return ResponseBody.fromString('', 500);
+    return ResponseBody.fromBytes(tinyPng, 200);
+  }
+
+  @override
+  void close({bool force = false}) {}
+}
+
+Dio filesDio(FakeFilesServer server) => Dio()..httpClientAdapter = server;

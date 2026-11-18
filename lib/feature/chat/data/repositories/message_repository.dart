@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:dio/dio.dart';
 
 import '../../../../core/network/dio_client.dart';
@@ -19,12 +21,33 @@ class MessageRepository {
         user: createAuthedDio(ApiService.user, auth),
       );
 
-  MessageRepository.withDio({required Dio chat, required Dio user})
-    : _chat = chat,
-      _user = user;
+  /// [files] 는 임시 주소의 파일을 받는 dio 다. 임시 주소는 서명이 들어 있어 인증
+  /// 헤더가 필요 없고 게이트웨이 prefix 도 없으므로 따로 둔다.
+  ///
+  /// [imageCacheLimit] 는 받아 둘 이미지 용량의 상한(바이트)이다.
+  MessageRepository.withDio({
+    required Dio chat,
+    required Dio user,
+    Dio? files,
+    int imageCacheLimit = defaultImageCacheLimit,
+  }) : _chat = chat,
+       _user = user,
+       _files = files ?? createFileDio(),
+       _imageCacheLimit = imageCacheLimit;
 
   final Dio _chat;
   final Dio _user;
+  final Dio _files;
+
+  /// 받아 둔 이미지 첨부. 메시지·첨부 순번 기준이고, 오래 안 쓴 것부터 버린다.
+  final _images = <String, Uint8List>{};
+  final _imageLoads = <String, Future<Uint8List>>{};
+  int _imageBytes = 0;
+
+  final int _imageCacheLimit;
+
+  /// 받아 둘 이미지 용량의 기본 상한.
+  static const defaultImageCacheLimit = 30 * 1024 * 1024;
 
   /// 한 번에 오는 메시지 수의 서버 상한. 이보다 적게 오면 더 이전 메시지가 없다.
   static const pageSize = 100;
@@ -130,6 +153,69 @@ class MessageRepository {
     }
     return url;
   }
+
+  /// 이미 받아 둔 이미지 첨부. 없으면 null.
+  Uint8List? cachedAttachmentImage(
+    int channelId,
+    String messageId,
+    int attachmentIndex,
+  ) {
+    final key = _imageKey(channelId, messageId, attachmentIndex);
+    final bytes = _images.remove(key);
+    // 다시 넣어 가장 최근에 쓴 것으로 올린다.
+    if (bytes != null) _images[key] = bytes;
+    return bytes;
+  }
+
+  /// 이미지 첨부를 받는다. 받아 둔 게 있으면 그대로 주고, 같은 이미지를 받는 중이면
+  /// 그 요청을 같이 기다린다. 없으면 임시 주소를 새로 받아 내려받는다.
+  Future<Uint8List> fetchAttachmentImage(
+    int channelId,
+    String messageId,
+    int attachmentIndex,
+  ) {
+    final cached = cachedAttachmentImage(channelId, messageId, attachmentIndex);
+    if (cached != null) return Future.value(cached);
+    final key = _imageKey(channelId, messageId, attachmentIndex);
+    return _imageLoads[key] ??=
+        _downloadImage(key, channelId, messageId, attachmentIndex).whenComplete(
+          () {
+            // 값을 돌려주면 whenComplete 가 그 Future 를 기다리므로 버린다.
+            _imageLoads.remove(key);
+          },
+        );
+  }
+
+  Future<Uint8List> _downloadImage(
+    String key,
+    int channelId,
+    String messageId,
+    int attachmentIndex,
+  ) async {
+    final url = await fetchAttachmentDownloadUrl(
+      channelId,
+      messageId,
+      attachmentIndex,
+    );
+    final response = await _files.get<List<int>>(
+      url,
+      options: Options(responseType: ResponseType.bytes),
+    );
+    final data = response.data;
+    if (data == null || data.isEmpty) {
+      throw const FormatException('받은 이미지가 비어 있다');
+    }
+    final bytes = Uint8List.fromList(data);
+    _images[key] = bytes;
+    _imageBytes += bytes.length;
+    while (_imageBytes > _imageCacheLimit && _images.length > 1) {
+      _imageBytes -= _images.remove(_images.keys.first)!.length;
+    }
+    return bytes;
+  }
+
+  static String _imageKey(int channelId, String messageId, int index) =>
+      '$channelId/$messageId/$index';
 
   /// 메시지를 보낸다. 서버는 큐에 넣고 바로 돌아오고, 저장된 메시지는 소켓으로 온다.
   Future<void> sendMessage(int channelId, SendMessageRequest request) =>

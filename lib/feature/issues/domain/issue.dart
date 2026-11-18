@@ -1,46 +1,42 @@
 import 'package:equatable/equatable.dart';
 
-import '../../../shared/domain/profile_entity.dart';
-import 'enums/issue_priority.dart';
 import 'enums/issue_status.dart';
 import 'issue_label.dart';
 
+/// 프로젝트에 연결된 GitHub 저장소의 열린 이슈 하나.
 class Issue extends Equatable {
   const Issue({
-    required this.id,
     required this.number,
     required this.title,
     required this.labels,
     required this.status,
-    this.assignee,
-    this.dueDate,
-    this.priority,
-    this.milestone,
-    this.description = '',
+    required this.author,
+    required this.htmlUrl,
+    required this.createdAt,
   });
 
-  final String id;
   final int number;
   final String title;
+
+  /// [IssueStatus.inProgress] 를 뜻하는 라벨은 빠진 나머지 라벨.
   final List<IssueLabel> labels;
   final IssueStatus status;
-  final ProfileEntity? assignee;
-  final String? dueDate;
-  final IssuePriority? priority;
-  final String? milestone;
-  final String description;
+
+  /// 작성자 GitHub 사용자명.
+  final String author;
+  final String htmlUrl;
+
+  /// 화면에 보일 만든 시각.
+  final String createdAt;
 
   @override
   List<Object?> get props => [
-    id,
     number,
     title,
     labels,
     status,
-    assignee,
-    dueDate,
-    priority,
-    milestone,
-    description,
+    author,
+    htmlUrl,
+    createdAt,
   ];
 }

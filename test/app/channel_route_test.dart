@@ -5,6 +5,7 @@ import 'package:cowork_app/core/network/chat_socket.dart';
 import 'package:cowork_app/feature/channel/data/repositories/channel_repository.dart';
 import 'package:cowork_app/feature/chat/data/repositories/message_repository.dart';
 import 'package:cowork_app/feature/profile/data/repositories/profile_repository.dart';
+import 'package:cowork_app/feature/team/data/repositories/team_repository.dart';
 import 'package:cowork_app/feature/setting/data/preference_repository.dart';
 import 'package:cowork_design_system/design_system.dart';
 import 'package:flutter/material.dart';
@@ -53,6 +54,9 @@ void main() {
             value: PreferenceRepository.withDio(
               messageDio(gateway, 'preference'),
             ),
+          ),
+          RepositoryProvider.value(
+            value: TeamRepository.withDio(messageDio(gateway, 'team')),
           ),
           RepositoryProvider<ChatSocket>.value(
             value: socket ?? FakeChatSocket(),
