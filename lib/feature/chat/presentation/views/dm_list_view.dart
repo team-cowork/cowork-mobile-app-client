@@ -5,10 +5,10 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/network/chat_socket.dart';
 import '../../../../core/utils/async_state.dart';
-import '../../../../shared/widgets/bloc_scaffold.dart';
 import '../../../../shared/utils/chat_author.dart';
-import '../../data/repositories/dm_repository.dart';
+import '../../../../shared/widgets/bloc_scaffold.dart';
 import '../../../profile/data/repositories/profile_repository.dart';
+import '../../data/repositories/dm_repository.dart';
 import '../../domain/direct_message_preview.dart';
 import '../blocs/personal_chat/personal_chat_bloc.dart';
 import '../widgets/dm_list_header.dart';

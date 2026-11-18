@@ -8,12 +8,12 @@ import '../../../../../core/network/http_error_message.dart';
 import '../../../../../core/utils/async_state.dart';
 import '../../../../../core/utils/logger.dart';
 import '../../../../../shared/domain/profile_entity.dart';
-import '../../../../profile/data/profile_store.dart';
 import '../../../../../shared/utils/chat_author.dart';
+import '../../../../profile/data/profile_store.dart';
+import '../../../../profile/data/repositories/profile_repository.dart';
 import '../../../data/model/dm_preview_mapping.dart';
 import '../../../data/model/responses/dm_conversation_response.dart';
 import '../../../data/repositories/dm_repository.dart';
-import '../../../../profile/data/repositories/profile_repository.dart';
 import '../../../domain/direct_message_preview.dart';
 
 part 'personal_chat_event.dart';
