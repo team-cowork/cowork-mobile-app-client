@@ -1,5 +1,7 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
 
+import 'team_member_role_response.dart';
+
 part 'team_member_response.freezed.dart';
 part 'team_member_response.g.dart';
 
@@ -18,18 +20,4 @@ abstract class TeamMemberResponse with _$TeamMemberResponse {
 
   factory TeamMemberResponse.fromJson(Map<String, dynamic> json) =>
       _$TeamMemberResponseFromJson(json);
-}
-
-/// 팀 멤버가 받은 커스텀 역할 하나.
-@freezed
-abstract class TeamMemberRoleResponse with _$TeamMemberRoleResponse {
-  const factory TeamMemberRoleResponse({
-    @Default('') String name,
-
-    /// 활성 멤버 모두에게 자동으로 붙는 기본 역할인지.
-    @Default(false) bool isDefault,
-  }) = _TeamMemberRoleResponse;
-
-  factory TeamMemberRoleResponse.fromJson(Map<String, dynamic> json) =>
-      _$TeamMemberRoleResponseFromJson(json);
 }
