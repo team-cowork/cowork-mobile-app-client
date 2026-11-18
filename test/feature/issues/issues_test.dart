@@ -2,6 +2,7 @@ import 'package:cowork_app/core/utils/async_state.dart';
 import 'package:cowork_app/feature/issues/domain/issue_target.dart';
 import 'package:cowork_app/feature/issues/presentation/blocs/issue_comments/issue_comments_cubit.dart';
 import 'package:cowork_app/feature/issues/presentation/blocs/issues/issues_bloc.dart';
+import 'package:cowork_app/feature/issues/presentation/widgets/issue_comment_composer.dart';
 import 'package:cowork_app/feature/issues/presentation/views/issues_view.dart';
 import 'package:cowork_design_system/design_system.dart';
 import 'package:flutter/material.dart';
@@ -94,6 +95,55 @@ void main() {
 
       expect(_data(bloc).issues.map((i) => i.number), [14, 9]);
     });
+
+    test('같은 사유로 연달아 실패해도 매번 알린다', () async {
+      final server = FakeIssueServer()
+        ..failing = 'POST /project/projects/1/github-repos/7/issues';
+      final bloc = await _loaded(server);
+      addTearDown(bloc.close);
+      final errors = <String>[];
+      final subscription = bloc.stream.listen((state) {
+        if (state is AsyncSuccess<IssuesData> &&
+            state.data.errorMessage != null) {
+          errors.add(state.data.errorMessage!);
+        }
+      });
+      addTearDown(subscription.cancel);
+
+      bloc.add(const IssuesEvent.created(title: '첫 시도'));
+      await pumpEventQueue();
+      bloc.add(const IssuesEvent.created(title: '두 번째 시도'));
+      await pumpEventQueue();
+
+      expect(errors, hasLength(2));
+      expect(errors.first, errors.last);
+    });
+
+    test('서버가 늦게 반영해도 만든 이슈가 보일 때까지 다시 읽는다', () async {
+      final server = FakeIssueServer();
+      // 새로고침 간격(10ms)보다 한참 늦게 목록에 들어간다.
+      server.onCreateIssue = (body) =>
+          Future<void>.delayed(const Duration(milliseconds: 35), () {
+            server.issues = [
+              ...server.issues,
+              issueJson(30, body['title'] as String),
+            ];
+          });
+      final bloc = await _loaded(server);
+      addTearDown(bloc.close);
+
+      bloc.add(const IssuesEvent.created(title: '늦게 반영되는 이슈'));
+      await bloc.stream.firstWhere(
+        (s) =>
+            s is AsyncSuccess<IssuesData> &&
+            s.data.issues.any((i) => i.number == 30),
+      );
+
+      final listCalls = server.calls
+          .where((c) => c == 'GET /project/projects/1/github-repos/7/issues')
+          .length;
+      expect(listCalls, greaterThan(2));
+    });
   });
 
   group('댓글 Cubit', () {
@@ -151,6 +201,78 @@ void main() {
       expect(cubit.state.comments, hasLength(1));
       expect(cubit.state.error, isNotNull);
     });
+
+    test('같은 사유로 연달아 보내지 못해도 매번 알린다', () async {
+      final server = FakeIssueServer()
+        ..failing =
+            'POST /project/projects/1/github-repos/7/issues/14/comments';
+      final cubit = cubitOf(server);
+      addTearDown(cubit.close);
+      await cubit.load();
+      final errors = <String>[];
+      final subscription = cubit.stream.listen((state) {
+        if (state.error != null) errors.add(state.error!);
+      });
+      addTearDown(subscription.cancel);
+
+      final first = await cubit.send('첫 시도');
+      final second = await cubit.send('두 번째 시도');
+      await pumpEventQueue();
+
+      expect([first, second], [false, false]);
+      expect(errors, hasLength(2));
+    });
+
+    test('서버가 접수하면 true 를 돌려준다', () async {
+      final cubit = cubitOf(FakeIssueServer());
+      addTearDown(cubit.close);
+      await cubit.load();
+
+      expect(await cubit.send('접수될 댓글'), isTrue);
+    });
+
+    test('서버 목록에 아직 없는 보낸 댓글은 남기고, 반영되면 서버 것으로 바꾼다', () async {
+      final server = FakeIssueServer();
+      // 첫 새로고침(10ms)보다 늦게 목록에 들어간다.
+      server.onCreateComment = (body) =>
+          Future<void>.delayed(const Duration(milliseconds: 35), () {
+            server.comments = [
+              ...server.comments,
+              {
+                'id': 2,
+                'author': 'me',
+                'body': body['body'],
+                'htmlUrl': '',
+                'createdAt': '2026-10-23T06:00:00Z',
+              },
+            ];
+          });
+      final cubit = cubitOf(server);
+      addTearDown(cubit.close);
+      await cubit.load();
+
+      await cubit.send('늦게 반영되는 댓글');
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      // 서버 목록에 아직 없어도 보낸 댓글이 사라지지 않는다.
+      expect(cubit.state.comments.last.message, '늦게 반영되는 댓글');
+      expect(cubit.state.comments.last.timestamp, '방금');
+
+      await cubit.stream.firstWhere((s) => s.comments.last.author == 'me');
+      expect(cubit.state.comments, hasLength(2));
+    });
+
+    test('읽거나 보내는 사이 닫아도 오류가 나지 않는다', () async {
+      final loading = cubitOf(FakeIssueServer());
+      final load = loading.load();
+      await loading.close();
+      await load;
+
+      final sending = cubitOf(FakeIssueServer());
+      await sending.load();
+      final send = sending.send('닫히는 중');
+      await sending.close();
+      await send;
+    });
   });
 
   group('화면', () {
@@ -174,6 +296,57 @@ void main() {
       );
       await tester.pumpAndSettle();
     }
+
+    Future<void> pumpComposer(
+      WidgetTester tester,
+      IssueCommentsCubit cubit,
+    ) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.dark(),
+          home: Scaffold(
+            body: BlocProvider.value(
+              value: cubit,
+              child: const IssueCommentComposer(),
+            ),
+          ),
+        ),
+      );
+    }
+
+    IssueCommentsCubit commentsOf(FakeIssueServer server) => IssueCommentsCubit(
+      issueRepositoryOf(server),
+      _target,
+      14,
+      refreshDelay: const Duration(milliseconds: 10),
+    );
+
+    testWidgets('댓글을 못 보내면 쓴 내용을 입력창에 남긴다', (tester) async {
+      final server = FakeIssueServer()
+        ..failing =
+            'POST /project/projects/1/github-repos/7/issues/14/comments';
+      final cubit = commentsOf(server);
+      addTearDown(cubit.close);
+      await pumpComposer(tester, cubit);
+
+      await tester.enterText(find.byType(TextField), '다시 보낼 댓글');
+      await tester.testTextInput.receiveAction(TextInputAction.send);
+      await tester.pump(const Duration(milliseconds: 50));
+
+      expect(find.text('다시 보낼 댓글'), findsOneWidget);
+    });
+
+    testWidgets('댓글이 접수되면 입력창을 비운다', (tester) async {
+      final cubit = commentsOf(FakeIssueServer());
+      addTearDown(cubit.close);
+      await pumpComposer(tester, cubit);
+
+      await tester.enterText(find.byType(TextField), '보낼 댓글');
+      await tester.testTextInput.receiveAction(TextInputAction.send);
+      await tester.pump(const Duration(milliseconds: 50));
+
+      expect(find.text('보낼 댓글'), findsNothing);
+    });
 
     testWidgets('계획됨 이슈를 보여 주고 진행중 탭에서 진행중 이슈를 보여 준다', (tester) async {
       await pumpIssues(tester, FakeIssueServer());
