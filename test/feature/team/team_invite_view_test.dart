@@ -34,13 +34,17 @@ void main() {
     addTearDown(view.reset);
   });
 
+  /// 테스트를 돌리는 해. 만료 표시는 올해가 아닐 때만 연도를 붙여서 고정 날짜를 쓰면
+  /// 해가 바뀌면 깨진다. 한가운데 날짜라 어느 시간대로 바꿔도 해가 그대로다.
+  final year = DateTime.now().year;
+
   /// 팀 1 에 7일 코드 `old`(먼저), 무제한 코드 `new`(나중), 무효화된 `gone` 이 있는 서버.
   FakeChatServer serverWithInvites() => FakeChatServer()
     ..invites[1] = [
       {
         'inviteCode': 'old',
         'duration': '7d',
-        'expiresAt': '2026-11-17T00:00:00',
+        'expiresAt': '$year-06-15T03:00:00',
         'expired': false,
         'createdAt': '2026-11-10T00:00:00',
       },
@@ -95,11 +99,31 @@ void main() {
       final oldTop = tester.getTopLeft(find.text('old')).dy;
       expect(newTop, lessThan(oldTop));
       expect(find.text('만료 없음'), findsOneWidget);
-      // 서버 시각은 UTC 라 기기 시간으로 바꿔 보여 준다.
-      final local = DateTime.utc(2026, 11, 17).toLocal();
+      // 서버 시각은 UTC 라 기기 시간으로 바꿔 보여 준다. 올해라 연도는 없다.
+      final local = DateTime.utc(year, 6, 15, 3).toLocal();
       final hh = local.hour.toString().padLeft(2, '0');
       expect(
         find.text('${local.month}월 ${local.day}일 $hh:00까지'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('만료가 올해가 아니면 연도를 붙인다', (tester) async {
+      final server = FakeChatServer()
+        ..invites[1] = [
+          {
+            'inviteCode': 'next-year',
+            'duration': '30d',
+            'expiresAt': '${year + 1}-01-05T03:00:00',
+            'expired': false,
+          },
+        ];
+      await pumpInvite(tester, server);
+
+      final local = DateTime.utc(year + 1, 1, 5, 3).toLocal();
+      final hh = local.hour.toString().padLeft(2, '0');
+      expect(
+        find.text('${local.year}년 ${local.month}월 ${local.day}일 $hh:00까지'),
         findsOneWidget,
       );
     });

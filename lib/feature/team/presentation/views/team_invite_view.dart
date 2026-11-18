@@ -228,13 +228,19 @@ String _durationLabel(InviteDuration duration) => switch (duration) {
 };
 
 /// `11월 24일 12:00까지` 꼴. 기간이 무제한이면 `만료 없음`.
+///
+/// 만료가 올해가 아니면 `2027년 1월 5일 12:00까지` 처럼 연도를 붙인다. 연말에 만든
+/// 30일 코드가 올해인지 내년인지 헷갈리지 않게 하려는 것이다.
 String _expiryLabel(InviteResponse invite) {
   final expiresAt = invite.expiresAt;
   if (expiresAt == null) {
     return invite.duration == InviteDuration.never ? '만료 없음' : '만료 시각 모름';
   }
   String two(int value) => value.toString().padLeft(2, '0');
-  return '${expiresAt.month}월 ${expiresAt.day}일 '
+  final year = expiresAt.year == DateTime.now().year
+      ? ''
+      : '${expiresAt.year}년 ';
+  return '$year${expiresAt.month}월 ${expiresAt.day}일 '
       '${two(expiresAt.hour)}:${two(expiresAt.minute)}까지';
 }
 
