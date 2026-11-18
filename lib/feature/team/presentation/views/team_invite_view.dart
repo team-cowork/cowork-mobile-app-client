@@ -12,9 +12,9 @@ import '../../../../shared/widgets/create_sheet.dart';
 import '../../../search/data/repositories/search_repository.dart';
 import '../../../search/domain/enums/avatar_color.dart';
 import '../../../search/domain/search_result.dart';
+import '../../data/model/invite_duration.dart';
 import '../../data/model/responses/invite_response.dart';
 import '../../data/repositories/team_repository.dart';
-import '../../domain/enums/invite_duration.dart';
 import '../blocs/invite_codes/invite_codes_bloc.dart';
 import '../blocs/invite_people/invite_people_bloc.dart';
 

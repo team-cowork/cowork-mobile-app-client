@@ -2,7 +2,7 @@ import 'package:dio/dio.dart';
 
 import '../../../../core/network/dio_client.dart';
 import '../../../auth/data/auth_repository.dart';
-import '../../domain/enums/invite_duration.dart';
+import '../model/invite_duration.dart';
 import '../model/requests/create_invite_request.dart';
 import '../model/requests/create_team_request.dart';
 import '../model/requests/invite_members_request.dart';

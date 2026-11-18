@@ -1,4 +1,4 @@
-import 'package:cowork_app/feature/team/domain/enums/invite_duration.dart';
+import 'package:cowork_app/feature/team/data/model/invite_duration.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 

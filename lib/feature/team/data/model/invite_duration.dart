@@ -1,6 +1,8 @@
-/// 초대 코드 유효 기간. team 서비스의 `duration` 값이다.
+/// 초대 코드 유효 기간. team 서비스 `POST /teams/{teamId}/invites` 의 `duration` 값이다.
 ///
-/// 웹 초대 화면과 같은 네 가지를 같은 순서로 둔다.
+/// 어떤 기간을 줄지는 서버가 정하는 API 계약이라 domain 이 아니라 data 에 둔다. 값은
+/// 서버 OpenAPI 의 `CreateInviteRequest.duration` enum 과 같고, 웹 초대 화면과 같은
+/// 순서로 둔다.
 enum InviteDuration {
   oneDay('1d'),
   sevenDays('7d'),

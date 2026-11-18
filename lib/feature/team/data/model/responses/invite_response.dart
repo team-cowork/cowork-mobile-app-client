@@ -1,6 +1,6 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
 
-import '../../../domain/enums/invite_duration.dart';
+import '../invite_duration.dart';
 
 part 'invite_response.freezed.dart';
 part 'invite_response.g.dart';
