@@ -4,6 +4,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/utils/logger.dart';
+import '../../../../shared/utils/file_picking.dart';
+import '../../../../shared/domain/upload_file.dart';
 import '../../../../shared/widgets/base_scaffold.dart';
 import '../../../profile/data/profile_store.dart';
 import '../../data/repositories/note_attachment_repository.dart';
@@ -11,7 +13,6 @@ import '../../data/repositories/notes_repository.dart';
 import '../../data/repositories/note_template_repository.dart';
 import '../../domain/enums/note_section_type.dart';
 import '../../domain/note.dart';
-import '../../domain/note_attachment.dart';
 import '../../domain/note_draft.dart';
 import '../../domain/note_section_field.dart';
 import '../blocs/note_edit/note_edit_bloc.dart';
@@ -28,14 +29,14 @@ class NoteEditView extends StatelessWidget {
   const NoteEditView({
     super.key,
     required Note this.note,
-    this.pickFile = pickNoteFile,
+    this.pickFile = pickUploadFile,
   }) : draft = null;
 
   /// 새 노트 시트에서 고른 [draft] 로 새 회의록을 쓴다. 저장하면 그때 만들어진다.
   const NoteEditView.create({
     super.key,
     required NoteDraft this.draft,
-    this.pickFile = pickNoteFile,
+    this.pickFile = pickUploadFile,
   }) : note = null;
 
   final Note? note;
@@ -235,7 +236,7 @@ class _NoteEditFormState extends State<_NoteEditForm> {
 
   /// 툴바 클립 버튼: 파일을 하나 골라 바로 올린다.
   Future<void> _attach() async {
-    final NoteUploadFile? file;
+    final UploadFile? file;
     try {
       file = await widget.pickFile();
     } catch (e, s) {
