@@ -29,26 +29,8 @@ class _RecordingServer implements HttpClientAdapter {
       final bytes = (await requestStream.toList()).expand((c) => c).toList();
       if (bytes.isNotEmpty) bodies[call] = jsonDecode(utf8.decode(bytes));
     }
-    if (uri.path.endsWith('/users/batch')) {
-      final ids = uri.queryParameters['ids']!.split(',');
-      return _json({
-        'data': {
-          'users': [
-            for (final id in ids) {'id': int.parse(id), 'name': '사용자$id'},
-          ],
-        },
-      });
-    }
     return ResponseBody.fromString('', 204);
   }
-
-  static ResponseBody _json(Object body) => ResponseBody.fromString(
-    jsonEncode(body),
-    200,
-    headers: {
-      Headers.contentTypeHeader: [Headers.jsonContentType],
-    },
-  );
 
   @override
   void close({bool force = false}) {}
