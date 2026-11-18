@@ -4,12 +4,21 @@ import 'package:flutter/material.dart';
 class TeamMenuSheet extends StatelessWidget {
   const TeamMenuSheet({
     required this.teamName,
+    this.canInviteMembers = true,
+    this.onOpenSettings,
     this.onCreateChannel,
     this.onCreateProject,
+    this.onLeaveTeam,
     super.key,
   });
 
   final String teamName;
+
+  /// '멤버 초대' 를 보일지. 초대 권한(`manage_invites`)이 없으면 숨긴다.
+  final bool canInviteMembers;
+
+  /// '팀 설정' 을 눌렀을 때. 시트가 닫힌 뒤에 불린다.
+  final VoidCallback? onOpenSettings;
 
   /// '채널 만들기' 를 눌렀을 때. 시트가 닫힌 뒤에 불린다.
   final VoidCallback? onCreateChannel;
@@ -17,13 +26,21 @@ class TeamMenuSheet extends StatelessWidget {
   /// '카테고리 만들기' 를 눌렀을 때. 시트가 닫힌 뒤에 불린다.
   final VoidCallback? onCreateProject;
 
+  /// '팀 나가기' 를 눌렀을 때. 시트가 닫힌 뒤에 불린다.
+  ///
+  /// null 이면 항목을 숨긴다. 소유자는 소유권을 넘기기 전엔 나갈 수 없다.
+  final VoidCallback? onLeaveTeam;
+
   static const double _sheetRadius = 20;
 
   static Future<void> show(
     BuildContext context, {
     required String teamName,
+    bool canInviteMembers = true,
+    VoidCallback? onOpenSettings,
     VoidCallback? onCreateChannel,
     VoidCallback? onCreateProject,
+    VoidCallback? onLeaveTeam,
   }) {
     return showModalBottomSheet<void>(
       context: context,
@@ -33,8 +50,11 @@ class TeamMenuSheet extends StatelessWidget {
       ),
       builder: (_) => TeamMenuSheet(
         teamName: teamName,
+        canInviteMembers: canInviteMembers,
+        onOpenSettings: onOpenSettings,
         onCreateChannel: onCreateChannel,
         onCreateProject: onCreateProject,
+        onLeaveTeam: onLeaveTeam,
       ),
     );
   }
@@ -43,7 +63,10 @@ class TeamMenuSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     return SafeArea(
       child: Padding(
-        padding: const EdgeInsets.only(top: AppSpacing.s8, bottom: AppSpacing.s24),
+        padding: const EdgeInsets.only(
+          top: AppSpacing.s8,
+          bottom: AppSpacing.s24,
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -84,17 +107,28 @@ class TeamMenuSheet extends StatelessWidget {
                 ],
               ),
             ),
-            const _MenuRow(emoji: '⚙️', label: '팀 설정'),
-            const _MenuRow(emoji: '➕', label: '멤버 초대'),
+            _MenuRow(emoji: '⚙️', label: '팀 설정', onSelected: onOpenSettings),
+            if (canInviteMembers) const _MenuRow(emoji: '➕', label: '멤버 초대'),
             _MenuRow(emoji: '#', label: '채널 만들기', onSelected: onCreateChannel),
             _MenuRow(
               emoji: '📁',
               label: '카테고리 만들기',
               onSelected: onCreateProject,
             ),
-            const _MenuRow(emoji: '🔔', label: '알림 설정'),
-            const Divider(height: 1, thickness: 1, color: AppColors.neutral600),
-            const _MenuRow(emoji: '🚪', label: '팀 나가기', destructive: true),
+            // '알림 설정' 은 뺐다. 서버에 "이 팀에 대한 내 알림" API 가 없다(#150).
+            if (onLeaveTeam case final onLeaveTeam?) ...[
+              const Divider(
+                height: 1,
+                thickness: 1,
+                color: AppColors.neutral600,
+              ),
+              _MenuRow(
+                emoji: '🚪',
+                label: '팀 나가기',
+                destructive: true,
+                onSelected: onLeaveTeam,
+              ),
+            ],
           ],
         ),
       ),

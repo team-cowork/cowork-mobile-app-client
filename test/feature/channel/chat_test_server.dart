@@ -4,10 +4,12 @@ import 'dart:typed_data';
 
 import 'package:cowork_app/core/network/chat_socket.dart';
 import 'package:cowork_app/feature/channel/data/repositories/channel_repository.dart';
+import 'package:cowork_app/feature/profile/data/repositories/profile_repository.dart';
 import 'package:cowork_app/feature/team/data/repositories/team_repository.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 
 /// 채팅 홈 테스트용 가짜 게이트웨이.
 ///
@@ -49,6 +51,14 @@ class FakeChatServer implements HttpClientAdapter {
   ServerFailure? failChannels;
   ServerFailure? failCreate;
   ServerFailure? failCreateTeam;
+  ServerFailure? failLeave;
+  ServerFailure? failPermissions;
+
+  /// 팀 id 별 내(1) 역할의 권한. 없는 팀은 권한이 하나도 없다.
+  /// 기본값은 내가 소유자인 코워크(1)만 `administrator` 다.
+  final permissions = <int, Map<String, bool>>{
+    1: {'administrator': true},
+  };
 
   /// 걸어 두면 채널 생성 응답을 이 Future 가 끝날 때까지 붙잡는다.
   Future<void>? createGate;
@@ -82,6 +92,32 @@ class FakeChatServer implements HttpClientAdapter {
     }
     if (path == '/team/teams') {
       return _respond(options, failTeams, () => teams);
+    }
+    if (path == '/user/users/me') {
+      return _respond(options, null, () => {'id': 1, 'name': '나'});
+    }
+    // `GET /teams/{teamId}/members/1/roles`: 내 역할. 기본 역할 하나에 권한을 싣는다.
+    if (path.startsWith('/team/teams/') && path.endsWith('/members/1/roles')) {
+      final teamId = int.parse(path.split('/')[3]);
+      return _respond(
+        options,
+        failPermissions,
+        () => [
+          {
+            'id': 1,
+            'name': '@everyone',
+            'permissions': permissions[teamId] ?? const <String, bool>{},
+          },
+        ],
+      );
+    }
+    // `DELETE /teams/{teamId}/members/{userId}`: 팀 나가기. 서버처럼 내 팀 목록에서 뺀다.
+    if (options.method == 'DELETE' && path.startsWith('/team/teams/')) {
+      return _respond(options, failLeave, () {
+        final teamId = int.parse(path.split('/')[3]);
+        teams.removeWhere((team) => team['id'] == teamId);
+        return null;
+      });
     }
     if (path.startsWith('/channel/teams/')) {
       final teamId = int.parse(path.split('/')[3]);
@@ -189,6 +225,10 @@ Dio _dioOf(FakeChatServer server, String service) => Dio(
 TeamRepository teamRepositoryOf(FakeChatServer server) =>
     TeamRepository.withDio(_dioOf(server, 'team'));
 
+/// [server] 로 요청을 보내는 프로필 저장소. 홈이 내 id 를 읽어 팀 권한을 묻는다.
+ProfileRepository profileRepositoryOf(FakeChatServer server) =>
+    ProfileRepository.withDio(_dioOf(server, 'user'));
+
 /// [server] 로 요청을 보내는 채널 저장소.
 ChannelRepository channelRepositoryOf(FakeChatServer server) =>
     ChannelRepository.withDio(_dioOf(server, 'channel'));
@@ -241,16 +281,22 @@ class FakeChatSocket implements ChatSocket {
 }
 
 /// [home] 을 [server] 에 붙은 팀·채널 저장소와 [socket] 과 함께 띄우는 앱.
+///
+/// [router] 를 주면 [home] 대신 그 라우터로 띄운다. 다른 화면으로 옮겨 가는 테스트용이다.
 Widget chatTestApp(
   FakeChatServer server, {
-  required Widget home,
+  Widget? home,
+  GoRouter? router,
   FakeChatSocket? socket,
   ThemeData? theme,
 }) => MultiRepositoryProvider(
   providers: [
     RepositoryProvider.value(value: teamRepositoryOf(server)),
     RepositoryProvider.value(value: channelRepositoryOf(server)),
+    RepositoryProvider.value(value: profileRepositoryOf(server)),
     RepositoryProvider<ChatSocket>.value(value: socket ?? FakeChatSocket()),
   ],
-  child: MaterialApp(theme: theme, home: home),
+  child: router == null
+      ? MaterialApp(theme: theme, home: home)
+      : MaterialApp.router(theme: theme, routerConfig: router),
 );
