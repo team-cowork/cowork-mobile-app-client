@@ -135,4 +135,34 @@ void main() {
     expect(text, startsWith('# 2026 1분기 킥오프 회의'));
     expect(text, contains('## 안건'));
   });
+
+  testWidgets('공유 시트를 열지 못하면 알린다', (tester) async {
+    tester.view.physicalSize = const Size(800, 2000);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+      const MethodChannel('dev.fluttercommunity.plus/share'),
+      (call) async => throw PlatformException(code: 'unavailable'),
+    );
+    addTearDown(
+      () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        const MethodChannel('dev.fluttercommunity.plus/share'),
+        null,
+      ),
+    );
+
+    await tester.pumpWidget(
+      notesRouterTestApp(_notesRouter(), FakeNotesServer()),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('2026 1분기 킥오프 회의'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.bySemanticsLabel('공유'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('공유하지 못했어요.'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
 }

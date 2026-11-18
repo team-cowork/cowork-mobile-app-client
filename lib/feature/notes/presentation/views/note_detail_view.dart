@@ -88,10 +88,20 @@ class _NoteDetailViewState extends State<NoteDetailView> {
     }
   }
 
-  /// 제목·내용을 OS 공유 시트로 내보낸다.
-  Future<void> _share() => SharePlus.instance.share(
-    ShareParams(text: _note.shareText, subject: _note.title),
-  );
+  /// 제목·내용을 OS 공유 시트로 내보낸다. 시트를 못 열면 사유를 남기고 알린다.
+  Future<void> _share() async {
+    try {
+      await SharePlus.instance.share(
+        ShareParams(text: _note.shareText, subject: _note.title),
+      );
+    } catch (e, s) {
+      Logger.e('회의록 공유 실패', tag: 'Notes', error: e, stackTrace: s);
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('공유하지 못했어요.')));
+    }
+  }
 
   /// 첨부파일 주소를 받는 중인지. 받는 동안 다시 눌러도 요청이 겹치지 않게 한다.
   bool _opening = false;
