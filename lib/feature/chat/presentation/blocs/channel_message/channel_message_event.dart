@@ -113,3 +113,8 @@ final class _ChannelMessageForegroundChanged extends ChannelMessageEvent {
   @override
   List<Object?> get props => [foreground];
 }
+
+/// 자정이 지났다. `오늘`·`어제` 표기를 다시 만든다. Bloc 이 스스로 넣는다.
+final class _ChannelMessageDayChanged extends ChannelMessageEvent {
+  const _ChannelMessageDayChanged();
+}
