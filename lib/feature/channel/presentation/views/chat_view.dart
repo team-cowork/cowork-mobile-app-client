@@ -94,7 +94,7 @@ class ChatView extends StatelessWidget {
                   teamName: data.workspaceName,
                   onInviteMembers: () => context.push('/teams/$teamId/invite'),
                   onCreateChannel: () => _createChannel(context, teamId),
-                  onCreateProject: () => NewProjectSheet.show(context),
+                  onCreateProject: () => _createProject(context, teamId),
                 ),
                 onSearchTap: () => context.push('/search?teamId=$teamId'),
                 onNotificationTap: () => _openNotifications(context),
@@ -107,7 +107,13 @@ class ChatView extends StatelessWidget {
                 ),
                 onAddTeam: () => _addTeam(context),
               ),
-              Expanded(child: _ChannelList(channelGroups: data.channelGroups)),
+              Expanded(
+                child: _ChannelList(
+                  channelGroups: data.channelGroups,
+                  onCreateChannelIn: (projectId) =>
+                      _createChannel(context, teamId, projectId: projectId),
+                ),
+              ),
             ],
           ),
         ),
@@ -160,15 +166,45 @@ class ChatView extends StatelessWidget {
     messenger.showSnackBar(const SnackBar(content: Text('팀에 참여했어요.')));
   }
 
-  /// 채널 생성 시트를 띄우고, 만들어지면 목록 끝에 붙이고 알린다.
-  static Future<void> _createChannel(BuildContext context, int teamId) async {
+  /// 채널 생성 시트를 띄우고, 만들어지면 목록에 붙이고 알린다.
+  ///
+  /// [projectId] 를 주면 그 프로젝트에 넣는다. 채널은 만들었지만 프로젝트에 넣지
+  /// 못했으면 채널은 프로젝트 밖에 보이고, 그 사실을 알린다.
+  static Future<void> _createChannel(
+    BuildContext context,
+    int teamId, {
+    int? projectId,
+  }) async {
     final bloc = context.read<ChannelListBloc>();
     final messenger = ScaffoldMessenger.of(context);
-    final channel = await NewChannelSheet.show(context, teamId: teamId);
-    if (channel == null) return;
+    final result = await NewChannelSheet.show(
+      context,
+      teamId: teamId,
+      projectId: projectId,
+    );
+    if (result == null) return;
+    final (:channel, :projectFailed) = result;
     bloc.add(ChannelListEvent.channelAdded(channel));
     messenger.showSnackBar(
-      SnackBar(content: Text('#${channel.name} 채널을 만들었어요.')),
+      SnackBar(
+        content: Text(
+          projectFailed
+              ? '#${channel.name} 채널을 만들었지만 프로젝트에 넣지 못했어요.'
+              : '#${channel.name} 채널을 만들었어요.',
+        ),
+      ),
+    );
+  }
+
+  /// 프로젝트 생성 시트를 띄우고, 만들어지면 빈 그룹으로 붙이고 알린다.
+  static Future<void> _createProject(BuildContext context, int teamId) async {
+    final bloc = context.read<ChannelListBloc>();
+    final messenger = ScaffoldMessenger.of(context);
+    final project = await NewProjectSheet.show(context, teamId: teamId);
+    if (project == null || bloc.isClosed) return;
+    bloc.add(ChannelListEvent.projectAdded(project));
+    messenger.showSnackBar(
+      SnackBar(content: Text('${project.name} 프로젝트를 만들었어요.')),
     );
   }
 }
@@ -336,9 +372,15 @@ class _WorkspaceShortcutButton extends StatelessWidget {
 }
 
 class _ChannelList extends StatelessWidget {
-  const _ChannelList({required this.channelGroups});
+  const _ChannelList({
+    required this.channelGroups,
+    required this.onCreateChannelIn,
+  });
 
   final List<ChannelGroup> channelGroups;
+
+  /// 프로젝트 그룹 헤더의 `+` 를 눌렀을 때. 그 프로젝트 id 를 넘긴다.
+  final ValueChanged<int> onCreateChannelIn;
 
   @override
   Widget build(BuildContext context) {
@@ -349,7 +391,14 @@ class _ChannelList extends StatelessWidget {
           spacing: AppSpacing.s4,
           children: [
             for (final group in channelGroups) ...[
-              _ChannelGroupHeader(label: group.name),
+              _ChannelGroupHeader(
+                label: group.name,
+                // 프로젝트 밖 채널은 팀 메뉴의 `채널 만들기` 로 만든다.
+                onAdd: switch (group.projectId) {
+                  final projectId? => () => onCreateChannelIn(projectId),
+                  null => null,
+                },
+              ),
               for (final channel in group.channels)
                 _ChannelGroupItem.type(
                   type: channel.type,
@@ -368,9 +417,12 @@ class _ChannelList extends StatelessWidget {
 
 /// 채널 목록의 그룹(카테고리) 헤더. 펼침/접힘 화살표와 그룹명을 표시한다.
 class _ChannelGroupHeader extends StatelessWidget {
-  const _ChannelGroupHeader({required this.label});
+  const _ChannelGroupHeader({required this.label, this.onAdd});
 
   final String label;
+
+  /// 이 그룹에 채널을 만든다. 있으면 오른쪽 끝에 `+` 를 둔다.
+  final VoidCallback? onAdd;
 
   @override
   Widget build(BuildContext context) {
@@ -385,10 +437,31 @@ class _ChannelGroupHeader extends StatelessWidget {
         children: [
           AppIcon.dropDown(size: 12),
           const SizedBox(width: AppSpacing.s4),
-          Text(
-            label,
-            style: AppFont.itemCount.copyWith(color: AppColors.neutral300),
+          Expanded(
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AppFont.itemCount.copyWith(color: AppColors.neutral300),
+            ),
           ),
+          if (onAdd case final onAdd?)
+            Semantics(
+              label: '$label 에 채널 만들기',
+              button: true,
+              child: InkWell(
+                onTap: onAdd,
+                customBorder: const CircleBorder(),
+                // 아이콘은 작아도 누르는 영역은 넉넉히 둔다.
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.s12,
+                    vertical: AppSpacing.s4,
+                  ),
+                  child: AppIcon.plus(size: 12),
+                ),
+              ),
+            ),
         ],
       ),
     );
