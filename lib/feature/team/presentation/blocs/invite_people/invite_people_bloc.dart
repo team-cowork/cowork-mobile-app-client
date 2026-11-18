@@ -98,13 +98,26 @@ class InvitePeopleBloc extends Bloc<InvitePeopleEvent, InvitePeopleState> {
   }
 
   /// 고른 사람을 초대한다. 성공하면 그 사람들을 멤버로 보고 고른 목록을 비운다.
+  ///
+  /// id 를 숫자로 못 읽은 사람은 보낼 수 없어 빠진다. 성공 인원은 실제로 보낸 수로
+  /// 세고, 보낼 사람이 하나도 없으면 빈 요청을 보내지 않고 실패로 알린다.
   Future<void> _onSubmitted(
     InvitePeopleSubmitted event,
     Emitter<InvitePeopleState> emit,
   ) async {
     if (state.submission is AsyncLoading || state.selected.isEmpty) return;
-    final selected = state.selected;
-    final userIds = [for (final person in selected) ?int.tryParse(person.id)];
+    final userIds = [
+      for (final person in state.selected) ?int.tryParse(person.id),
+    ];
+    if (userIds.isEmpty) {
+      Logger.d('초대할 사용자 id 를 읽지 못함', tag: 'Team');
+      emit(
+        state.copyWith(
+          submission: const AsyncState.failure('고른 사람을 초대할 수 없어요.'),
+        ),
+      );
+      return;
+    }
     emit(state.copyWith(submission: const AsyncState.loading()));
     try {
       await _teams.inviteMembers(teamId, userIds);
@@ -117,7 +130,7 @@ class InvitePeopleBloc extends Bloc<InvitePeopleEvent, InvitePeopleState> {
       state.copyWith(
         selected: const [],
         memberIds: {...state.memberIds, ...userIds},
-        submission: AsyncState.success(selected.length),
+        submission: AsyncState.success(userIds.length),
       ),
     );
   }

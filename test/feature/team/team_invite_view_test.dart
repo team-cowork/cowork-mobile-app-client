@@ -343,6 +343,62 @@ void main() {
         'userIds': [5],
       });
     });
+
+    /// 서버가 id 를 안 주면 검색 매핑이 빈 문자열로 채운다.
+    SearchPersonResult withoutId(String name) => SearchPersonResult(
+      id: '',
+      name: name,
+      role: '',
+      initial: name.characters.first,
+      avatarColor: AvatarColor.blue,
+    );
+
+    test('id 를 못 읽은 사람은 빼고 보내고, 실제로 보낸 수만 센다', () async {
+      final server = FakeChatServer();
+      final bloc = InvitePeopleBloc(
+        teams: teamRepositoryOf(server),
+        search: FakeSearchRepository(),
+        teamId: 1,
+      );
+      addTearDown(bloc.close);
+
+      bloc
+        ..add(InvitePeopleEvent.toggled(_person(5, '도윤')))
+        ..add(InvitePeopleEvent.toggled(withoutId('이름만')))
+        ..add(const InvitePeopleEvent.submitted());
+      final done = await bloc.stream.firstWhere(
+        (s) => s.submission is AsyncSuccess,
+      );
+
+      expect(server.invitedMembers.single, {
+        'userIds': [5],
+      });
+      expect(done.submission, const AsyncState.success(1));
+    });
+
+    test('보낼 사람이 하나도 없으면 요청을 보내지 않고 실패로 알린다', () async {
+      final server = FakeChatServer();
+      final bloc = InvitePeopleBloc(
+        teams: teamRepositoryOf(server),
+        search: FakeSearchRepository(),
+        teamId: 1,
+      );
+      addTearDown(bloc.close);
+
+      bloc
+        ..add(InvitePeopleEvent.toggled(withoutId('이름만')))
+        ..add(const InvitePeopleEvent.submitted());
+      final done = await bloc.stream.firstWhere(
+        (s) => s.submission is AsyncFailure,
+      );
+
+      expect(server.invitedMembers, isEmpty);
+      expect(server.requests.where((r) => r.startsWith('POST')), isEmpty);
+      expect(
+        done.submission,
+        const AsyncState<int>.failure('고른 사람을 초대할 수 없어요.'),
+      );
+    });
   });
 
   testWidgets('팀 메뉴의 멤버 초대는 시트를 닫고 초대 화면 콜백을 부른다', (tester) async {
