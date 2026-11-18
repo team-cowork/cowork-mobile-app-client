@@ -24,6 +24,7 @@ class NotesBloc extends Bloc<NotesEvent, NotesState> {
   final _failures = StreamController<String>.broadcast();
 
   /// 목록은 그대로 두고 한 번만 알릴 실패 문구. 화면이 SnackBar 로 띄운다.
+  /// 삭제에 실패했을 때와 목록을 다시 읽지 못했을 때 쓴다.
   ///
   /// [NotesState] 는 목록 하나만 담으므로, 목록이 성공인 채로 실패를 알릴 자리가
   /// 없어 따로 흘린다.
@@ -42,7 +43,11 @@ class NotesBloc extends Bloc<NotesEvent, NotesState> {
 
   /// 이미 목록이 있으면 로딩으로 바꾸지 않고 조용히 바꿔 끼운다. 스피너로 바꾸면
   /// 목록이 통째로 다시 그려져 스크롤 위치를 잃는다. 같은 이유로 다시 읽기에
-  /// 실패해도 보던 목록은 그대로 둔다.
+  /// 실패해도 보던 목록은 그대로 두고, 대신 [failures] 로 한 번 알린다. 알리지
+  /// 않으면 상세에서 고치고 돌아왔을 때 옛 제목이 남아 저장이 안 된 것처럼 보인다.
+  ///
+  /// [NotesRequested.done] 은 결과를 화면에 내든, 더 새 조회에 밀려 버리든 이 조회가
+  /// 끝나면 완료한다.
   Future<void> _onLoad(NotesRequested event, Emitter<NotesState> emit) async {
     final request = ++_latest;
     final refreshing = state is AsyncSuccess<List<Note>>;
@@ -58,8 +63,16 @@ class NotesBloc extends Bloc<NotesEvent, NotesState> {
       );
     } catch (e, s) {
       Logger.e('회의록 조회 실패', tag: 'Notes', error: e, stackTrace: s);
-      if (request != _latest || refreshing) return;
+      // 더 늦게 보낸 조회가 있으면 그쪽 결과만 낸다. 기다리는 사이 셸이 내려가
+      // 닫혔으면 [failures] 도 닫혀 있어 알릴 화면이 없다.
+      if (request != _latest || isClosed) return;
+      if (refreshing) {
+        _failures.add(failureMessageOf(e) ?? '회의록 목록을 새로 고치지 못했어요.');
+        return;
+      }
       emit(NotesState.failure(failureMessageOf(e)));
+    } finally {
+      event.done?.complete();
     }
   }
 

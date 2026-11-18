@@ -1,7 +1,6 @@
 import 'package:equatable/equatable.dart';
 
-import '../../../shared/domain/profile_entity.dart';
-
+/// 이슈 댓글 하나.
 class IssueComment extends Equatable {
   const IssueComment({
     required this.id,
@@ -11,7 +10,9 @@ class IssueComment extends Equatable {
   });
 
   final String id;
-  final ProfileEntity author;
+
+  /// 작성자 GitHub 사용자명.
+  final String author;
   final String message;
   final String timestamp;
 

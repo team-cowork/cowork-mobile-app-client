@@ -6,6 +6,9 @@ import '../../../../../core/utils/async_state.dart';
 import '../../../../../core/utils/logger.dart';
 import '../../../../../shared/utils/chat_author.dart';
 import '../../../../profile/data/repositories/profile_repository.dart';
+import '../../../../team/data/model/responses/team_member_response.dart';
+import '../../../../team/data/repositories/team_repository.dart';
+import '../../../data/model/channel_member_mapping.dart';
 import '../../../data/repositories/channel_repository.dart';
 import '../../../domain/channel_member.dart';
 
@@ -22,8 +25,10 @@ class ChannelMembersBloc
     required this.channelId,
     required ChannelRepository channelRepository,
     required ProfileRepository profileRepository,
+    required TeamRepository teamRepository,
   }) : _channelRepository = channelRepository,
        _profileRepository = profileRepository,
+       _teamRepository = teamRepository,
        super(const ChannelMembersState.initial()) {
     on<ChannelMembersRequested>(_onLoad);
   }
@@ -31,6 +36,7 @@ class ChannelMembersBloc
   final int channelId;
   final ChannelRepository _channelRepository;
   final ProfileRepository _profileRepository;
+  final TeamRepository _teamRepository;
 
   Future<void> _onLoad(
     ChannelMembersRequested event,
@@ -44,7 +50,11 @@ class ChannelMembersBloc
       await Future.wait([headerRequest, membersRequest], eagerError: true);
       final header = await headerRequest;
       final members = await membersRequest;
-      final names = await _fetchNames([for (final m in members) m.userId]);
+      // 이름과 역할은 서로의 결과를 쓰지 않고 둘 다 안에서 실패를 받으니 같이 보낸다.
+      final namesRequest = _fetchNames([for (final m in members) m.userId]);
+      final teamMembersRequest = _fetchTeamMembers(header.teamId);
+      final names = await namesRequest;
+      final teamMembers = await teamMembersRequest;
 
       emit(
         ChannelMembersState.success((
@@ -57,6 +67,8 @@ class ChannelMembersBloc
                   names[member.userId] ?? '',
                 ),
                 avatarColor: chatAvatarColorOf(member.userId),
+                role: channelMemberRoleOf(teamMembers[member.userId]),
+                roleNames: channelMemberRoleNamesOf(teamMembers[member.userId]),
               ),
           ],
         )),
@@ -64,6 +76,25 @@ class ChannelMembersBloc
     } catch (e, s) {
       Logger.e('채널 멤버 조회 실패', tag: 'ChannelMembers', error: e, stackTrace: s);
       emit(ChannelMembersState.failure(failureMessageOf(e)));
+    }
+  }
+
+  /// 사용자 id → 팀 멤버. 못 읽으면 빈 맵이라 역할 없이 목록만 보인다.
+  Future<Map<int, TeamMemberResponse>> _fetchTeamMembers(int? teamId) async {
+    if (teamId == null) return const {};
+    try {
+      return {
+        for (final member in await _teamRepository.fetchMembers(teamId))
+          member.userId: member,
+      };
+    } catch (e, s) {
+      Logger.e(
+        '채널 멤버 역할 조회 실패',
+        tag: 'ChannelMembers',
+        error: e,
+        stackTrace: s,
+      );
+      return const {};
     }
   }
 
