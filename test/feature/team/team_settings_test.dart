@@ -5,6 +5,7 @@ import 'package:cowork_app/core/utils/async_state.dart';
 import 'package:cowork_app/feature/profile/data/profile_store.dart';
 import 'package:cowork_app/feature/profile/data/repositories/profile_repository.dart';
 import 'package:cowork_app/feature/team/data/model/requests/update_team_request.dart';
+import 'package:cowork_app/feature/team/data/model/responses/team_response.dart';
 import 'package:cowork_app/feature/team/data/model/responses/team_role_response.dart';
 import 'package:cowork_app/feature/team/data/model/team_role_mapping.dart';
 import 'package:cowork_app/feature/team/data/repositories/team_repository.dart';
@@ -176,7 +177,7 @@ void main() {
 
       final permissions = await teamRepositoryOfTeamServer(
         server,
-      ).fetchMyPermissions(1, userId: 1, isOwner: false);
+      ).fetchMyPermissions(const TeamResponse(id: 1, ownerId: 2), userId: 1);
 
       expect(server.calls, ['GET /team/teams/1/members/1/roles']);
       expect(permissions, {TeamPermission.deleteTeam});
@@ -188,7 +189,7 @@ void main() {
 
       final permissions = await teamRepositoryOfTeamServer(
         server,
-      ).fetchMyPermissions(1, userId: 1, isOwner: true);
+      ).fetchMyPermissions(const TeamResponse(id: 1, ownerId: 1), userId: 1);
 
       expect(server.calls, isEmpty);
       expect(permissions, TeamPermission.values.toSet());

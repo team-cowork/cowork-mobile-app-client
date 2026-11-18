@@ -9,6 +9,7 @@ import '../../../../../core/utils/async_state.dart';
 import '../../../../../core/utils/logger.dart';
 import '../../../../../shared/utils/initial.dart';
 import '../../../../profile/data/repositories/profile_repository.dart';
+import '../../../../team/data/model/responses/team_response.dart';
 import '../../../../team/data/model/responses/team_summary_response.dart';
 import '../../../../team/data/repositories/team_repository.dart';
 import '../../../../team/domain/enums/team_permission.dart';
@@ -93,6 +94,9 @@ class ChannelListBloc extends Bloc<ChannelListEvent, ChannelListState> {
   /// 보고 있는 팀에서 내 권한. 아직 못 읽었거나 읽기에 실패했으면 null 이다.
   Set<TeamPermission>? _permissions;
 
+  /// 보고 있는 팀의 소유자가 나인지. 아직 못 읽었거나 읽기에 실패했으면 null 이다.
+  bool? _isOwner;
+
   /// 단축 바 아바타 색. 같은 팀이 늘 같은 색이 되도록 id 로 고른다.
   static const _avatarColors = [
     WorkspaceAvatarColor.red,
@@ -165,6 +169,8 @@ class ChannelListBloc extends Bloc<ChannelListEvent, ChannelListState> {
     _teamId = team.id;
     // 권한도 읽지 않는다. 모르면 메뉴를 다 보이고 서버가 막게 둔다.
     _permissions = null;
+    // 만든 사람이 소유자가 된다.
+    _isOwner = true;
     _follow(team.id);
     emit(ChannelListState.success(_homeOf(team, const [])));
   }
@@ -420,7 +426,8 @@ class ChannelListBloc extends Bloc<ChannelListEvent, ChannelListState> {
     _follow(team.id);
     // 내 권한은 채널 목록과 같이 읽는다. 실패해도 던지지 않는다.
     _permissions = null;
-    final permissionsRequest = _fetchPermissions(team);
+    _isOwner = null;
+    final accessRequest = _fetchAccess(team.id);
 
     final List<Channel> channels;
     try {
@@ -432,12 +439,13 @@ class ChannelListBloc extends Bloc<ChannelListEvent, ChannelListState> {
       }
       return;
     }
-    final permissions = await permissionsRequest;
+    final access = await accessRequest;
     // 기다리는 사이 다른 팀으로 옮겼다면(팀에서 빠져 다음 팀을 읽는 등) 늦게 온 이
     // 응답이 지금 팀 화면을 덮지 않게 버린다.
     if (team.id != _teamId) return;
 
-    _permissions = permissions;
+    _permissions = access.permissions;
+    _isOwner = access.isOwner;
     emit(ChannelListState.success(_homeOf(team, channels)));
     // 같은 변경이 목록에 이미 들어 있어도 upsert·삭제라 다시 반영해도 결과가 같다.
     final pending = [..._pending];
@@ -447,22 +455,36 @@ class ChannelListBloc extends Bloc<ChannelListEvent, ChannelListState> {
     }
   }
 
-  /// [team] 에서 내 권한. 못 읽으면 null 이다.
+  /// [teamId] 팀의 소유자가 나인지와 내 권한. 못 읽은 값은 null 이다.
   ///
-  /// 권한은 메뉴 항목을 숨기는 데만 쓰고 서버가 다시 검사하므로, 못 읽었다고 홈을
+  /// 소유자인지는 팀 상세의 `ownerId` 로 본다. 팀 설정 화면과 같은 기준이다.
+  /// 둘 다 메뉴 항목을 숨기는 데만 쓰고 서버가 다시 검사하므로, 못 읽었다고 홈을
   /// 실패로 만들지 않는다.
-  Future<Set<TeamPermission>?> _fetchPermissions(
-    TeamSummaryResponse team,
+  Future<({bool? isOwner, Set<TeamPermission>? permissions})> _fetchAccess(
+    int teamId,
   ) async {
+    final TeamResponse team;
+    final int myId;
     try {
-      return await _teamRepository.fetchMyPermissions(
-        team.id,
-        userId: await _profileRepository.fetchMyId(),
-        isOwner: team.isOwner,
+      final teamRequest = _teamRepository.fetchTeam(teamId);
+      final myIdRequest = _profileRepository.fetchMyId();
+      await Future.wait([teamRequest, myIdRequest], eagerError: true);
+      team = await teamRequest;
+      myId = await myIdRequest;
+    } catch (e, s) {
+      Logger.e('팀 상세 조회 실패', tag: 'Chat', error: e, stackTrace: s);
+      return (isOwner: null, permissions: null);
+    }
+    final isOwner = team.isOwnedBy(myId);
+    try {
+      final permissions = await _teamRepository.fetchMyPermissions(
+        team,
+        userId: myId,
       );
+      return (isOwner: isOwner, permissions: permissions);
     } catch (e, s) {
       Logger.e('팀 권한 조회 실패', tag: 'Chat', error: e, stackTrace: s);
-      return null;
+      return (isOwner: isOwner, permissions: null);
     }
   }
 
@@ -489,7 +511,8 @@ class ChannelListBloc extends Bloc<ChannelListEvent, ChannelListState> {
   ChannelListData _homeOf(TeamSummaryResponse team, List<Channel> channels) => (
     teamId: team.id,
     workspaceName: team.name,
-    isTeamOwner: team.isOwner,
+    // 모르면 소유자가 아니라고 본다. 나가기가 보이고, 소유자면 서버가 막는다.
+    isTeamOwner: _isOwner ?? false,
     // 권한을 모르면 보인다. 숨겨서 쓸 수 있는 사람이 못 쓰는 것보다, 보이고 서버가
     // 막는 쪽(초대 화면의 403 안내)이 낫다.
     canInviteMembers:

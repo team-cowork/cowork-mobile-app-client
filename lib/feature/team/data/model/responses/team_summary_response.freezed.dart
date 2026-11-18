@@ -18,7 +18,8 @@ mixin _$TeamSummaryResponse {
 /// 없으면 채널을 읽을 수도 만들 수도 없으므로 필수다. 없으면 fromJson 이 던진다.
  int get id; String get name;/// 이 팀에서 내 역할. `OWNER` / `ADMIN` / `MEMBER`.
 ///
-/// `POST /teams` 응답(팀 상세)에는 없다. 저장소가 [ownerRole] 로 채운다.
+/// 서버가 권한 판정에 쓰지 않는 표시값이라(deprecated) 앱도 판단에 쓰지 않는다.
+/// 소유자인지는 [TeamResponse.isOwnedBy] 로 본다. `POST /teams` 응답에는 없다.
  String? get myRole;
 /// Create a copy of TeamSummaryResponse
 /// with the given fields replaced by the non-null parameter values.
@@ -223,7 +224,8 @@ class _TeamSummaryResponse extends TeamSummaryResponse {
 @override@JsonKey() final  String name;
 /// 이 팀에서 내 역할. `OWNER` / `ADMIN` / `MEMBER`.
 ///
-/// `POST /teams` 응답(팀 상세)에는 없다. 저장소가 [ownerRole] 로 채운다.
+/// 서버가 권한 판정에 쓰지 않는 표시값이라(deprecated) 앱도 판단에 쓰지 않는다.
+/// 소유자인지는 [TeamResponse.isOwnedBy] 로 본다. `POST /teams` 응답에는 없다.
 @override final  String? myRole;
 
 /// Create a copy of TeamSummaryResponse

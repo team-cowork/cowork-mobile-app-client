@@ -68,6 +68,36 @@ void main() {
     expect(find.text('팀 나가기'), findsNothing);
   });
 
+  testWidgets('소유자인지는 myRole 이 아니라 팀 상세의 ownerId 로 본다', (tester) async {
+    // 소유권을 막 넘겨받아 목록의 myRole 이 아직 MEMBER 인 순간.
+    final server = FakeChatServer(
+      teams: [
+        {
+          'id': 1,
+          'name': '코워크',
+          'iconUrl': null,
+          'myRole': 'MEMBER',
+          'ownerId': 1,
+        },
+      ],
+    );
+    await pumpChat(tester, server);
+
+    await openMenu(tester, '코워크');
+
+    expect(server.requests, contains('GET /team/teams/1'));
+    expect(find.text('팀 나가기'), findsNothing);
+  });
+
+  testWidgets('팀 상세를 못 읽으면 팀 나가기를 보이고 서버가 막게 둔다', (tester) async {
+    final server = FakeChatServer()..failTeam = const ServerFailure(503);
+    await pumpChat(tester, server);
+
+    await openMenu(tester, '코워크');
+
+    expect(find.text('팀 나가기'), findsOneWidget);
+  });
+
   testWidgets('팀을 나가면 남은 팀으로 옮기고 알린다', (tester) async {
     final server = FakeChatServer();
     await pumpChat(tester, server);

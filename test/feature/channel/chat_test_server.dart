@@ -26,8 +26,20 @@ class FakeChatServer implements HttpClientAdapter {
   }) : teams =
            teams ??
            [
-             {'id': 1, 'name': '코워크', 'iconUrl': null, 'myRole': 'OWNER'},
-             {'id': 2, 'name': '디자인팀', 'iconUrl': null, 'myRole': 'MEMBER'},
+             {
+               'id': 1,
+               'name': '코워크',
+               'iconUrl': null,
+               'myRole': 'OWNER',
+               'ownerId': 1,
+             },
+             {
+               'id': 2,
+               'name': '디자인팀',
+               'iconUrl': null,
+               'myRole': 'MEMBER',
+               'ownerId': 2,
+             },
            ],
        channels =
            channels ??
@@ -56,6 +68,7 @@ class FakeChatServer implements HttpClientAdapter {
   ServerFailure? failCreateTeam;
   ServerFailure? failLeave;
   ServerFailure? failPermissions;
+  ServerFailure? failTeam;
 
   /// 팀 id 별 내(1) 역할의 권한. 없는 팀은 권한이 하나도 없다.
   /// 기본값은 내가 소유자인 코워크(1)만 `administrator` 다.
@@ -141,6 +154,9 @@ class FakeChatServer implements HttpClientAdapter {
       final teamId = int.parse(segments[3]);
       final teamInvites = invites.putIfAbsent(teamId, () => []);
       switch ((options.method, segments.length > 4 ? segments[4] : '')) {
+        // `GET /teams/{teamId}`: 팀 상세. 소유자는 이 `ownerId` 로 판단한다.
+        case ('GET', ''):
+          return _respond(options, failTeam, () => _teamOf(teamId));
         case ('GET', 'members'):
           return _respond(options, failMembers, () => _membersOf(teamId));
         case ('POST', 'members'):
@@ -224,6 +240,13 @@ class FakeChatServer implements HttpClientAdapter {
       'nicknameFormatEnforced': false,
       'nicknameFormatExample': null,
     };
+  }
+
+  /// 내 팀 목록에 있는 팀의 상세. 없는 팀은 서버처럼 403.
+  Map<String, dynamic> _teamOf(int teamId) {
+    final team = teams.where((team) => team['id'] == teamId).firstOrNull;
+    if (team == null) throw const ServerFailure(403, '팀 멤버가 아닙니다.');
+    return team;
   }
 
   List<Map<String, dynamic>> _membersOf(int teamId) => [

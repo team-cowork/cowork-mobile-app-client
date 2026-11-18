@@ -60,15 +60,13 @@ class TeamRepository {
   ];
 
   /// 팀을 만들고 서버가 저장한 팀을 돌려준다. 만든 사람이 소유자가 된다.
-  ///
-  /// 응답(팀 상세)에는 내 역할이 없어서 소유자로 채운다.
   Future<TeamSummaryResponse> createTeam(CreateTeamRequest request) async =>
       TeamSummaryResponse.fromJson(
         unwrapPayload(
           (await _dio.post<String>('/teams', data: request.toJson())).data ??
               '',
         ),
-      ).copyWith(myRole: TeamSummaryResponse.ownerRole);
+      );
 
   /// 팀 상세. 팀 멤버만 읽을 수 있다.
   Future<TeamResponse> fetchTeam(int teamId) async => TeamResponse.fromJson(
@@ -115,22 +113,23 @@ class TeamRepository {
     ),
   );
 
-  /// 내가([userId]) 이 팀에서 할 수 있는 일.
+  /// 내가([userId]) [team] 에서 할 수 있는 일.
   ///
-  /// 소유자([isOwner])면 묻지 않고 모두 할 수 있다고 본다. 아니면 내 역할(모든 멤버에게
+  /// 소유자([TeamResponse.isOwnedBy])면 묻지 않고 모두 할 수 있다고 본다. 아니면 내 역할(모든 멤버에게
   /// 붙는 기본 역할 포함)을 읽어 정한다.
   ///
   /// 소유자는 서버가 모든 일을 허용하지만, 역할 조회에 그 권한이 실려 오지 않을 수 있다.
   /// 역할만 보면 소유자에게서 메뉴를 빼앗게 되어 소유자는 역할을 보지 않는다.
   Future<Set<TeamPermission>> fetchMyPermissions(
-    int teamId, {
+    TeamResponse team, {
     required int userId,
-    required bool isOwner,
   }) async {
-    if (isOwner) return TeamPermission.values.toSet();
+    if (team.isOwnedBy(userId)) return TeamPermission.values.toSet();
     return permissionsOf([
       for (final json in unwrapListPayload(
-        (await _dio.get<String>('/teams/$teamId/members/$userId/roles')).data ??
+        (await _dio.get<String>(
+              '/teams/${team.id}/members/$userId/roles',
+            )).data ??
             '',
       ))
         TeamRoleResponse.fromJson(json),

@@ -215,8 +215,8 @@ return $default(_that.id,_that.name,_that.description,_that.iconUrl,_that.ownerI
 /// @nodoc
 @JsonSerializable()
 
-class _TeamResponse implements TeamResponse {
-  const _TeamResponse({required this.id, this.name = '', this.description, this.iconUrl, this.ownerId});
+class _TeamResponse extends TeamResponse {
+  const _TeamResponse({required this.id, this.name = '', this.description, this.iconUrl, this.ownerId}): super._();
   factory _TeamResponse.fromJson(Map<String, dynamic> json) => _$TeamResponseFromJson(json);
 
 @override final  int id;

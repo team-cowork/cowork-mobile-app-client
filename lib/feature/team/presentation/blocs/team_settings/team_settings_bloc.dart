@@ -55,9 +55,8 @@ class TeamSettingsBloc extends Bloc<TeamSettingsEvent, TeamSettingsState> {
       final myId = await myIdRequest;
       // 소유자인지는 팀 상세로 안다. 소유자면 역할을 읽지 않는다.
       final permissions = await _teamRepository.fetchMyPermissions(
-        teamId,
+        team,
         userId: myId,
-        isOwner: team.ownerId == myId,
       );
 
       emit(

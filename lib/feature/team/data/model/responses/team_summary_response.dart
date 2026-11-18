@@ -18,16 +18,11 @@ abstract class TeamSummaryResponse with _$TeamSummaryResponse {
 
     /// 이 팀에서 내 역할. `OWNER` / `ADMIN` / `MEMBER`.
     ///
-    /// `POST /teams` 응답(팀 상세)에는 없다. 저장소가 [ownerRole] 로 채운다.
+    /// 서버가 권한 판정에 쓰지 않는 표시값이라(deprecated) 앱도 판단에 쓰지 않는다.
+    /// 소유자인지는 [TeamResponse.isOwnedBy] 로 본다. `POST /teams` 응답에는 없다.
     String? myRole,
   }) = _TeamSummaryResponse;
 
   factory TeamSummaryResponse.fromJson(Map<String, dynamic> json) =>
       _$TeamSummaryResponseFromJson(json);
-
-  /// 소유자의 [myRole]. 서버는 소유권을 넘길 때 이 역할도 같이 바꾼다.
-  static const ownerRole = 'OWNER';
-
-  /// 내가 이 팀의 소유자인지. 소유자는 소유권을 넘기기 전엔 팀을 나갈 수 없다.
-  bool get isOwner => myRole == ownerRole;
 }
