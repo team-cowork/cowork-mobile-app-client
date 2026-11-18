@@ -8,6 +8,7 @@ import '../../../../chat/data/model/chat_message_mapping.dart';
 import '../../../../chat/data/repositories/message_repository.dart';
 import '../../../../team/data/model/responses/team_member_response.dart';
 import '../../../../team/data/repositories/team_repository.dart';
+import '../../../data/model/channel_member_mapping.dart';
 import '../../../data/repositories/channel_repository.dart';
 import '../../../domain/channel_member.dart';
 
@@ -49,8 +50,11 @@ class ChannelMembersBloc
       await Future.wait([headerRequest, membersRequest], eagerError: true);
       final header = await headerRequest;
       final members = await membersRequest;
-      final names = await _fetchNames([for (final m in members) m.userId]);
-      final teamMembers = await _fetchTeamMembers(header.teamId);
+      // 이름과 역할은 서로의 결과를 쓰지 않고 둘 다 안에서 실패를 받으니 같이 보낸다.
+      final namesRequest = _fetchNames([for (final m in members) m.userId]);
+      final teamMembersRequest = _fetchTeamMembers(header.teamId);
+      final names = await namesRequest;
+      final teamMembers = await teamMembersRequest;
 
       emit(
         ChannelMembersState.success((
@@ -63,13 +67,8 @@ class ChannelMembersBloc
                   names[member.userId] ?? '',
                 ),
                 avatarColor: chatAvatarColorOf(member.userId),
-                role: _roleOf(teamMembers[member.userId]),
-                roleNames: [
-                  for (final role
-                      in teamMembers[member.userId]?.roles ??
-                          const <TeamMemberRoleResponse>[])
-                    if (!role.isDefault && role.name.isNotEmpty) role.name,
-                ],
+                role: channelMemberRoleOf(teamMembers[member.userId]),
+                roleNames: channelMemberRoleNamesOf(teamMembers[member.userId]),
               ),
           ],
         )),
@@ -98,13 +97,6 @@ class ChannelMembersBloc
       return const {};
     }
   }
-
-  static ChannelMemberRole _roleOf(TeamMemberResponse? member) =>
-      switch (member?.role) {
-        'OWNER' => ChannelMemberRole.owner,
-        'ADMIN' => ChannelMemberRole.admin,
-        _ => ChannelMemberRole.member,
-      };
 
   /// 사용자 id → 표시 이름. 못 읽으면 빈 맵이라 멤버가 `알 수 없음` 으로 보인다.
   Future<Map<int, String>> _fetchNames(List<int> userIds) async {
