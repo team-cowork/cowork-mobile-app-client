@@ -6,10 +6,12 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/network/chat_socket.dart';
 import '../../../../shared/widgets/bloc_scaffold.dart';
 import '../../../notifications/data/repositories/notification_repository.dart';
+import '../../../profile/data/repositories/profile_repository.dart';
 import '../../../team/data/repositories/team_repository.dart';
 import '../../../team/presentation/widgets/add_team_sheet.dart';
 import '../../../team/presentation/widgets/join_team_sheet.dart';
 import '../../../team/presentation/widgets/new_team_sheet.dart';
+import '../../../team/presentation/widgets/team_action_dialog.dart';
 import '../../../team/presentation/widgets/team_menu_sheet.dart';
 import '../../data/repositories/channel_repository.dart';
 import '../../domain/channel.dart';
@@ -29,6 +31,7 @@ class ChatView extends StatelessWidget {
         context.read<TeamRepository>(),
         context.read<ChannelRepository>(),
         context.read<ChatSocket>(),
+        profileRepository: context.read<ProfileRepository>(),
         invitedTeams: context.read<NotificationRepository>().invitedTeamIds,
       )..add(const ChannelListRequested()),
       // 어느 단계(팀/채널)가 실패했는지는 설명 문구에 실려 온다. (#94)
@@ -90,9 +93,15 @@ class ChatView extends StatelessWidget {
                 onTitleTap: () => TeamMenuSheet.show(
                   context,
                   teamName: data.workspaceName,
+                  canInviteMembers: data.canInviteMembers,
+                  onOpenSettings: () => _openTeamSettings(context, teamId),
                   onInviteMembers: () => context.push('/teams/$teamId/invite'),
                   onCreateChannel: () => _createChannel(context, teamId),
                   onCreateProject: () => NewProjectSheet.show(context),
+                  // 소유자는 소유권을 넘기기 전엔 나갈 수 없다(서버 403).
+                  onLeaveTeam: data.isTeamOwner
+                      ? null
+                      : () => _leaveTeam(context, teamId, data.workspaceName),
                 ),
                 onSearchTap: () => context.push('/search?teamId=$teamId'),
                 onNotificationTap: () => _openNotifications(context),
@@ -143,6 +152,48 @@ class ChatView extends StatelessWidget {
     if (team == null) return;
     bloc.add(ChannelListEvent.teamCreated(team));
     messenger.showSnackBar(SnackBar(content: Text('${team.name} 팀을 만들었어요.')));
+  }
+
+  /// 팀 설정 화면을 연다. 돌아오면 팀이 지워졌는지, 이름이 바뀌었는지 홈에 반영한다.
+  static Future<void> _openTeamSettings(
+    BuildContext context,
+    int teamId,
+  ) async {
+    final bloc = context.read<ChannelListBloc>();
+    final messenger = ScaffoldMessenger.of(context);
+    final deleted = await context.push<bool>('/teams/$teamId/settings');
+    if (bloc.isClosed) return;
+    if (deleted == true) {
+      bloc.add(ChannelListEvent.teamLeft(teamId));
+      messenger.showSnackBar(const SnackBar(content: Text('팀을 삭제했어요.')));
+    } else {
+      // 설정 화면은 바꾸는 즉시 저장해 돌아올 때 따로 결과를 주지 않는다.
+      bloc.add(const ChannelListEvent.teamsRefreshed());
+    }
+  }
+
+  /// 팀을 나갈지 묻고, 나갔으면 다른 팀으로 옮기고 알린다.
+  static Future<void> _leaveTeam(
+    BuildContext context,
+    int teamId,
+    String teamName,
+  ) async {
+    final bloc = context.read<ChannelListBloc>();
+    final messenger = ScaffoldMessenger.of(context);
+    final teams = context.read<TeamRepository>();
+    final profile = context.read<ProfileRepository>();
+    final left = await TeamActionDialog.show(
+      context,
+      title: '팀에서 나갈까요?',
+      message: '팀의 모든 채널과 대화에 접근할 수 없게 되며, 다시 참여하려면 초대를 받아야 해요.',
+      confirmLabel: '나가기',
+      runningLabel: '나가는 중…',
+      failureTitle: '팀을 나가지 못했어요.',
+      action: () async => teams.leaveTeam(teamId, await profile.fetchMyId()),
+    );
+    if (!left || bloc.isClosed) return;
+    bloc.add(ChannelListEvent.teamLeft(teamId));
+    messenger.showSnackBar(SnackBar(content: Text('$teamName 팀에서 나왔어요.')));
   }
 
   /// 초대 코드 시트를 띄우고, 참여하면 그 팀으로 옮기고 알린다.

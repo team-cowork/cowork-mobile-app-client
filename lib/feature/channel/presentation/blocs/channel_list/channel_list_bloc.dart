@@ -8,8 +8,11 @@ import '../../../../../core/network/http_error_message.dart';
 import '../../../../../core/utils/async_state.dart';
 import '../../../../../core/utils/logger.dart';
 import '../../../../../shared/utils/initial.dart';
+import '../../../../profile/data/repositories/profile_repository.dart';
+import '../../../../team/data/model/responses/team_response.dart';
 import '../../../../team/data/model/responses/team_summary_response.dart';
 import '../../../../team/data/repositories/team_repository.dart';
+import '../../../../team/domain/enums/team_permission.dart';
 import '../../../data/model/channel_socket_event.dart';
 import '../../../data/repositories/channel_repository.dart';
 import '../../../domain/channel.dart';
@@ -29,6 +32,8 @@ part 'channel_list_state.dart';
 /// 사람이 만들고 바꾸고 지운 채널을 목록에 반영한다. 다른 사람이 나를 팀에 넣은 것은
 /// 소켓 이벤트가 없어 [invitedTeams] 로 받는다.
 ///
+/// 채널 목록과 함께 그 팀에서 내 권한도 읽어, 팀 메뉴가 할 수 없는 항목을 숨기게 한다.
+///
 /// ponytail: 실패 단계를 문자열로 붙이는 건 임시다. 화면 제목까지 단계별로 나누는
 /// 작업은 #94 에서 한다.
 class ChannelListBloc extends Bloc<ChannelListEvent, ChannelListState> {
@@ -36,12 +41,16 @@ class ChannelListBloc extends Bloc<ChannelListEvent, ChannelListState> {
     this._teamRepository,
     this._channelRepository,
     this._socket, {
+    required ProfileRepository profileRepository,
     Stream<int> invitedTeams = const Stream.empty(),
-  }) : super(const ChannelListState.initial()) {
+  }) : _profileRepository = profileRepository,
+       super(const ChannelListState.initial()) {
     on<ChannelListRequested>(_onLoad);
     on<ChannelListTeamSelected>(_onTeamSelected);
     on<ChannelListTeamCreated>(_onTeamCreated);
     on<ChannelListChannelAdded>(_onChannelAdded);
+    on<ChannelListTeamLeft>((event, emit) => _leaveTeam(event.teamId, emit));
+    on<ChannelListTeamsRefreshed>(_onTeamsRefreshed);
     on<_ChannelListSocketEventReceived>(_onSocketEvent);
     on<_ChannelListReconnected>(_onReconnected);
     on<_ChannelListTeamInvited>(_onTeamInvited);
@@ -61,6 +70,7 @@ class ChannelListBloc extends Bloc<ChannelListEvent, ChannelListState> {
   final TeamRepository _teamRepository;
   final ChannelRepository _channelRepository;
   final ChatSocket _socket;
+  final ProfileRepository _profileRepository;
   late final StreamSubscription<ChannelSocketEvent?> _socketEvents;
   late final StreamSubscription<void> _reconnects;
   late final StreamSubscription<int> _invites;
@@ -80,6 +90,12 @@ class ChannelListBloc extends Bloc<ChannelListEvent, ChannelListState> {
   /// 재연결 후 목록을 다시 읽는 동안 반영한 변경. 응답으로 목록을 바꾼 뒤 다시 반영해,
   /// 응답이 그 변경보다 먼저 찍힌 목록이어도 덮이지 않게 한다. 읽는 중이 아니면 null.
   List<ChannelListChange>? _resyncChanges;
+
+  /// 보고 있는 팀에서 내 권한. 아직 못 읽었거나 읽기에 실패했으면 null 이다.
+  Set<TeamPermission>? _permissions;
+
+  /// 보고 있는 팀의 소유자가 나인지. 아직 못 읽었거나 읽기에 실패했으면 null 이다.
+  bool? _isOwner;
 
   /// 단축 바 아바타 색. 같은 팀이 늘 같은 색이 되도록 id 로 고른다.
   static const _avatarColors = [
@@ -151,6 +167,10 @@ class ChannelListBloc extends Bloc<ChannelListEvent, ChannelListState> {
     final team = event.team;
     _teams = [..._teams.where((other) => other.id != team.id), team];
     _teamId = team.id;
+    // 권한도 읽지 않는다. 모르면 메뉴를 다 보이고 서버가 막게 둔다.
+    _permissions = null;
+    // 만든 사람이 소유자가 된다.
+    _isOwner = true;
     _follow(team.id);
     emit(ChannelListState.success(_homeOf(team, const [])));
   }
@@ -232,6 +252,35 @@ class ChannelListBloc extends Bloc<ChannelListEvent, ChannelListState> {
     // 같은 변경이 응답에 이미 들어 있어도 upsert·삭제라 다시 반영해도 결과가 같다.
     for (final change in changes) {
       _apply(change, emit);
+    }
+  }
+
+  /// 팀 설정에서 돌아왔다. 이름이 바뀌었거나 팀이 지워졌을 수 있어 팀 목록만 다시 읽는다.
+  ///
+  /// 화면을 로딩으로 바꾸지 않고 팀 이름·단축 바만 바꾼다. 보던 팀이 목록에 없으면
+  /// 다른 팀으로 옮긴다. 읽기에 실패하면 보던 화면을 둔다.
+  Future<void> _onTeamsRefreshed(
+    ChannelListTeamsRefreshed event,
+    Emitter<ChannelListState> emit,
+  ) async {
+    final teamId = _teamId;
+    if (state is! AsyncSuccess<ChannelListData> || teamId == null) return;
+
+    final List<TeamSummaryResponse> teams;
+    try {
+      teams = await _teamRepository.fetchMyTeams();
+    } catch (e, s) {
+      Logger.e('팀 목록 다시 읽기 실패', tag: 'Chat', error: e, stackTrace: s);
+      return;
+    }
+    // 기다리는 사이 다른 팀으로 옮겼으면 그쪽이 읽은 목록이 더 새롭다.
+    if (isClosed || teamId != _teamId) return;
+
+    _teams = teams;
+    if (teams.any((team) => team.id == teamId)) {
+      _editChannels(emit, (channels) => channels);
+    } else {
+      await _leaveTeam(teamId, emit);
     }
   }
 
@@ -354,6 +403,8 @@ class ChannelListBloc extends Bloc<ChannelListEvent, ChannelListState> {
   static const ChannelListData _noTeam = (
     teamId: null,
     workspaceName: '',
+    isTeamOwner: false,
+    canInviteMembers: false,
     workspaceShortcuts: [],
     channelGroups: [],
   );
@@ -373,6 +424,10 @@ class ChannelListBloc extends Bloc<ChannelListEvent, ChannelListState> {
     // [_pending] 에 모인다. 이전 팀을 읽는 동안 모인 것은 이 팀과 관계없어 버린다.
     _pending.clear();
     _follow(team.id);
+    // 내 권한은 채널 목록과 같이 읽는다. 실패해도 던지지 않는다.
+    _permissions = null;
+    _isOwner = null;
+    final accessRequest = _fetchAccess(team.id);
 
     final List<Channel> channels;
     try {
@@ -384,16 +439,52 @@ class ChannelListBloc extends Bloc<ChannelListEvent, ChannelListState> {
       }
       return;
     }
+    final access = await accessRequest;
     // 기다리는 사이 다른 팀으로 옮겼다면(팀에서 빠져 다음 팀을 읽는 등) 늦게 온 이
     // 응답이 지금 팀 화면을 덮지 않게 버린다.
     if (team.id != _teamId) return;
 
+    _permissions = access.permissions;
+    _isOwner = access.isOwner;
     emit(ChannelListState.success(_homeOf(team, channels)));
     // 같은 변경이 목록에 이미 들어 있어도 upsert·삭제라 다시 반영해도 결과가 같다.
     final pending = [..._pending];
     _pending.clear();
     for (final change in pending) {
       _apply(change, emit);
+    }
+  }
+
+  /// [teamId] 팀의 소유자가 나인지와 내 권한. 못 읽은 값은 null 이다.
+  ///
+  /// 소유자인지는 팀 상세의 `ownerId` 로 본다. 팀 설정 화면과 같은 기준이다.
+  /// 둘 다 메뉴 항목을 숨기는 데만 쓰고 서버가 다시 검사하므로, 못 읽었다고 홈을
+  /// 실패로 만들지 않는다.
+  Future<({bool? isOwner, Set<TeamPermission>? permissions})> _fetchAccess(
+    int teamId,
+  ) async {
+    final TeamResponse team;
+    final int myId;
+    try {
+      final teamRequest = _teamRepository.fetchTeam(teamId);
+      final myIdRequest = _profileRepository.fetchMyId();
+      await Future.wait([teamRequest, myIdRequest], eagerError: true);
+      team = await teamRequest;
+      myId = await myIdRequest;
+    } catch (e, s) {
+      Logger.e('팀 상세 조회 실패', tag: 'Chat', error: e, stackTrace: s);
+      return (isOwner: null, permissions: null);
+    }
+    final isOwner = team.isOwnedBy(myId);
+    try {
+      final permissions = await _teamRepository.fetchMyPermissions(
+        team,
+        userId: myId,
+      );
+      return (isOwner: isOwner, permissions: permissions);
+    } catch (e, s) {
+      Logger.e('팀 권한 조회 실패', tag: 'Chat', error: e, stackTrace: s);
+      return (isOwner: isOwner, permissions: null);
     }
   }
 
@@ -420,6 +511,12 @@ class ChannelListBloc extends Bloc<ChannelListEvent, ChannelListState> {
   ChannelListData _homeOf(TeamSummaryResponse team, List<Channel> channels) => (
     teamId: team.id,
     workspaceName: team.name,
+    // 모르면 소유자가 아니라고 본다. 나가기가 보이고, 소유자면 서버가 막는다.
+    isTeamOwner: _isOwner ?? false,
+    // 권한을 모르면 보인다. 숨겨서 쓸 수 있는 사람이 못 쓰는 것보다, 보이고 서버가
+    // 막는 쪽(초대 화면의 403 안내)이 낫다.
+    canInviteMembers:
+        _permissions?.contains(TeamPermission.manageInvites) ?? true,
     workspaceShortcuts: [
       for (final other in _teams)
         WorkspaceShortcut(

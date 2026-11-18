@@ -16,7 +16,11 @@ T _$identity<T>(T value) => value;
 mixin _$TeamSummaryResponse {
 
 /// 없으면 채널을 읽을 수도 만들 수도 없으므로 필수다. 없으면 fromJson 이 던진다.
- int get id; String get name;
+ int get id; String get name;/// 이 팀에서 내 역할. `OWNER` / `ADMIN` / `MEMBER`.
+///
+/// 서버가 권한 판정에 쓰지 않는 표시값이라(deprecated) 앱도 판단에 쓰지 않는다.
+/// 소유자인지는 [TeamResponse.isOwnedBy] 로 본다. `POST /teams` 응답에는 없다.
+ String? get myRole;
 /// Create a copy of TeamSummaryResponse
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -29,16 +33,16 @@ $TeamSummaryResponseCopyWith<TeamSummaryResponse> get copyWith => _$TeamSummaryR
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is TeamSummaryResponse&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is TeamSummaryResponse&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.myRole, myRole) || other.myRole == myRole));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,name);
+int get hashCode => Object.hash(runtimeType,id,name,myRole);
 
 @override
 String toString() {
-  return 'TeamSummaryResponse(id: $id, name: $name)';
+  return 'TeamSummaryResponse(id: $id, name: $name, myRole: $myRole)';
 }
 
 
@@ -49,7 +53,7 @@ abstract mixin class $TeamSummaryResponseCopyWith<$Res>  {
   factory $TeamSummaryResponseCopyWith(TeamSummaryResponse value, $Res Function(TeamSummaryResponse) _then) = _$TeamSummaryResponseCopyWithImpl;
 @useResult
 $Res call({
- int id, String name
+ int id, String name, String? myRole
 });
 
 
@@ -66,11 +70,12 @@ class _$TeamSummaryResponseCopyWithImpl<$Res>
 
 /// Create a copy of TeamSummaryResponse
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? name = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? name = null,Object? myRole = freezed,}) {
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as int,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
-as String,
+as String,myRole: freezed == myRole ? _self.myRole : myRole // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 
@@ -155,10 +160,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( int id,  String name)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( int id,  String name,  String? myRole)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _TeamSummaryResponse() when $default != null:
-return $default(_that.id,_that.name);case _:
+return $default(_that.id,_that.name,_that.myRole);case _:
   return orElse();
 
 }
@@ -176,10 +181,10 @@ return $default(_that.id,_that.name);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( int id,  String name)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( int id,  String name,  String? myRole)  $default,) {final _that = this;
 switch (_that) {
 case _TeamSummaryResponse():
-return $default(_that.id,_that.name);case _:
+return $default(_that.id,_that.name,_that.myRole);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -196,10 +201,10 @@ return $default(_that.id,_that.name);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( int id,  String name)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( int id,  String name,  String? myRole)?  $default,) {final _that = this;
 switch (_that) {
 case _TeamSummaryResponse() when $default != null:
-return $default(_that.id,_that.name);case _:
+return $default(_that.id,_that.name,_that.myRole);case _:
   return null;
 
 }
@@ -210,13 +215,18 @@ return $default(_that.id,_that.name);case _:
 /// @nodoc
 @JsonSerializable()
 
-class _TeamSummaryResponse implements TeamSummaryResponse {
-  const _TeamSummaryResponse({required this.id, this.name = ''});
+class _TeamSummaryResponse extends TeamSummaryResponse {
+  const _TeamSummaryResponse({required this.id, this.name = '', this.myRole}): super._();
   factory _TeamSummaryResponse.fromJson(Map<String, dynamic> json) => _$TeamSummaryResponseFromJson(json);
 
 /// 없으면 채널을 읽을 수도 만들 수도 없으므로 필수다. 없으면 fromJson 이 던진다.
 @override final  int id;
 @override@JsonKey() final  String name;
+/// 이 팀에서 내 역할. `OWNER` / `ADMIN` / `MEMBER`.
+///
+/// 서버가 권한 판정에 쓰지 않는 표시값이라(deprecated) 앱도 판단에 쓰지 않는다.
+/// 소유자인지는 [TeamResponse.isOwnedBy] 로 본다. `POST /teams` 응답에는 없다.
+@override final  String? myRole;
 
 /// Create a copy of TeamSummaryResponse
 /// with the given fields replaced by the non-null parameter values.
@@ -231,16 +241,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _TeamSummaryResponse&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _TeamSummaryResponse&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.myRole, myRole) || other.myRole == myRole));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,name);
+int get hashCode => Object.hash(runtimeType,id,name,myRole);
 
 @override
 String toString() {
-  return 'TeamSummaryResponse(id: $id, name: $name)';
+  return 'TeamSummaryResponse(id: $id, name: $name, myRole: $myRole)';
 }
 
 
@@ -251,7 +261,7 @@ abstract mixin class _$TeamSummaryResponseCopyWith<$Res> implements $TeamSummary
   factory _$TeamSummaryResponseCopyWith(_TeamSummaryResponse value, $Res Function(_TeamSummaryResponse) _then) = __$TeamSummaryResponseCopyWithImpl;
 @override @useResult
 $Res call({
- int id, String name
+ int id, String name, String? myRole
 });
 
 
@@ -268,11 +278,12 @@ class __$TeamSummaryResponseCopyWithImpl<$Res>
 
 /// Create a copy of TeamSummaryResponse
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? name = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? name = null,Object? myRole = freezed,}) {
   return _then(_TeamSummaryResponse(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as int,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
-as String,
+as String,myRole: freezed == myRole ? _self.myRole : myRole // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 
