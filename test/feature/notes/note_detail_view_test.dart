@@ -3,6 +3,7 @@ import 'package:cowork_app/feature/notes/presentation/views/note_detail_view.dar
 import 'package:cowork_app/feature/notes/presentation/views/notes_view.dart';
 import 'package:cowork_design_system/design_system.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 
@@ -95,5 +96,73 @@ void main() {
     // 시트에 전체 7명이 나온다. 각 행은 아바타 + 라벨이라 이니셜은 2번 나타난다.
     expect(find.text('참여자 7명'), findsOneWidget);
     expect(find.text('라'), findsNWidgets(2));
+  });
+
+  testWidgets('공유 버튼을 누르면 제목과 내용이 공유 시트로 넘어간다', (tester) async {
+    tester.view.physicalSize = const Size(800, 2000);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    MethodCall? shared;
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+      const MethodChannel('dev.fluttercommunity.plus/share'),
+      (call) async {
+        shared = call;
+        return 'dev.fluttercommunity.plus/share/success';
+      },
+    );
+    addTearDown(
+      () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        const MethodChannel('dev.fluttercommunity.plus/share'),
+        null,
+      ),
+    );
+
+    await tester.pumpWidget(
+      notesRouterTestApp(_notesRouter(), FakeNotesServer()),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('2026 1분기 킥오프 회의'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.bySemanticsLabel('공유'));
+    await tester.pumpAndSettle();
+
+    expect(shared?.method, 'share');
+    final args = shared!.arguments as Map;
+    expect(args['subject'], '2026 1분기 킥오프 회의');
+    final text = args['text'] as String;
+    expect(text, startsWith('# 2026 1분기 킥오프 회의'));
+    expect(text, contains('## 안건'));
+  });
+
+  testWidgets('공유 시트를 열지 못하면 알린다', (tester) async {
+    tester.view.physicalSize = const Size(800, 2000);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+      const MethodChannel('dev.fluttercommunity.plus/share'),
+      (call) async => throw PlatformException(code: 'unavailable'),
+    );
+    addTearDown(
+      () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        const MethodChannel('dev.fluttercommunity.plus/share'),
+        null,
+      ),
+    );
+
+    await tester.pumpWidget(
+      notesRouterTestApp(_notesRouter(), FakeNotesServer()),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('2026 1분기 킥오프 회의'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.bySemanticsLabel('공유'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('공유하지 못했어요.'), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 }

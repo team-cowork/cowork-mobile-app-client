@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:cowork_app/feature/channel/data/repositories/channel_repository.dart';
+import 'package:cowork_app/feature/notes/data/repositories/note_attachment_repository.dart';
 import 'package:cowork_app/feature/notes/data/repositories/notes_repository.dart';
 import 'package:cowork_app/feature/notes/data/repositories/note_template_repository.dart';
 import 'package:cowork_app/feature/notes/domain/note.dart';
@@ -12,8 +13,10 @@ import 'package:cowork_app/feature/notes/presentation/views/note_detail_view.dar
 import 'package:cowork_app/feature/notes/presentation/views/note_edit_view.dart';
 import 'package:cowork_app/feature/notes/presentation/views/note_template_edit_view.dart';
 import 'package:cowork_app/feature/notes/presentation/views/note_templates_view.dart';
+import 'package:cowork_app/feature/notes/presentation/utils/note_file_picker.dart';
 import 'package:cowork_app/feature/notes/presentation/views/notes_view.dart';
 import 'package:cowork_app/feature/team/data/repositories/team_repository.dart';
+import 'package:cowork_app/shared/utils/external_url.dart';
 import 'package:cowork_design_system/design_system.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
@@ -28,6 +31,9 @@ import 'package:go_router/go_router.dart';
 /// `/channel`, `/user`)로 요청을 가르고, 모르는 경로는 404 로 답해 다른 서비스로 간
 /// 요청을 드러낸다. 작성·삭제·목록 조회 실패는 [failCreate]·[failDelete]·
 /// [failList] 로 건다.
+///
+/// 첨부는 chat 서비스의 업로드 3단계(주소 발급 → 스토리지 PUT → 확인)와 회의록
+/// 다운로드 주소 발급을 흉내 낸다. 회의록 1 에는 파일이 하나 붙어 있다.
 class FakeNotesServer implements HttpClientAdapter {
   final List<Map<String, dynamic>> notes = _seedNotes();
 
@@ -52,10 +58,27 @@ class FakeNotesServer implements HttpClientAdapter {
   /// 채널 id → 끝낼 때까지 그 채널의 템플릿 목록 응답을 붙잡아 둘 completer.
   final Map<int, Completer<void>> holdTemplates = {};
 
+  /// 걸어 두면 업로드 주소 발급을 이 (상태 코드, 사유)로 거절한다.
+  (int, String)? failUpload;
+
+  /// 걸어 두면 끝낼 때까지 스토리지 PUT 응답을 붙잡아 둔다. 올리는 중 상태를 본다.
+  Completer<void>? holdUpload;
+
+  /// 스토리지 PUT 이 받은 (헤더, 바이트). 업로드 요청 모양을 확인할 때 쓴다.
+  final List<(Map<String, dynamic>, List<int>)> stored = [];
+
   int _nextId = 100;
 
   static final _notesPath = RegExp(
     r'^/channel/channels/(\d+)/meeting-notes(?:/(\d+))?$',
+  );
+
+  static final _downloadPath = RegExp(
+    r'^/channel/channels/(\d+)/meeting-notes/(\d+)/attachments/download-url$',
+  );
+
+  static final _filesPath = RegExp(
+    r'^/chat/chat/channels/(\d+)/files/(presigned-url|confirm)$',
   );
 
   static final _templatesPath = RegExp(
@@ -71,8 +94,41 @@ class FakeNotesServer implements HttpClientAdapter {
   ) async {
     final path = options.uri.path.replaceFirst('/api', '');
     final method = options.method;
-    final body = await _body(requestStream);
+    final bytes = await _bytes(requestStream);
+
+    // 스토리지 PUT 은 JSON 이 아니라 파일 바이트를 받는다.
+    if (path.startsWith('/storage/')) {
+      requests.add((method, path, const {}));
+      stored.add((options.headers, bytes));
+      await holdUpload?.future;
+      return ResponseBody.fromString('', 200);
+    }
+
+    final body = _decode(bytes);
     requests.add((method, path, body));
+
+    if (_filesPath.firstMatch(path) case final match?) {
+      return _file(int.parse(match[1]!), match[2]!, body);
+    }
+
+    if (_downloadPath.firstMatch(path) case final match?) {
+      final key = options.uri.queryParameters['objectKey'];
+      final note = notes
+          .where((note) => note['id'] == int.parse(match[2]!))
+          .firstOrNull;
+      final attached = [
+        for (final attachment in (note?['attachments'] as List?) ?? const [])
+          (attachment as Map)['objectKey'],
+      ].contains(key);
+      if (!attached) {
+        return _json({'message': '회의록 첨부파일을 찾을 수 없습니다'}, 404);
+      }
+      return _ok({
+        'downloadUrl': 'https://files.test/$key',
+        'expiresAt': '2026-03-20T09:01:00Z',
+        'expiresInSeconds': 60,
+      });
+    }
 
     if (_templatesPath.firstMatch(path) case final match?) {
       final channelId = int.parse(match[1]!);
@@ -221,6 +277,7 @@ class FakeNotesServer implements HttpClientAdapter {
       'content': body['content'],
       'createdBy': 1,
       'createdAt': '2026-03-20T09:00:00Z',
+      'attachments': body['attachments'] ?? const [],
     };
     notes.insert(0, note);
     return note;
@@ -231,9 +288,64 @@ class FakeNotesServer implements HttpClientAdapter {
     return notes[index] = {...notes[index], ...body};
   }
 
-  static Future<Map<String, dynamic>> _body(Stream<Uint8List>? stream) async {
-    if (stream == null) return const {};
-    final bytes = (await stream.toList()).expand((chunk) => chunk).toList();
+  /// 임시 키 → 업로드 주소를 받을 때 보낸 파일 이름. 확인 응답이 돌려준다.
+  final Map<String, String> _uploadNames = {};
+
+  /// cowork-chat 이 기본으로 받는 첨부 형식(`S3_CHAT_ALLOWED_CONTENT_TYPES`).
+  static const _allowedTypes = {
+    'video/mp4',
+    'video/quicktime',
+    'video/x-msvideo',
+    'audio/mpeg',
+    'audio/ogg',
+    'audio/wav',
+    'audio/mp4',
+    'image/jpeg',
+    'image/png',
+    'image/gif',
+    'image/webp',
+    'application/pdf',
+    'text/plain',
+  };
+
+  /// 업로드 주소 발급과 업로드 확인. 서버처럼 받지 않는 형식은 주소를 주지 않고
+  /// 거절하고, 확인하면 `chat-uploads/` 임시 키가 `chat-files/` 확정 키로 바뀐다.
+  ResponseBody _file(int channelId, String step, Map<String, dynamic> body) {
+    if (step == 'presigned-url') {
+      if (failUpload case (final statusCode, final message)) {
+        return _json({'message': message}, statusCode);
+      }
+      if (!_allowedTypes.contains(body['contentType'])) {
+        return _json({
+          'message': '허용되지 않은 파일 형식입니다. 허용 형식: ${_allowedTypes.join(', ')}',
+        }, 400);
+      }
+      final name = body['filename'] as String;
+      final key =
+          'chat-uploads/$channelId/1/u${_nextId++}.${name.split('.').last}';
+      _uploadNames[key] = name;
+      return _ok({
+        'objectKey': key,
+        'uploadUrl': 'https://example.test/api/storage/cowork/$key?sig=x',
+        'expiresInSeconds': 600,
+        'headers': {'Content-Type': body['contentType']},
+      }, 201);
+    }
+    final key = body['objectKey'] as String;
+    return _ok({
+      'objectKey': key.replaceFirst('chat-uploads/', 'chat-files/'),
+      'name': _uploadNames[key],
+      'size': 1,
+      'mimeType': 'application/octet-stream',
+    });
+  }
+
+  static Future<List<int>> _bytes(Stream<Uint8List>? stream) async {
+    if (stream == null) return const [];
+    return (await stream.toList()).expand((chunk) => chunk).toList();
+  }
+
+  static Map<String, dynamic> _decode(List<int> bytes) {
     if (bytes.isEmpty) return const {};
     return jsonDecode(utf8.decode(bytes)) as Map<String, dynamic>;
   }
@@ -314,6 +426,9 @@ class FakeNotesServer implements HttpClientAdapter {
             '- [ ] 이슈 트래커 칸반 스펙 문서화 (민재)\n'
             '- [ ] 음성 채널 인원 제한 정책 확정 (서연)',
       }),
+      'attachments': [
+        {'objectKey': 'chat-files/10/1/kickoff.pdf', 'name': '킥오프 자료.pdf'},
+      ],
     },
     {
       'id': 2,
@@ -358,6 +473,14 @@ NotesRepository notesRepositoryOf(HttpClientAdapter server) =>
 NoteTemplateRepository noteTemplateRepositoryOf(HttpClientAdapter server) =>
     NoteTemplateRepository.withDio(_dioOf(server, 'channel'));
 
+/// [server] 로 요청을 보내는 회의록 첨부 저장소. 스토리지 PUT 도 같은 서버로 간다.
+NoteAttachmentRepository noteAttachmentRepositoryOf(HttpClientAdapter server) =>
+    NoteAttachmentRepository.withDio(
+      chat: _dioOf(server, 'chat'),
+      channel: _dioOf(server, 'channel'),
+      uploader: _dioOf(server, 'chat'),
+    );
+
 /// 회의록·템플릿 저장소를 `MaterialApp` 바깥에 깐다. 편집 화면처럼 새 라우트로
 /// 열리는 화면은 `home` 아래에 깐 provider 를 보지 못하기 때문이다(main.dart 와
 /// 같은 배치).
@@ -366,6 +489,7 @@ Widget _withRepositories(FakeNotesServer server, Widget app) =>
       providers: [
         RepositoryProvider.value(value: notesRepositoryOf(server)),
         RepositoryProvider.value(value: noteTemplateRepositoryOf(server)),
+        RepositoryProvider.value(value: noteAttachmentRepositoryOf(server)),
       ],
       child: app,
     );
@@ -382,32 +506,43 @@ Widget notesRouterTestApp(GoRouter router, FakeNotesServer server) =>
     );
 
 /// 회의록 기능의 라우트를 모두 단 go_router. app_router.dart 와 같은 경로다.
-GoRouter notesTestRouter() => GoRouter(
-  initialLocation: '/',
-  routes: [
-    GoRoute(path: '/', builder: (context, state) => const NotesView()),
-    GoRoute(
-      path: '/notes/detail',
-      builder: (context, state) => NoteDetailView(note: state.extra! as Note),
-    ),
-    GoRoute(
-      path: '/notes/edit',
-      builder: (context, state) => NoteEditView(note: state.extra! as Note),
-    ),
-    GoRoute(
-      path: '/notes/new',
-      builder: (context, state) =>
-          NoteEditView.create(draft: state.extra! as NoteDraft),
-    ),
-    GoRoute(
-      path: '/notes/templates',
-      builder: (context, state) =>
-          NoteTemplatesView(channelId: state.extra as int?),
-    ),
-    GoRoute(
-      path: '/notes/templates/edit',
-      builder: (context, state) =>
-          NoteTemplateEditView(template: state.extra! as NoteTemplate),
-    ),
-  ],
-);
+///
+/// [pickFile]·[openUrl] 을 주면 기기 파일 선택 창·외부 앱 대신 그것을 쓴다.
+GoRouter notesTestRouter({NoteFilePicker? pickFile, UrlOpener? openUrl}) =>
+    GoRouter(
+      initialLocation: '/',
+      routes: [
+        GoRoute(path: '/', builder: (context, state) => const NotesView()),
+        GoRoute(
+          path: '/notes/detail',
+          builder: (context, state) => NoteDetailView(
+            note: state.extra! as Note,
+            openUrl: openUrl ?? (_) async => true,
+          ),
+        ),
+        GoRoute(
+          path: '/notes/edit',
+          builder: (context, state) => NoteEditView(
+            note: state.extra! as Note,
+            pickFile: pickFile ?? () async => null,
+          ),
+        ),
+        GoRoute(
+          path: '/notes/new',
+          builder: (context, state) => NoteEditView.create(
+            draft: state.extra! as NoteDraft,
+            pickFile: pickFile ?? () async => null,
+          ),
+        ),
+        GoRoute(
+          path: '/notes/templates',
+          builder: (context, state) =>
+              NoteTemplatesView(channelId: state.extra as int?),
+        ),
+        GoRoute(
+          path: '/notes/templates/edit',
+          builder: (context, state) =>
+              NoteTemplateEditView(template: state.extra! as NoteTemplate),
+        ),
+      ],
+    );

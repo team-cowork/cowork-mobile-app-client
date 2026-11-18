@@ -3,31 +3,46 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/utils/logger.dart';
 import '../../../../shared/widgets/base_scaffold.dart';
 import '../../../profile/data/profile_store.dart';
+import '../../data/repositories/note_attachment_repository.dart';
 import '../../data/repositories/notes_repository.dart';
 import '../../data/repositories/note_template_repository.dart';
 import '../../domain/enums/note_section_type.dart';
 import '../../domain/note.dart';
+import '../../domain/note_attachment.dart';
 import '../../domain/note_draft.dart';
 import '../../domain/note_section_field.dart';
 import '../blocs/note_edit/note_edit_bloc.dart';
+import '../utils/note_file_picker.dart';
+import '../widgets/note_attachment_card.dart';
 
 /// 회의록 편집 화면.
 ///
 /// Figma `App / 노트 편집 — 템플릿 섹션` 스펙에 맞춘 다크 전용 레이아웃.
 /// 회의록이 쓴 템플릿의 섹션을 순서대로 그리고, 섹션 형식에 맞는 입력 칸을 둔다.
-/// 하단 서식 툴바는 포커스된 입력창에 마크다운을 삽입한다.
+/// 하단 서식 툴바는 포커스된 입력창에 마크다운을 삽입하고, 클립 버튼은 파일을 붙인다.
 class NoteEditView extends StatelessWidget {
   /// 이미 있는 [note] 를 고친다.
-  const NoteEditView({super.key, required Note this.note}) : draft = null;
+  const NoteEditView({
+    super.key,
+    required Note this.note,
+    this.pickFile = pickNoteFile,
+  }) : draft = null;
 
   /// 새 노트 시트에서 고른 [draft] 로 새 회의록을 쓴다. 저장하면 그때 만들어진다.
-  const NoteEditView.create({super.key, required NoteDraft this.draft})
-    : note = null;
+  const NoteEditView.create({
+    super.key,
+    required NoteDraft this.draft,
+    this.pickFile = pickNoteFile,
+  }) : note = null;
 
   final Note? note;
   final NoteDraft? draft;
+
+  /// 첨부할 파일을 고르는 창. 테스트는 가짜 파일을 넣는다.
+  final NoteFilePicker pickFile;
 
   static const _title = '📝 회의록';
 
@@ -52,9 +67,16 @@ class NoteEditView extends StatelessWidget {
       create: (context) {
         final notes = context.read<NotesRepository>();
         final templates = context.read<NoteTemplateRepository>();
+        final attachments = context.read<NoteAttachmentRepository>();
         return switch (draft) {
-          final draft? => NoteEditBloc.create(draft, _me(), notes, templates),
-          null => NoteEditBloc(note!, notes, templates),
+          final draft? => NoteEditBloc.create(
+            draft,
+            _me(),
+            notes,
+            templates,
+            attachments,
+          ),
+          null => NoteEditBloc(note!, notes, templates, attachments),
         }..add(const NoteEditStarted());
       },
       child: BlocConsumer<NoteEditBloc, NoteEditState>(
@@ -88,6 +110,7 @@ class NoteEditView extends StatelessWidget {
             fields: fields,
             templateName: state.templateName,
             templateMissing: state.templateMissing,
+            pickFile: pickFile,
           );
         },
       ),
@@ -102,12 +125,14 @@ class _NoteEditForm extends StatefulWidget {
     required this.fields,
     required this.templateName,
     required this.templateMissing,
+    required this.pickFile,
   });
 
   final Note note;
   final List<NoteSectionField> fields;
   final String? templateName;
   final bool templateMissing;
+  final NoteFilePicker pickFile;
 
   @override
   State<_NoteEditForm> createState() => _NoteEditFormState();
@@ -208,6 +233,25 @@ class _NoteEditFormState extends State<_NoteEditForm> {
     );
   }
 
+  /// 툴바 클립 버튼: 파일을 하나 골라 바로 올린다.
+  Future<void> _attach() async {
+    final NoteUploadFile? file;
+    try {
+      file = await widget.pickFile();
+    } catch (e, s) {
+      // 선택 창이 열리지 않았거나 고른 파일을 읽지 못했다. 올리기 전이라 Bloc 에
+      // 넘길 일이 없어 여기서 알린다.
+      Logger.e('첨부할 파일 고르기 실패', tag: 'Notes', error: e, stackTrace: s);
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('파일을 열지 못했어요.')));
+      return;
+    }
+    if (file == null || !mounted) return;
+    context.read<NoteEditBloc>().add(NoteEditAttachmentAdded(file));
+  }
+
   @override
   Widget build(BuildContext context) {
     return BaseScaffold(
@@ -262,10 +306,14 @@ class _NoteEditFormState extends State<_NoteEditForm> {
                 focusNode: _focusNodes[field.title]!,
               ),
             ],
+            const _AttachmentList(),
           ],
         ),
       ),
-      bottomNavigationBar: _EditorToolbar(onAction: _applyMarkdown),
+      bottomNavigationBar: _EditorToolbar(
+        onAction: _applyMarkdown,
+        onAttach: _attach,
+      ),
     );
   }
 }
@@ -406,26 +454,9 @@ class _EditSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: [
-            Container(
-              width: 3,
-              height: 14,
-              decoration: BoxDecoration(
-                color: AppColors.red400,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            const SizedBox(width: AppSpacing.s8),
-            Flexible(
-              child: Text(
-                field.title,
-                style: AppFont.labelXs.copyWith(
-                  fontWeight: AppFont.semiBold,
-                  color: AppColors.darkOnSurface,
-                ),
-              ),
-            ),
+        _SectionLabel(
+          field.title,
+          tags: [
             if (field.isRequired) const _SectionTag('필수', AppColors.red400),
             if (field.extra)
               const _SectionTag('템플릿에 없는 섹션', AppColors.neutral400),
@@ -451,6 +482,95 @@ class _EditSection extends StatelessWidget {
               : input,
         ),
       ],
+    );
+  }
+}
+
+/// 빨간 accent bar + 섹션 라벨. 라벨 뒤에 [tags] 를 잇는다.
+class _SectionLabel extends StatelessWidget {
+  const _SectionLabel(this.title, {this.tags = const []});
+
+  final String title;
+  final List<Widget> tags;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Container(
+          width: 3,
+          height: 14,
+          decoration: BoxDecoration(
+            color: AppColors.red400,
+            borderRadius: BorderRadius.circular(2),
+          ),
+        ),
+        const SizedBox(width: AppSpacing.s8),
+        Flexible(
+          child: Text(
+            title,
+            style: AppFont.labelXs.copyWith(
+              fontWeight: AppFont.semiBold,
+              color: AppColors.darkOnSurface,
+            ),
+          ),
+        ),
+        ...tags,
+      ],
+    );
+  }
+}
+
+/// 붙인 파일과 올리는 중인 파일. 둘 다 없으면 아무것도 그리지 않는다.
+///
+/// 폼은 입력값을 지키려고 템플릿을 읽을 때만 다시 그리므로, 첨부 목록은 여기서
+/// 따로 상태를 듣는다.
+class _AttachmentList extends StatelessWidget {
+  const _AttachmentList();
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<NoteEditBloc, NoteEditState>(
+      buildWhen: (previous, current) =>
+          previous.note.attachments != current.note.attachments ||
+          previous.uploads != current.uploads,
+      builder: (context, state) {
+        final attachments = state.note.attachments;
+        if (attachments.isEmpty && state.uploads.isEmpty) {
+          return const SizedBox.shrink();
+        }
+        return Padding(
+          padding: const EdgeInsets.only(top: AppSpacing.s20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            spacing: AppSpacing.s8,
+            children: [
+              const _SectionLabel('첨부파일'),
+              for (final attachment in attachments)
+                Row(
+                  children: [
+                    Expanded(child: NoteAttachmentCard(attachment: attachment)),
+                    CoworkIconButton(
+                      icon: Icons.close,
+                      size: CoworkIconButtonSize.small,
+                      variant: CoworkIconButtonVariant.ghost,
+                      color: CoworkIconButtonColor.neutral,
+                      semanticLabel: '${attachment.name} 빼기',
+                      onPressed: () => context.read<NoteEditBloc>().add(
+                        NoteEditAttachmentRemoved(attachment),
+                      ),
+                    ),
+                  ],
+                ),
+              for (final upload in state.uploads)
+                CoworkFileUploadProgress(
+                  filename: upload.name,
+                  progress: upload.progress,
+                ),
+            ],
+          ),
+        );
+      },
     );
   }
 }
@@ -481,11 +601,12 @@ class _SectionTag extends StatelessWidget {
 
 /// 하단 서식 툴바. Figma `Toolbar`(neutral 배경 + 상단 보더) 스타일.
 ///
-/// 각 버튼은 포커스된 섹션 입력창에 마크다운을 삽입한다.
+/// 서식 버튼은 포커스된 섹션 입력창에 마크다운을 삽입하고, 클립 버튼은 파일을 붙인다.
 class _EditorToolbar extends StatelessWidget {
-  const _EditorToolbar({required this.onAction});
+  const _EditorToolbar({required this.onAction, required this.onAttach});
 
   final void Function(MarkdownAction) onAction;
+  final VoidCallback onAttach;
 
   @override
   Widget build(BuildContext context) {
@@ -523,13 +644,7 @@ class _EditorToolbar extends StatelessWidget {
                 label: '@',
                 onTap: () => onAction(MarkdownAction.mention),
               ),
-              _ToolbarButton(
-                icon: Icons.attach_file,
-                // ponytail: 첨부는 마크다운 텍스트 노트 범위 밖. 안내만 노출.
-                onTap: () => ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('파일 첨부는 준비 중이에요.')),
-                ),
-              ),
+              _ToolbarButton(icon: Icons.attach_file, onTap: onAttach),
             ],
           ),
         ),

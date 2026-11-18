@@ -1,23 +1,7 @@
-import 'package:flutter/services.dart';
-import 'package:url_launcher/url_launcher.dart';
-
 import '../../../../core/network/http_error_message.dart';
 import '../../../../core/utils/logger.dart';
+import '../../../../shared/utils/external_url.dart';
 import '../../data/repositories/message_repository.dart';
-
-/// 받은 주소를 기기의 외부 앱·브라우저로 연다. 열 수 없으면 false.
-typedef UrlOpener = Future<bool> Function(Uri url);
-
-/// 기본 [UrlOpener]. Android 는 열 앱이 없으면 false 대신 `ACTIVITY_NOT_FOUND` 를
-/// 던지므로, 두 플랫폼이 같은 계약(열 수 없으면 false)을 따르게 맞춘다.
-Future<bool> launchExternally(Uri url) async {
-  try {
-    return await launchUrl(url, mode: LaunchMode.externalApplication);
-  } on PlatformException catch (e) {
-    if (e.code == 'ACTIVITY_NOT_FOUND') return false;
-    rethrow;
-  }
-}
 
 /// 채팅 첨부파일을 누르면 그때마다 서버에서 임시 주소(60초)를 새로 받아 바로 연다.
 /// 주소를 저장해 두면 만료되므로 들고 있지 않는다. 받는 동안 다시 눌러도 요청이

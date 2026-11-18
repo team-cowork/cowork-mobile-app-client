@@ -1,6 +1,9 @@
 import 'package:cowork_app/feature/notes/data/model/requests/create_meeting_note_request.dart';
+import 'package:cowork_app/feature/notes/data/model/requests/meeting_note_attachment_request.dart';
 import 'package:cowork_app/feature/notes/data/model/requests/update_meeting_note_request.dart';
 import 'package:cowork_app/feature/notes/data/model/responses/meeting_note_response.dart';
+import 'package:cowork_app/feature/notes/domain/note.dart';
+import 'package:cowork_app/feature/notes/domain/note_attachment.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 Map<String, String> _sectionsOf(Object? content) =>
@@ -73,12 +76,60 @@ void main() {
         templateId: 3,
         title: '회의',
         sections: sections,
+        attachments: [],
       ).toJson(),
-      {'templateId': 3, 'title': '회의', 'content': '{"안건":"1. 배포"}'},
+      {
+        'templateId': 3,
+        'title': '회의',
+        'content': '{"안건":"1. 배포"}',
+        'attachments': <Object>[],
+      },
     );
     expect(
-      const UpdateMeetingNoteRequest(title: '회의', sections: sections).toJson(),
-      {'title': '회의', 'content': '{"안건":"1. 배포"}'},
+      const UpdateMeetingNoteRequest(
+        title: '회의',
+        sections: sections,
+        attachments: [],
+      ).toJson(),
+      {'title': '회의', 'content': '{"안건":"1. 배포"}', 'attachments': <Object>[]},
+    );
+  });
+
+  test('요청은 첨부를 objectKey·name 목록으로 보낸다', () {
+    const attachment = MeetingNoteAttachmentRequest(
+      objectKey: 'chat-files/10/1/a.pdf',
+      name: '자료.pdf',
+    );
+
+    expect(
+      const UpdateMeetingNoteRequest(
+        title: '회의',
+        sections: {},
+        attachments: [attachment],
+      ).toJson()['attachments'],
+      [
+        {'objectKey': 'chat-files/10/1/a.pdf', 'name': '자료.pdf'},
+      ],
+    );
+  });
+
+  test('응답의 첨부를 화면 모델로 옮기고, 없으면 빈 목록으로 본다', () {
+    const author = NoteAuthor(authorId: 1, name: 'a', initial: 'A', date: '');
+    final withFiles = MeetingNoteResponse.fromJson({
+      'content': '{}',
+      'attachments': [
+        {'objectKey': 'chat-files/10/1/a.pdf', 'name': '자료.pdf'},
+      ],
+    }).toNote(author);
+
+    expect(withFiles.attachments, [
+      const NoteAttachment(objectKey: 'chat-files/10/1/a.pdf', name: '자료.pdf'),
+    ]);
+    expect(
+      MeetingNoteResponse.fromJson({
+        'content': '{}',
+      }).toNote(author).attachments,
+      isEmpty,
     );
   });
 }

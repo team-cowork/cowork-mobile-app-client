@@ -10,6 +10,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/network/chat_socket.dart';
 import '../../../../core/utils/app_lifecycle.dart';
 import '../../../../core/utils/async_state.dart';
+import '../../../../shared/utils/external_url.dart';
 import '../../../../shared/widgets/bloc_scaffold.dart';
 import '../../../channel/data/repositories/channel_repository.dart';
 import '../../../profile/data/repositories/profile_repository.dart';
