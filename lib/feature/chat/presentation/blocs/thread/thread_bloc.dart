@@ -8,11 +8,13 @@ import '../../../../../core/network/http_error_message.dart';
 import '../../../../../core/utils/async_state.dart';
 import '../../../../../core/utils/logger.dart';
 import '../../../../../shared/domain/profile_entity.dart';
+import '../../../../../shared/utils/chat_author.dart';
 import '../../../../../shared/utils/client_message_id.dart';
 import '../../../../channel/data/model/requests/create_thread_request.dart';
 import '../../../../channel/data/model/requests/update_thread_request.dart';
 import '../../../../channel/data/model/responses/thread_response.dart';
 import '../../../../channel/data/repositories/channel_repository.dart';
+import '../../../../profile/data/repositories/profile_repository.dart';
 import '../../../data/model/chat_message_mapping.dart';
 import '../../../data/model/message_socket_event.dart';
 import '../../../data/model/requests/send_message_request.dart';
@@ -36,10 +38,12 @@ class ThreadBloc extends Bloc<ThreadEvent, ThreadState> {
     required this.parentMessageId,
     required ChannelRepository channelRepository,
     required MessageRepository messageRepository,
+    required ProfileRepository profileRepository,
     required ChatSocket socket,
     this.confirmTimeout = const Duration(seconds: 10),
   }) : _channelRepository = channelRepository,
        _messageRepository = messageRepository,
+       _profileRepository = profileRepository,
        _socket = socket,
        super(const ThreadState.initial()) {
     on<ThreadRequested>(_onLoad);
@@ -72,6 +76,7 @@ class ThreadBloc extends Bloc<ThreadEvent, ThreadState> {
 
   final ChannelRepository _channelRepository;
   final MessageRepository _messageRepository;
+  final ProfileRepository _profileRepository;
   final ChatSocket _socket;
   late final StreamSubscription<MessageSocketEvent?> _socketEvents;
   late final StreamSubscription<void> _reconnects;
@@ -390,8 +395,8 @@ class ThreadBloc extends Bloc<ThreadEvent, ThreadState> {
           message.authorId,
     };
     if (unknown.isEmpty) return;
-    for (final user in await _messageRepository.fetchDisplayNames(unknown)) {
-      _authors[user.id] = chatAuthorOf(user.id, displayNameOf(user));
+    for (final user in await _profileRepository.fetchDisplayNames(unknown)) {
+      _authors[user.id] = chatAuthorOf(user.id, user.displayName);
     }
   }
 
@@ -400,14 +405,13 @@ class ThreadBloc extends Bloc<ThreadEvent, ThreadState> {
   void _resolveAuthorsLater(Iterable<int> authorIds) {
     final ids = authorIds.where(_resolving.add).toList();
     if (ids.isEmpty) return;
-    _messageRepository
+    _profileRepository
         .fetchDisplayNames(ids)
         .then((users) {
           if (isClosed) return;
           add(
             _ThreadAuthorsResolved([
-              for (final user in users)
-                chatAuthorOf(user.id, displayNameOf(user)),
+              for (final user in users) chatAuthorOf(user.id, user.displayName),
             ]),
           );
         })

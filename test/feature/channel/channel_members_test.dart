@@ -1,9 +1,9 @@
 import 'package:cowork_app/core/utils/async_state.dart';
 import 'package:cowork_app/feature/channel/data/repositories/channel_repository.dart';
+import 'package:cowork_app/feature/channel/domain/channel_member.dart';
 import 'package:cowork_app/feature/channel/presentation/blocs/channel_members/channel_members_bloc.dart';
 import 'package:cowork_app/feature/channel/presentation/views/members_view.dart';
-import 'package:cowork_app/feature/chat/data/repositories/message_repository.dart';
-import 'package:cowork_app/feature/channel/domain/channel_member.dart';
+import 'package:cowork_app/feature/profile/data/repositories/profile_repository.dart';
 import 'package:cowork_app/feature/team/data/repositories/team_repository.dart';
 import 'package:cowork_design_system/design_system.dart';
 import 'package:flutter/material.dart';
@@ -15,11 +15,8 @@ import '../chat/channel_message_test_server.dart';
 ChannelRepository _channels(FakeMessageGateway gateway) =>
     ChannelRepository.withDio(messageDio(gateway, 'channel'));
 
-MessageRepository _messages(FakeMessageGateway gateway) =>
-    MessageRepository.withDio(
-      chat: messageDio(gateway, 'chat'),
-      user: messageDio(gateway, 'user'),
-    );
+ProfileRepository _profiles(FakeMessageGateway gateway) =>
+    ProfileRepository.withDio(messageDio(gateway, 'user'));
 
 TeamRepository _teams(FakeMessageGateway gateway) =>
     TeamRepository.withDio(messageDio(gateway, 'team'));
@@ -27,7 +24,7 @@ TeamRepository _teams(FakeMessageGateway gateway) =>
 ChannelMembersBloc _bloc(FakeMessageGateway gateway) => ChannelMembersBloc(
   channelId: 10,
   channelRepository: _channels(gateway),
-  messageRepository: _messages(gateway),
+  profileRepository: _profiles(gateway),
   teamRepository: _teams(gateway),
 );
 
@@ -149,8 +146,8 @@ void main() {
             RepositoryProvider<ChannelRepository>.value(
               value: _channels(gateway),
             ),
-            RepositoryProvider<MessageRepository>.value(
-              value: _messages(gateway),
+            RepositoryProvider<ProfileRepository>.value(
+              value: _profiles(gateway),
             ),
             RepositoryProvider<TeamRepository>.value(value: _teams(gateway)),
           ],

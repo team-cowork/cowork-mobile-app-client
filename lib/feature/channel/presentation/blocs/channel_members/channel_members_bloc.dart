@@ -4,8 +4,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../../core/network/http_error_message.dart';
 import '../../../../../core/utils/async_state.dart';
 import '../../../../../core/utils/logger.dart';
-import '../../../../chat/data/model/chat_message_mapping.dart';
-import '../../../../chat/data/repositories/message_repository.dart';
+import '../../../../../shared/utils/chat_author.dart';
+import '../../../../profile/data/repositories/profile_repository.dart';
 import '../../../../team/data/model/responses/team_member_response.dart';
 import '../../../../team/data/repositories/team_repository.dart';
 import '../../../data/model/channel_member_mapping.dart';
@@ -24,10 +24,10 @@ class ChannelMembersBloc
   ChannelMembersBloc({
     required this.channelId,
     required ChannelRepository channelRepository,
-    required MessageRepository messageRepository,
+    required ProfileRepository profileRepository,
     required TeamRepository teamRepository,
   }) : _channelRepository = channelRepository,
-       _messageRepository = messageRepository,
+       _profileRepository = profileRepository,
        _teamRepository = teamRepository,
        super(const ChannelMembersState.initial()) {
     on<ChannelMembersRequested>(_onLoad);
@@ -35,7 +35,7 @@ class ChannelMembersBloc
 
   final int channelId;
   final ChannelRepository _channelRepository;
-  final MessageRepository _messageRepository;
+  final ProfileRepository _profileRepository;
   final TeamRepository _teamRepository;
 
   Future<void> _onLoad(
@@ -102,8 +102,8 @@ class ChannelMembersBloc
   Future<Map<int, String>> _fetchNames(List<int> userIds) async {
     try {
       return {
-        for (final user in await _messageRepository.fetchDisplayNames(userIds))
-          user.id: displayNameOf(user),
+        for (final user in await _profileRepository.fetchDisplayNames(userIds))
+          user.id: user.displayName,
       };
     } catch (e, s) {
       Logger.e(

@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../chat/data/repositories/message_repository.dart';
+import '../../../profile/data/repositories/profile_repository.dart';
 import '../../../team/data/repositories/team_repository.dart';
 import '../../../../shared/domain/enums/chat_avatar_color.dart';
 import '../../../../shared/widgets/bloc_scaffold.dart';
@@ -22,7 +22,7 @@ class MembersView extends StatelessWidget {
       create: (context) => ChannelMembersBloc(
         channelId: channelId,
         channelRepository: context.read<ChannelRepository>(),
-        messageRepository: context.read<MessageRepository>(),
+        profileRepository: context.read<ProfileRepository>(),
         teamRepository: context.read<TeamRepository>(),
       )..add(const ChannelMembersEvent.requested()),
       errorTitle: '멤버를 불러오지 못했어요',

@@ -3,6 +3,7 @@ import 'package:cowork_app/feature/channel/data/repositories/channel_repository.
 import 'package:cowork_app/feature/chat/data/repositories/message_repository.dart';
 import 'package:cowork_app/feature/chat/presentation/utils/attachment_opener.dart';
 import 'package:cowork_app/feature/chat/presentation/views/thread_view.dart';
+import 'package:cowork_app/feature/profile/data/repositories/profile_repository.dart';
 import 'package:cowork_design_system/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -25,10 +26,10 @@ void main() {
             value: ChannelRepository.withDio(messageDio(gateway, 'channel')),
           ),
           RepositoryProvider.value(
-            value: MessageRepository.withDio(
-              chat: messageDio(gateway, 'chat'),
-              user: messageDio(gateway, 'user'),
-            ),
+            value: MessageRepository.withDio(chat: messageDio(gateway, 'chat')),
+          ),
+          RepositoryProvider.value(
+            value: ProfileRepository.withDio(messageDio(gateway, 'user')),
           ),
           RepositoryProvider<ChatSocket>.value(value: socket),
         ],

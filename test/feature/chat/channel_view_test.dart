@@ -35,7 +35,6 @@ void main() {
           RepositoryProvider.value(
             value: MessageRepository.withDio(
               chat: messageDio(gateway, 'chat'),
-              user: messageDio(gateway, 'user'),
               files: filesDio(files ?? FakeFilesServer()),
             ),
           ),

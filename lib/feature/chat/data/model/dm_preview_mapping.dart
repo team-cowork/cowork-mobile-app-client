@@ -1,7 +1,7 @@
 import '../../../../shared/domain/profile_entity.dart';
+import '../../../../shared/utils/chat_author.dart';
 import '../../domain/direct_message_preview.dart';
 import '../../domain/enums/dm_presence.dart';
-import 'chat_message_mapping.dart';
 import 'responses/dm_conversation_response.dart';
 import 'responses/dm_last_message_response.dart';
 

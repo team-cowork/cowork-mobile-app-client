@@ -10,6 +10,7 @@ import '../../../../../core/network/http_error_message.dart';
 import '../../../../../core/utils/async_state.dart';
 import '../../../../../core/utils/logger.dart';
 import '../../../../../shared/domain/profile_entity.dart';
+import '../../../../../shared/utils/chat_author.dart';
 import '../../../../../shared/utils/client_message_id.dart';
 import '../../../../channel/data/repositories/channel_repository.dart';
 import '../../../../profile/data/repositories/profile_repository.dart';
@@ -699,8 +700,8 @@ class ChannelMessageBloc
           message.authorId,
     };
     if (unknown.isEmpty) return;
-    for (final user in await _messageRepository.fetchDisplayNames(unknown)) {
-      _authors[user.id] = chatAuthorOf(user.id, displayNameOf(user));
+    for (final user in await _profileRepository.fetchDisplayNames(unknown)) {
+      _authors[user.id] = chatAuthorOf(user.id, user.displayName);
     }
   }
 
@@ -709,14 +710,13 @@ class ChannelMessageBloc
   void _resolveAuthorsLater(Iterable<int> authorIds) {
     final ids = authorIds.where(_resolving.add).toList();
     if (ids.isEmpty) return;
-    _messageRepository
+    _profileRepository
         .fetchDisplayNames(ids)
         .then((users) {
           if (isClosed) return;
           add(
             _ChannelMessageAuthorsResolved([
-              for (final user in users)
-                chatAuthorOf(user.id, displayNameOf(user)),
+              for (final user in users) chatAuthorOf(user.id, user.displayName),
             ]),
           );
         })
