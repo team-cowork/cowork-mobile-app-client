@@ -576,13 +576,21 @@ class ChannelMessageBloc
           _messages[index] = message;
         } else {
           // 보낸 메시지가 저장됐다. 보낼 때 맨 끝에 넣어 뒀으므로, 그사이 소켓으로 온
-          // 다른 사람의 메시지와 서버 시각 순서가 다르면 자리를 옮긴다.
+          // 다른 사람의 메시지와 서버 순서가 다르면 자리를 옮긴다. 서버는 `createdAt`
+          // 이 아니라 id 순서로 목록을 주므로 id 로 비교하고, 아직 저장 확인이 안 된
+          // 다른 보낸 메시지는 계속 맨 뒤에 둔다.
           _messages.removeAt(index);
+          final unsaved = [
+            for (final other in _messages)
+              if (!_isSaved(other)) other,
+          ];
+          _messages.removeWhere((other) => !_isSaved(other));
           final after = _messages.lastIndexWhere(
-            (other) =>
-                _isSaved(other) && !other.createdAt.isAfter(message.createdAt),
+            (other) => other.id.compareTo(message.id) < 0,
           );
-          _messages.insert(after + 1, message);
+          _messages
+            ..insert(after + 1, message)
+            ..addAll(unsaved);
         }
         _confirmTimers.remove(message.clientMessageId)?.cancel();
         if (!message.isSystem && !_authors.containsKey(message.authorId)) {
