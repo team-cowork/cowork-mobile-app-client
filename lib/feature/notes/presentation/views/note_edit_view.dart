@@ -4,8 +4,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/utils/logger.dart';
-import '../../../../shared/utils/file_picking.dart';
 import '../../../../shared/domain/upload_file.dart';
+import '../../../../shared/utils/file_picking.dart';
 import '../../../../shared/widgets/base_scaffold.dart';
 import '../../../profile/data/profile_store.dart';
 import '../../data/repositories/note_attachment_repository.dart';
