@@ -460,9 +460,9 @@ class _ChannelList extends StatelessWidget {
                 _ChannelGroupItem.type(
                   type: channel.type,
                   label: channel.name,
-                  onTap: channel.type == ChannelType.chat
-                      ? () => context.push('/chat/channel/${channel.id}')
-                      : null,
+                  // 종류별 화면은 채널 화면이 서버에서 받은 종류로 고른다. 알림·검색으로
+                  // 들어와도 같은 화면이 뜨게 하려는 것이다.
+                  onTap: () => context.push('/chat/channel/${channel.id}'),
                 ),
             ],
           ],

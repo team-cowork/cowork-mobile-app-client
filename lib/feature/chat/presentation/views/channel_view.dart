@@ -13,6 +13,7 @@ import '../../../../core/utils/async_state.dart';
 import '../../../../shared/utils/external_url.dart';
 import '../../../../shared/widgets/bloc_scaffold.dart';
 import '../../../channel/data/repositories/channel_repository.dart';
+import '../../../channel/domain/enums/channel_type.dart';
 import '../../../profile/data/repositories/profile_repository.dart';
 import '../../data/repositories/message_repository.dart';
 import '../../domain/chat_message.dart';
@@ -101,18 +102,29 @@ class ChannelView extends StatelessWidget {
                 onMoreTap: () =>
                     context.push('/chat/channel/$channelId/settings'),
               ),
-              Expanded(
-                child: _MessageList(data: data, openUrl: openUrl),
-              ),
-              const Padding(
-                padding: EdgeInsets.fromLTRB(
-                  AppSpacing.s12,
-                  AppSpacing.s8,
-                  AppSpacing.s12,
-                  AppSpacing.s24,
-                ),
-                child: _MessageComposer(),
-              ),
+              ...switch (data.type) {
+                ChannelType.chat => [
+                  Expanded(
+                    child: _MessageList(data: data, openUrl: openUrl),
+                  ),
+                  const Padding(
+                    padding: EdgeInsets.fromLTRB(
+                      AppSpacing.s12,
+                      AppSpacing.s8,
+                      AppSpacing.s12,
+                      AppSpacing.s24,
+                    ),
+                    child: _MessageComposer(),
+                  ),
+                ],
+                // 웹훅 채널은 외부 서비스가 메시지를 올리는 곳이라 읽기만 한다.
+                ChannelType.webhook => [
+                  Expanded(
+                    child: _MessageList(data: data, openUrl: openUrl),
+                  ),
+                ],
+                _ => const [Expanded(child: _UnsupportedChannel())],
+              },
             ],
           ),
         ),
@@ -141,6 +153,25 @@ class ChannelView extends StatelessWidget {
     } else {
       context.go('/');
     }
+  }
+}
+
+/// 앱에서 아직 열 수 없는 종류(파일·계정 공유·회의록·음성)의 채널 본문.
+class _UnsupportedChannel extends StatelessWidget {
+  const _UnsupportedChannel();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Center(
+      child: Padding(
+        padding: EdgeInsets.all(AppSpacing.s16),
+        child: CoworkEmptyState(
+          icon: Icons.construction_outlined,
+          title: '아직 앱에서 열 수 없는 채널이에요',
+          description: '이 채널은 웹에서 열어 주세요',
+        ),
+      ),
+    );
   }
 }
 
