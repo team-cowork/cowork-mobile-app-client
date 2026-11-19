@@ -105,6 +105,7 @@ void main() {
           RepositoryProvider.value(value: teamRepositoryOf(server)),
           RepositoryProvider.value(value: channelRepositoryOf(server)),
           RepositoryProvider.value(value: profileRepositoryOf(server)),
+          RepositoryProvider.value(value: projectRepositoryOf(server)),
           RepositoryProvider<ChatSocket>.value(value: FakeChatSocket()),
           RepositoryProvider.value(
             value: NotificationRepository(FakeNotificationStream()),

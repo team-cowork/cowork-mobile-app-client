@@ -32,13 +32,18 @@ class ChatSocket {
   /// 게이트웨이 origin. (예: `https://cowork.example.com`)
   final String _origin;
 
-  /// 화면에 넘길 서버 이벤트. 받는 이벤트만 [_listened] 에 둔다.
-  static const _listened = [
+  /// 화면에 넘길 서버 이벤트. 여기 없는 이벤트는 서버가 보내도 받지 않으므로, 새로
+  /// 받을 이벤트는 반드시 여기에 더한다. 테스트의 가짜 소켓도 이 목록만 흘린다.
+  @visibleForTesting
+  static const listenedEvents = [
     'channel:created',
     'channel:updated',
     'channel:deleted',
     'channel:access:revoked',
     'team:access:revoked',
+    'project:created',
+    'project:updated',
+    'project:deleted',
     'message',
     'message:edited',
     'message:deleted',
@@ -179,7 +184,7 @@ class ChatSocket {
       ..onConnectError(_onConnectError)
       ..on('exception', (e) => Logger.e('소켓 예외', tag: 'Socket', error: e))
       ..on('error', (e) => Logger.e('소켓 오류', tag: 'Socket', error: e));
-    for (final name in _listened) {
+    for (final name in listenedEvents) {
       socket.on(name, (data) {
         // 메시지 내용이 로그에 그대로 남지 않게 이벤트 이름과 채널만 적는다.
         final channel = data is Map ? data['channelId'] : null;

@@ -18,6 +18,10 @@ sealed class ChannelListEvent extends Equatable {
   const factory ChannelListEvent.channelAdded(Channel channel) =
       ChannelListChannelAdded;
 
+  /// 프로젝트 생성 시트가 서버에 프로젝트를 만들었다.
+  const factory ChannelListEvent.projectAdded(ProjectSummaryResponse project) =
+      ChannelListProjectAdded;
+
   /// 내가 [teamId] 팀에서 나갔다(팀 나가기 성공). 보던 팀이면 다른 팀으로 옮긴다.
   const factory ChannelListEvent.teamLeft(int teamId) = ChannelListTeamLeft;
 
@@ -57,6 +61,15 @@ final class ChannelListChannelAdded extends ChannelListEvent {
 
   @override
   List<Object?> get props => [channel];
+}
+
+final class ChannelListProjectAdded extends ChannelListEvent {
+  const ChannelListProjectAdded(this.project);
+
+  final ProjectSummaryResponse project;
+
+  @override
+  List<Object?> get props => [project];
 }
 
 final class ChannelListTeamLeft extends ChannelListEvent {

@@ -6,6 +6,8 @@ import 'channel_view_type.dart';
 import 'responses/channel_event_response.dart';
 
 /// 채팅 홈이 반영할 소켓 이벤트.
+///
+/// `project:*` 도 `channel:*` 처럼 `teamId` 를 실어 와 같은 payload 모델로 읽는다.
 sealed class ChannelSocketEvent {
   const ChannelSocketEvent();
 
@@ -23,6 +25,7 @@ sealed class ChannelSocketEvent {
       :teamId,
       name: channelName,
       :viewType,
+      :projectId,
     ) = payload;
     return switch (event.name) {
       // 홈은 같은 id 의 채널을 통째로 바꾸므로, 이름이나 유형이 빠진 채 오면 기존 값을
@@ -38,11 +41,15 @@ sealed class ChannelSocketEvent {
             id: '$channelId',
             name: channelName,
             type: channelTypeOf(viewType),
+            projectId: projectId,
           ),
         ),
       'channel:deleted' || 'channel:access:revoked' when channelId != null =>
         ChannelRemoved('$channelId'),
       'team:access:revoked' when teamId != null => TeamAccessRevoked(teamId),
+      'project:created' ||
+      'project:updated' ||
+      'project:deleted' when teamId != null => ProjectsChanged(teamId),
       _ => null,
     };
   }
@@ -68,6 +75,18 @@ final class ChannelRemoved extends ChannelListChange {
   const ChannelRemoved(this.channelId);
 
   final String channelId;
+}
+
+/// [teamId] 팀의 프로젝트가 생기거나 바뀌거나 지워졌다.
+/// (`project:created` / `project:updated` / `project:deleted`)
+///
+/// 서버는 이 이벤트를 비공개 프로젝트도 가리지 않고 팀 멤버 모두에게 보내고,
+/// payload 에 공개 여부가 없다. 그래서 payload 로 목록을 고치지 않고 프로젝트 목록을
+/// 다시 읽게 한다. 다시 읽으면 서버가 내가 볼 수 있는 것만 준다.
+final class ProjectsChanged extends ChannelSocketEvent {
+  const ProjectsChanged(this.teamId);
+
+  final int teamId;
 }
 
 /// 내가 팀에서 빠졌다. (`team:access:revoked`)

@@ -1,4 +1,5 @@
 import 'package:cowork_app/feature/channel/data/model/requests/create_channel_request.dart';
+import 'package:cowork_app/feature/channel/data/repositories/channel_repository.dart';
 import 'package:cowork_app/feature/channel/domain/enums/channel_type.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -67,5 +68,53 @@ void main() {
       [for (final channel in channels) channel.type],
       [ChannelType.file, ChannelType.voice, ChannelType.chat],
     );
+  });
+
+  group('프로젝트에 넣기', () {
+    final request = CreateChannelRequest.of(
+      teamId: 1,
+      name: '디자인',
+      type: ChannelType.chat,
+      isPrivate: false,
+    );
+
+    test('projectId 를 주면 만든 뒤 PATCH 로 프로젝트에 넣는다', () async {
+      final server = FakeChatServer();
+
+      final channel = await channelRepositoryOf(
+        server,
+      ).createChannel(request, projectId: 5);
+
+      // 생성 요청에는 projectId 가 없다.
+      expect(server.created.single, isNot(contains('projectId')));
+      expect(server.requests, [
+        'POST /channel/channels',
+        'PATCH /channel/channels/${channel.id}',
+      ]);
+      expect(server.updatedChannels.single.$2, {'projectId': 5});
+      expect(channel.projectId, 5);
+    });
+
+    test('projectId 가 없으면 PATCH 하지 않는다', () async {
+      final server = FakeChatServer();
+
+      await channelRepositoryOf(server).createChannel(request);
+
+      expect(server.requests, ['POST /channel/channels']);
+    });
+
+    test('넣다 실패하면 만든 채널을 실어 던진다', () async {
+      final server = FakeChatServer()
+        ..failUpdateChannel = const ServerFailure(403);
+
+      await expectLater(
+        channelRepositoryOf(server).createChannel(request, projectId: 5),
+        throwsA(
+          isA<ChannelProjectLinkFailure>()
+              .having((e) => e.channel.name, 'channel.name', '디자인')
+              .having((e) => e.channel.projectId, 'channel.projectId', isNull),
+        ),
+      );
+    });
   });
 }

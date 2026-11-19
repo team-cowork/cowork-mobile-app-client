@@ -14,6 +14,7 @@ _ChannelEventResponse _$ChannelEventResponseFromJson(
     teamId: $checkedConvert('teamId', (v) => (v as num?)?.toInt()),
     name: $checkedConvert('name', (v) => v as String?),
     viewType: $checkedConvert('viewType', (v) => v as String?),
+    projectId: $checkedConvert('projectId', (v) => (v as num?)?.toInt()),
   );
   return val;
 });
@@ -25,4 +26,5 @@ Map<String, dynamic> _$ChannelEventResponseToJson(
   'teamId': instance.teamId,
   'name': instance.name,
   'viewType': instance.viewType,
+  'projectId': instance.projectId,
 };

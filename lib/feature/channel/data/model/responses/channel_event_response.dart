@@ -3,7 +3,9 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 part 'channel_event_response.freezed.dart';
 part 'channel_event_response.g.dart';
 
-/// 소켓 `channel:*` / `team:access:revoked` 이벤트 payload.
+/// 소켓 `channel:*` / `team:access:revoked` / `project:*` 이벤트 payload.
+///
+/// `project:*` 는 `teamId` 만 읽는다.
 ///
 /// REST 응답과 달리 채널 id 를 `id` 가 아니라 `channelId` 로 보낸다. 이벤트마다 오는
 /// 필드가 달라(삭제는 `channelId`·`teamId`, 팀 탈퇴는 `teamId` 만) 모두 nullable 이다.
@@ -21,6 +23,9 @@ abstract class ChannelEventResponse with _$ChannelEventResponse {
 
     /// 화면 종류. (예: TEXT, WEBHOOK, MEETING_NOTE)
     String? viewType,
+
+    /// 채널이 속한 프로젝트. 프로젝트에 속하지 않으면 null 이다.
+    int? projectId,
   }) = _ChannelEventResponse;
 
   factory ChannelEventResponse.fromJson(Map<String, dynamic> json) =>

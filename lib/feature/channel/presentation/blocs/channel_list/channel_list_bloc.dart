@@ -9,6 +9,8 @@ import '../../../../../core/utils/async_state.dart';
 import '../../../../../core/utils/logger.dart';
 import '../../../../../shared/utils/initial.dart';
 import '../../../../profile/data/repositories/profile_repository.dart';
+import '../../../../project/data/model/responses/project_summary_response.dart';
+import '../../../../project/data/repositories/project_repository.dart';
 import '../../../../team/data/model/responses/team_response.dart';
 import '../../../../team/data/model/responses/team_summary_response.dart';
 import '../../../../team/data/repositories/team_repository.dart';
@@ -28,6 +30,10 @@ part 'channel_list_state.dart';
 /// 읽는다. 두 단계 중 어디서 실패했는지를 실패 사유 앞에 붙여, 팀 조회가 실패했는데
 /// 채널 문제로 보이지 않게 한다.
 ///
+/// 채널은 팀의 프로젝트([ProjectRepository])별로 묶는다. 프로젝트 목록은 채널 목록과
+/// 함께 읽되, 실패해도 홈을 실패로 바꾸지 않고 채널을 묶지 않은 채 보여 준다. 묶음은
+/// 덤이고 채널을 못 보는 게 더 큰 손해라서다.
+///
 /// 읽은 뒤에는 다시 조회하지 않고, 보고 있는 팀 방을 소켓으로 구독해 다른 기기·
 /// 사람이 만들고 바꾸고 지운 채널을 목록에 반영한다. 다른 사람이 나를 팀에 넣은 것은
 /// 소켓 이벤트가 없어 [invitedTeams] 로 받는다.
@@ -40,6 +46,7 @@ class ChannelListBloc extends Bloc<ChannelListEvent, ChannelListState> {
   ChannelListBloc(
     this._teamRepository,
     this._channelRepository,
+    this._projectRepository,
     this._socket, {
     required ProfileRepository profileRepository,
     Stream<int> invitedTeams = const Stream.empty(),
@@ -49,6 +56,7 @@ class ChannelListBloc extends Bloc<ChannelListEvent, ChannelListState> {
     on<ChannelListTeamSelected>(_onTeamSelected);
     on<ChannelListTeamCreated>(_onTeamCreated);
     on<ChannelListChannelAdded>(_onChannelAdded);
+    on<ChannelListProjectAdded>(_onProjectAdded);
     on<ChannelListTeamLeft>((event, emit) => _leaveTeam(event.teamId, emit));
     on<ChannelListTeamsRefreshed>(_onTeamsRefreshed);
     on<_ChannelListSocketEventReceived>(_onSocketEvent);
@@ -69,6 +77,7 @@ class ChannelListBloc extends Bloc<ChannelListEvent, ChannelListState> {
 
   final TeamRepository _teamRepository;
   final ChannelRepository _channelRepository;
+  final ProjectRepository _projectRepository;
   final ChatSocket _socket;
   final ProfileRepository _profileRepository;
   late final StreamSubscription<ChannelSocketEvent?> _socketEvents;
@@ -77,6 +86,23 @@ class ChannelListBloc extends Bloc<ChannelListEvent, ChannelListState> {
 
   /// 마지막으로 읽은 팀 목록. 팀을 바꿀 때는 다시 읽지 않고 여기서 고른다.
   List<TeamSummaryResponse> _teams = const [];
+
+  /// 보이는 채널 전체를 서버 순서(position) 그대로. 그룹은 이걸로 매번 다시 묶는다.
+  ///
+  /// 그룹을 펼쳐 되돌리면 그룹 순서로 섞여, 채널이 다른 그룹으로 옮겨 갈 때 서버
+  /// 순서를 잃는다. 그래서 묶기 전 목록을 따로 든다.
+  List<Channel> _channels = const [];
+
+  /// 보고 있는 팀의 프로젝트. 채널을 이 순서대로 묶는다.
+  List<ProjectSummaryResponse> _projects = const [];
+
+  /// 마지막으로 시작한 프로젝트 목록 읽기 번호. 늦게 끝난 이전 읽기가 새 목록을 덮지
+  /// 않도록, 끝났을 때 번호가 그대로인 읽기만 반영한다.
+  int _projectsRequest = 0;
+
+  /// 채널 목록을 읽는 동안 프로젝트가 바뀌었다. 같이 읽던 프로젝트 목록이 그 변경보다
+  /// 먼저 찍혔을 수 있어, 목록을 받은 뒤 한 번 더 읽는다.
+  bool _projectsChangedWhileLoading = false;
 
   /// 보고 있는 팀. 다시 시도해도 첫 팀으로 튀지 않게 기억한다.
   int? _teamId;
@@ -167,6 +193,7 @@ class ChannelListBloc extends Bloc<ChannelListEvent, ChannelListState> {
     final team = event.team;
     _teams = [..._teams.where((other) => other.id != team.id), team];
     _teamId = team.id;
+    _resetProjects();
     // 권한도 읽지 않는다. 모르면 메뉴를 다 보이고 서버가 막게 둔다.
     _permissions = null;
     // 만든 사람이 소유자가 된다.
@@ -189,6 +216,24 @@ class ChannelListBloc extends Bloc<ChannelListEvent, ChannelListState> {
     _apply(ChannelUpserted(teamId: teamId, channel: event.channel), emit);
   }
 
+  /// 프로젝트 생성 시트가 서버에 만든 프로젝트를 빈 그룹으로 붙인다.
+  ///
+  /// 서버는 새 프로젝트를 팀의 마지막 순서로 둔다. 곧 올 `project:created` 가 목록을
+  /// 다시 읽어 맞춘다.
+  void _onProjectAdded(
+    ChannelListProjectAdded event,
+    Emitter<ChannelListState> emit,
+  ) {
+    if (_teamId == null) return;
+    // 이 프로젝트가 없던 때 시작한 읽기가 늦게 와서 지우지 않게 한다.
+    _projectsRequest++;
+    _projects = [
+      ..._projects.where((project) => project.id != event.project.id),
+      event.project,
+    ];
+    _editChannels(emit, (channels) => channels);
+  }
+
   Future<void> _onSocketEvent(
     _ChannelListSocketEventReceived event,
     Emitter<ChannelListState> emit,
@@ -202,6 +247,15 @@ class ChannelListBloc extends Bloc<ChannelListEvent, ChannelListState> {
         _apply(change, emit);
       case TeamAccessRevoked(:final teamId):
         await _leaveTeam(teamId, emit);
+      case ProjectsChanged(:final teamId) when teamId == _teamId:
+        if (state is AsyncLoading<ChannelListData>) {
+          _projectsChangedWhileLoading = true;
+        } else {
+          await _refreshProjects(emit);
+        }
+      case ProjectsChanged():
+        // 다른 팀의 프로젝트다. 그 팀으로 옮길 때 새로 읽는다.
+        break;
     }
   }
 
@@ -222,6 +276,9 @@ class ChannelListBloc extends Bloc<ChannelListEvent, ChannelListState> {
     final changes = _resyncChanges = <ChannelListChange>[];
     final List<TeamSummaryResponse> teams;
     final List<Channel> channels;
+    final List<ProjectSummaryResponse>? projects;
+    // 끊긴 동안 바뀐 프로젝트도 이벤트로 오지 않는다. 채널과 함께 다시 읽는다.
+    final projectsRequest = _fetchProjects(team.id);
     try {
       // 403 만 보고 팀에서 빠졌다고 판단하면 막 만든 팀의 일시적인 403 에도 팀을 떠나
       // 버리므로, 팀 목록으로 확인한다.
@@ -234,6 +291,10 @@ class ChannelListBloc extends Bloc<ChannelListEvent, ChannelListState> {
         return;
       }
       channels = await _channelRepository.fetchChannels(team.id);
+      // 기다리는 것은 모두 여기서 끝낸다. 아래 확인과 화면 갱신 사이에 기다림이 끼면 그
+      // 사이 다른 팀으로 옮겨도 옛 팀 화면을 내보내고, [_resyncChanges] 가 이미 비워져
+      // 그 사이 온 변경을 응답으로 덮어 잃는다. 실패해도 던지지 않는다.
+      projects = await projectsRequest;
     } catch (e, s) {
       Logger.e('재연결 후 채널 목록 조회 실패', tag: 'Chat', error: e, stackTrace: s);
       return;
@@ -244,6 +305,7 @@ class ChannelListBloc extends Bloc<ChannelListEvent, ChannelListState> {
     if (state is! AsyncSuccess<ChannelListData>) return;
 
     _teams = teams;
+    _applyProjects(projects);
     emit(
       ChannelListState.success(
         _homeOf(teams.firstWhere((other) => other.id == team.id), channels),
@@ -388,10 +450,7 @@ class ChannelListBloc extends Bloc<ChannelListEvent, ChannelListState> {
     if (current is! AsyncSuccess<ChannelListData>) return;
     final team = _currentTeam();
     if (team == null) return;
-    final channels = [
-      for (final group in current.data.channelGroups) ...group.channels,
-    ];
-    emit(ChannelListState.success(_homeOf(team, edit(channels))));
+    emit(ChannelListState.success(_homeOf(team, edit(_channels))));
   }
 
   /// 보고 있던 팀. 그 팀에서 나갔으면 첫 팀, 팀이 없으면 null.
@@ -405,12 +464,16 @@ class ChannelListBloc extends Bloc<ChannelListEvent, ChannelListState> {
     workspaceName: '',
     isTeamOwner: false,
     canInviteMembers: false,
+    canCreateChannels: false,
+    canCreateProjects: false,
     workspaceShortcuts: [],
     channelGroups: [],
   );
 
   void _showNoTeam(Emitter<ChannelListState> emit) {
     _teamId = null;
+    _channels = const [];
+    _resetProjects();
     _follow(null);
     emit(const ChannelListState.success(_noTeam));
   }
@@ -424,6 +487,11 @@ class ChannelListBloc extends Bloc<ChannelListEvent, ChannelListState> {
     // [_pending] 에 모인다. 이전 팀을 읽는 동안 모인 것은 이 팀과 관계없어 버린다.
     _pending.clear();
     _follow(team.id);
+    _resetProjects();
+    _projectsChangedWhileLoading = false;
+    // 채널 목록과 같이 읽는다. 실패해도 던지지 않으므로 채널이 먼저 실패해도 남은
+    // Future 가 처리되지 않은 오류가 되지 않는다.
+    final projects = _fetchProjects(team.id);
     // 내 권한은 채널 목록과 같이 읽는다. 실패해도 던지지 않는다.
     _permissions = null;
     _isOwner = null;
@@ -443,6 +511,8 @@ class ChannelListBloc extends Bloc<ChannelListEvent, ChannelListState> {
     // 기다리는 사이 다른 팀으로 옮겼다면(팀에서 빠져 다음 팀을 읽는 등) 늦게 온 이
     // 응답이 지금 팀 화면을 덮지 않게 버린다.
     if (team.id != _teamId) return;
+    _applyProjects(await projects);
+    if (isClosed || team.id != _teamId) return;
 
     _permissions = access.permissions;
     _isOwner = access.isOwner;
@@ -453,6 +523,48 @@ class ChannelListBloc extends Bloc<ChannelListEvent, ChannelListState> {
     for (final change in pending) {
       _apply(change, emit);
     }
+    if (_projectsChangedWhileLoading) {
+      _projectsChangedWhileLoading = false;
+      await _refreshProjects(emit);
+    }
+  }
+
+  /// [teamId] 팀의 프로젝트 목록을 읽는다. 실패하면 로그를 남기고 null 을 준다.
+  ///
+  /// 끝났을 때 이보다 나중에 시작한 읽기가 있거나 다른 팀으로 옮겼어도 null 이다.
+  Future<List<ProjectSummaryResponse>?> _fetchProjects(int teamId) async {
+    final request = ++_projectsRequest;
+    final List<ProjectSummaryResponse> projects;
+    try {
+      projects = await _projectRepository.fetchTeamProjects(teamId);
+    } catch (e, s) {
+      // 프로젝트 없이도 채널은 보여 줄 수 있어 홈을 실패로 바꾸지 않는다.
+      Logger.e('프로젝트 목록 조회 실패', tag: 'Chat', error: e, stackTrace: s);
+      return null;
+    }
+    if (request != _projectsRequest || teamId != _teamId) return null;
+    return projects;
+  }
+
+  /// 읽은 프로젝트 목록을 반영한다. null(실패·낡은 응답)이면 보던 목록을 둔다.
+  void _applyProjects(List<ProjectSummaryResponse>? projects) {
+    if (projects != null) _projects = projects;
+  }
+
+  /// 프로젝트 목록만 다시 읽어 그룹을 다시 묶는다. 화면을 로딩으로 바꾸지 않는다.
+  Future<void> _refreshProjects(Emitter<ChannelListState> emit) async {
+    final teamId = _teamId;
+    if (teamId == null) return;
+    final projects = await _fetchProjects(teamId);
+    if (isClosed || projects == null) return;
+    _applyProjects(projects);
+    _editChannels(emit, (channels) => channels);
+  }
+
+  /// 팀이 바뀌었다. 이전 팀의 프로젝트와 진행 중인 읽기를 버린다.
+  void _resetProjects() {
+    _projects = const [];
+    _projectsRequest++;
   }
 
   /// [teamId] 팀의 소유자가 나인지와 내 권한. 못 읽은 값은 null 이다.
@@ -507,27 +619,67 @@ class ChannelListBloc extends Bloc<ChannelListEvent, ChannelListState> {
     return super.close();
   }
 
-  /// ponytail: 서버 카테고리(프로젝트) 연동 전이라 채널을 한 그룹에 담는다.
-  ChannelListData _homeOf(TeamSummaryResponse team, List<Channel> channels) => (
-    teamId: team.id,
-    workspaceName: team.name,
-    // 모르면 소유자가 아니라고 본다. 나가기가 보이고, 소유자면 서버가 막는다.
-    isTeamOwner: _isOwner ?? false,
-    // 권한을 모르면 보인다. 숨겨서 쓸 수 있는 사람이 못 쓰는 것보다, 보이고 서버가
-    // 막는 쪽(초대 화면의 403 안내)이 낫다.
-    canInviteMembers:
-        _permissions?.contains(TeamPermission.manageInvites) ?? true,
-    workspaceShortcuts: [
-      for (final other in _teams)
-        WorkspaceShortcut(
-          id: other.id,
-          initial: initialOf(other.name),
-          color: _avatarColors[other.id % _avatarColors.length],
-          isSelected: other.id == team.id,
+  /// [team] 홈 화면 데이터. 채널은 [_groupsOf] 로 묶는다.
+  ///
+  /// 묶기 전 [channels] 는 다음 변경에 쓰도록 [_channels] 에 남긴다.
+  ChannelListData _homeOf(TeamSummaryResponse team, List<Channel> channels) {
+    _channels = channels;
+    return _homeData(team, channels);
+  }
+
+  ChannelListData _homeData(TeamSummaryResponse team, List<Channel> channels) =>
+      (
+        teamId: team.id,
+        workspaceName: team.name,
+        // 모르면 소유자가 아니라고 본다. 나가기가 보이고, 소유자면 서버가 막는다.
+        isTeamOwner: _isOwner ?? false,
+        // 권한을 모르면 보인다. 숨겨서 쓸 수 있는 사람이 못 쓰는 것보다, 보이고 서버가
+        // 막는 쪽(초대 화면의 403 안내)이 낫다.
+        canInviteMembers:
+            _permissions?.contains(TeamPermission.manageInvites) ?? true,
+        canCreateChannels:
+            _permissions?.contains(TeamPermission.manageChannels) ?? true,
+        canCreateProjects:
+            _permissions?.contains(TeamPermission.manageProjects) ?? true,
+        workspaceShortcuts: [
+          for (final other in _teams)
+            WorkspaceShortcut(
+              id: other.id,
+              initial: initialOf(other.name),
+              color: _avatarColors[other.id % _avatarColors.length],
+              isSelected: other.id == team.id,
+            ),
+        ],
+        channelGroups: _groupsOf(channels),
+      );
+
+  /// 채널을 프로젝트 순서대로 묶고, 어느 프로젝트에도 속하지 않은 채널은 맨 끝
+  /// `채널` 그룹에 둔다. (웹 사이드바와 같은 순서)
+  ///
+  /// 채널이 없는 프로젝트도 빈 그룹으로 둬 그 프로젝트에 채널을 만들 수 있게 한다.
+  /// 목록에 없는 프로젝트(볼 수 없거나 아직 못 읽은)의 채널은 이름 없는 그룹을 만들지
+  /// 않고 `채널` 그룹에 둔다.
+  List<ChannelGroup> _groupsOf(List<Channel> channels) {
+    final known = {for (final project in _projects) project.id};
+    return [
+      for (final project in _projects)
+        ChannelGroup(
+          name: project.name,
+          projectId: project.id,
+          channels: [
+            for (final channel in channels)
+              if (channel.projectId == project.id) channel,
+          ],
         ),
-    ],
-    channelGroups: [ChannelGroup(name: '채널', channels: channels)],
-  );
+      ChannelGroup(
+        name: '채널',
+        channels: [
+          for (final channel in channels)
+            if (!known.contains(channel.projectId)) channel,
+        ],
+      ),
+    ];
+  }
 
   /// `팀 목록 조회 실패 · (503) 서비스를 잠시 사용할 수 없습니다.` 꼴의 실패 사유.
   static String _reasonOf(String stage, Object error) =>

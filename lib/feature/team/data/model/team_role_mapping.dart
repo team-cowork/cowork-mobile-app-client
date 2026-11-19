@@ -21,6 +21,8 @@ String _keyOf(TeamPermission permission) => switch (permission) {
   TeamPermission.manageTeam => 'manage_team',
   TeamPermission.deleteTeam => 'delete_team',
   TeamPermission.manageInvites => 'manage_invites',
+  TeamPermission.manageChannels => 'manage_channels',
+  TeamPermission.manageProjects => 'manage_projects',
 };
 
 const _administrator = 'administrator';

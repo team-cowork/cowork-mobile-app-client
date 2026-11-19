@@ -380,39 +380,105 @@ void main() {
     });
   });
 
-  testWidgets('새 프로젝트 시트에서 템플릿을 고르고 이름이 있어야 만들 수 있다', (tester) async {
-    await pumpChat(tester, FakeChatServer());
+  group('새 프로젝트 시트', () {
+    /// 팀 이름 → 팀 메뉴 → `카테고리 만들기` 로 프로젝트 시트를 연다.
+    Future<void> openProjectSheet(WidgetTester tester) async {
+      await tester.tap(find.text('코워크'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('카테고리 만들기'));
+      await tester.pumpAndSettle();
+    }
 
-    await tester.tap(find.text('코워크'));
-    await tester.pumpAndSettle();
-    // 타이틀 탭은 팀 메뉴를 열고, 프로젝트 시트는 그 안에서 들어간다.
-    await tester.tap(find.text('카테고리 만들기'));
-    await tester.pumpAndSettle();
+    final createProject = find.widgetWithText(CoworkButton, '프로젝트 만들기');
 
-    SelectableCard templateOf(String label) =>
-        tester.widget(find.widgetWithText(SelectableCard, label));
+    testWidgets('이름이 있어야 만들 수 있고, 만들면 빈 그룹으로 보인다', (tester) async {
+      final server = FakeChatServer();
+      await pumpChat(tester, server);
+      await openProjectSheet(tester);
 
-    // 기본 선택은 첫 템플릿, 탭하면 선택이 옮겨간다.
-    expect(templateOf('개발 프로젝트').selected, isTrue);
-    // 빈 프로젝트만 채널 칩 줄이 없다.
-    expect(find.text('# 백엔드'), findsOneWidget);
-    expect(find.text('채널 없이 시작'), findsOneWidget);
+      expect(tester.widget<CoworkButton>(createProject).enabled, isFalse);
+      await tester.enterText(find.byType(TextFormField).first, ' 마케팅 ');
+      await tester.pumpAndSettle();
+      expect(tester.widget<CoworkButton>(createProject).enabled, isTrue);
 
-    await tester.tap(find.widgetWithText(SelectableCard, '운영 프로젝트'));
-    await tester.pumpAndSettle();
+      await tester.tap(createProject);
+      await tester.pumpAndSettle();
 
-    expect(templateOf('개발 프로젝트').selected, isFalse);
-    expect(templateOf('운영 프로젝트').selected, isTrue);
+      // 설명을 비우면 description 을 보내지 않는다.
+      expect(server.createdProjects, [
+        {'teamId': 1, 'name': '마케팅'},
+      ]);
+      expect(createProject, findsNothing);
+      expect(find.text('마케팅 프로젝트를 만들었어요.'), findsOneWidget);
+      expect(find.text('마케팅'), findsOneWidget);
+      expect(find.bySemanticsLabel('마케팅 에 채널 만들기'), findsOneWidget);
+    });
 
-    final button = find.widgetWithText(CoworkButton, '프로젝트 만들기');
-    expect(tester.widget<CoworkButton>(button).enabled, isFalse);
+    testWidgets('실패하면 시트에 사유를 보여주고 입력값을 남긴다', (tester) async {
+      final server = FakeChatServer()
+        ..failCreateProject = const ServerFailure(403, '권한이 없습니다.');
+      await pumpChat(tester, server);
+      await openProjectSheet(tester);
 
-    await tester.enterText(find.byType(TextFormField), '마케팅');
-    await tester.pumpAndSettle();
-    expect(tester.widget<CoworkButton>(button).enabled, isTrue);
+      await tester.enterText(find.byType(TextFormField).first, '마케팅');
+      await tester.pumpAndSettle();
+      await tester.tap(createProject);
+      await tester.pumpAndSettle();
 
-    await tester.tap(button);
-    await tester.pumpAndSettle();
-    expect(find.text('프로젝트 만들기'), findsNothing);
+      expect(find.text('프로젝트를 만들지 못했어요'), findsOneWidget);
+      expect(find.text('(403) 권한이 없습니다.'), findsOneWidget);
+      expect(find.text('마케팅'), findsOneWidget);
+    });
+  });
+
+  group('프로젝트에 채널 만들기', () {
+    FakeChatServer serverWithProject() => FakeChatServer()
+      ..projects[1] = [
+        {'id': 5, 'name': '앱'},
+      ];
+
+    /// `앱` 그룹 헤더의 + 로 채널 시트를 열고 이름을 넣어 만든다.
+    Future<void> createInProject(WidgetTester tester, String name) async {
+      await tester.tap(find.bySemanticsLabel('앱 에 채널 만들기'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextFormField), name);
+      await tester.pumpAndSettle();
+      await tester.tap(submit);
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('그룹 + 로 만든 채널은 그 프로젝트에 넣는다', (tester) async {
+      final server = serverWithProject();
+      await pumpChat(tester, server);
+
+      // 프로젝트 밖 채널 그룹에는 + 가 없다.
+      expect(find.bySemanticsLabel('채널 에 채널 만들기'), findsNothing);
+      await createInProject(tester, '디자인');
+
+      final (channelId, body) = server.updatedChannels.single;
+      expect(channelId, server.channels[1]!.last['id']);
+      expect(body, {'projectId': 5});
+      expect(find.text('#디자인 채널을 만들었어요.'), findsOneWidget);
+      // `앱` 헤더 바로 아래, 채널 그룹 헤더보다 위에 보인다.
+      final app = tester.getTopLeft(find.text('앱')).dy;
+      final channel = tester.getTopLeft(find.text('디자인')).dy;
+      final ungrouped = tester.getTopLeft(find.text('채널')).dy;
+      expect(channel, greaterThan(app));
+      expect(channel, lessThan(ungrouped));
+    });
+
+    testWidgets('프로젝트에 넣지 못해도 채널은 프로젝트 밖에 보이고 알린다', (tester) async {
+      final server = serverWithProject()
+        ..failUpdateChannel = const ServerFailure(403);
+      await pumpChat(tester, server);
+
+      await createInProject(tester, '디자인');
+
+      expect(submit, findsNothing);
+      expect(find.text('#디자인 채널을 만들었지만 프로젝트에 넣지 못했어요.'), findsOneWidget);
+      final channel = tester.getTopLeft(find.text('디자인')).dy;
+      final ungrouped = tester.getTopLeft(find.text('채널')).dy;
+      expect(channel, greaterThan(ungrouped));
+    });
   });
 }

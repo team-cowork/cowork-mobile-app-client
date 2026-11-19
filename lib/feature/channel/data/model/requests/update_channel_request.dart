@@ -13,5 +13,8 @@ abstract class UpdateChannelRequest with _$UpdateChannelRequest {
     String? name,
     String? description,
     bool? isPrivate,
+
+    /// 채널을 넣을 프로젝트. 채널 생성 요청에는 이 필드가 없어 만든 뒤 붙인다.
+    int? projectId,
   }) = _UpdateChannelRequest;
 }

@@ -4,19 +4,33 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/utils/async_state.dart';
 import '../../../../core/utils/command_bloc.dart';
+import '../../../../core/utils/logger.dart';
 import '../../../../shared/widgets/create_sheet.dart';
+import '../../../project/data/model/requests/create_project_request.dart';
+import '../../../project/data/model/responses/project_summary_response.dart';
+import '../../../project/data/repositories/project_repository.dart';
 import '../../data/model/requests/create_channel_request.dart';
 import '../../data/repositories/channel_repository.dart';
 import '../../domain/channel.dart';
 import '../../domain/enums/channel_type.dart';
 
+/// 채널 시트가 돌려주는 결과.
+///
+/// [projectFailed] 는 채널은 만들었지만 고른 프로젝트에 넣지 못했다는 뜻이다. 채널이
+/// 이미 있으므로 시트를 실패로 두지 않고 닫은 뒤 홈이 따로 알린다.
+typedef NewChannelResult = ({Channel channel, bool projectFailed});
+
 /// 채널 생성 요청 하나를 실행하는 [CommandBloc].
-typedef _CreateChannel = CommandBloc<CreateChannelRequest, Channel>;
+typedef _CreateChannel = CommandBloc<CreateChannelRequest, NewChannelResult>;
+
+/// 프로젝트 생성 요청 하나를 실행하는 [CommandBloc].
+typedef _CreateProject =
+    CommandBloc<CreateProjectRequest, ProjectSummaryResponse>;
 
 /// 선택 여부를 보더로 표시하는 카드 컨테이너.
 ///
-/// [CoworkOptionCard] 는 `아이콘 + 제목 + 설명` 한 행이 고정이라, 공개 범위나
-/// 템플릿처럼 내용 구성이 다른 카드에 쓴다. 배경·보더 규칙은 [CoworkOptionCard]
+/// [CoworkOptionCard] 는 `아이콘 + 제목 + 설명` 한 행이 고정이라, 공개 범위처럼
+/// 내용 구성이 다른 카드에 쓴다. 배경·보더 규칙은 [CoworkOptionCard]
 /// 와 맞춘다.
 class SelectableCard extends StatelessWidget {
   const SelectableCard({
@@ -62,7 +76,7 @@ class SelectableCard extends StatelessWidget {
   }
 }
 
-/// 시트 안의 섹션 제목. (예: `채널 유형`, `템플릿`)
+/// 시트 안의 섹션 제목. (예: `채널 유형`, `공개 범위`)
 class _SectionLabel extends StatelessWidget {
   const _SectionLabel(this.label);
 
@@ -85,7 +99,7 @@ class _SectionLabel extends StatelessWidget {
 /// Figma `Modal / 채널 만들기` 웹 스펙을 시트 형태로 옮겼다. 채널 유형·이름·공개
 /// 범위를 받고, `채널 만들기` 를 누르면 [teamId] 팀에 채널을 만든다. 만드는 동안은
 /// 입력과 닫기를 잠그고, 실패하면 입력값을 둔 채 사유를 보여 다시 시도하게 한다.
-/// 성공하면 서버가 만든 [Channel] 을 돌려주며 닫힌다.
+/// 성공하면 서버가 만든 채널([NewChannelResult])을 돌려주며 닫힌다.
 ///
 /// ponytail: 입력값은 시트가 닫히면 버려지는 화면 로컬 상태라 setState 로 들고,
 /// 서버 요청 상태만 [CommandBloc] 이 맡는다. 생성 중·실패를 홈 상태에 실으면 홈
@@ -98,12 +112,32 @@ class NewChannelSheet extends StatefulWidget {
   final int teamId;
 
   /// 시트를 띄우고 만든 채널을 돌려준다. 만들지 않고 닫으면 null.
-  static Future<Channel?> show(BuildContext context, {required int teamId}) {
+  ///
+  /// [projectId] 를 주면 만든 채널을 그 프로젝트에 넣는다.
+  static Future<NewChannelResult?> show(
+    BuildContext context, {
+    required int teamId,
+    int? projectId,
+  }) {
     final repository = context.read<ChannelRepository>();
-    return CreateSheet.show<Channel>(
+
+    Future<NewChannelResult> create(CreateChannelRequest request) async {
+      try {
+        final channel = await repository.createChannel(
+          request,
+          projectId: projectId,
+        );
+        return (channel: channel, projectFailed: false);
+      } on ChannelProjectLinkFailure catch (e, s) {
+        Logger.e('채널을 프로젝트에 넣지 못함', tag: 'Chat', error: e, stackTrace: s);
+        return (channel: e.channel, projectFailed: true);
+      }
+    }
+
+    return CreateSheet.show<NewChannelResult>(
       context,
       (_) => BlocProvider(
-        create: (_) => _CreateChannel(repository.createChannel, tag: 'Chat'),
+        create: (_) => _CreateChannel(create, tag: 'Chat'),
         child: NewChannelSheet(teamId: teamId),
       ),
     );
@@ -169,7 +203,7 @@ class _NewChannelSheetState extends State<NewChannelSheet> {
 
   @override
   Widget build(BuildContext context) {
-    return BlocConsumer<_CreateChannel, AsyncState<Channel>>(
+    return BlocConsumer<_CreateChannel, AsyncState<NewChannelResult>>(
       listener: (context, state) {
         if (state case AsyncSuccess(:final data)) {
           Navigator.of(context).pop(data);
@@ -214,7 +248,7 @@ class _NewChannelSheetState extends State<NewChannelSheet> {
                   Expanded(
                     child: SelectableCard(
                       selected: entry.isPrivate == _isPrivate,
-                      // 공개 범위 카드는 템플릿 카드보다 한 단계 낮은 세로 패딩.
+                      // 공개 범위 카드는 기본 패딩보다 한 단계 낮은 세로 패딩.
                       padding: const EdgeInsets.symmetric(
                         horizontal: AppSpacing.s14,
                         vertical: AppSpacing.s10,
@@ -302,192 +336,100 @@ class _VisibilityOption extends StatelessWidget {
   }
 }
 
-/// 시트가 돌려주는 입력값. [template]은 고른 템플릿의 라벨.
+/// 프로젝트(채널 카테고리) 생성 바텀시트.
 ///
-/// 인덱스가 아니라 라벨을 넘긴다. 서버가 템플릿 목록을 내려주기 시작하면
-/// [NewProjectSheet.templates] 순서가 바뀌어도 고른 값이 어긋나지 않는다.
-typedef NewProjectForm = ({String template, String name});
-
-/// 프로젝트 생성 바텀시트.
-///
-/// Figma `Modal / 프로젝트 만들기` 웹 스펙을 시트 형태로 옮겼다. 템플릿과 이름을
-/// 받고, `프로젝트 만들기` 를 누르면 입력값([NewProjectForm])을 돌려주며 닫힌다.
-///
-/// ponytail: 입력값은 시트가 닫히면 버려지는 화면 로컬 상태라 Bloc 없이 setState 로 든다.
+/// 웹 `프로젝트 만들기` 모달과 같은 항목(이름, 선택 설명)을 받는다. 서버에 템플릿(채널
+/// 자동 구성) API 가 없어 시안의 템플릿 선택은 뺐다. 팀 시트처럼 만드는 동안은 입력과
+/// 닫기를 잠그고, 실패하면 입력값을 둔 채 사유를 보여준다. 성공하면 서버가 만든
+/// 프로젝트를 돌려주며 닫힌다.
 class NewProjectSheet extends StatefulWidget {
-  const NewProjectSheet({super.key});
+  const NewProjectSheet({required this.teamId, super.key});
 
-  /// 시트를 띄우고 입력값을 돌려준다. 취소하면 null.
-  static Future<NewProjectForm?> show(BuildContext context) {
-    return CreateSheet.show<NewProjectForm>(
+  /// 프로젝트를 만들 팀.
+  final int teamId;
+
+  /// 시트를 띄우고 만든 프로젝트를 돌려준다. 만들지 않고 닫으면 null.
+  static Future<ProjectSummaryResponse?> show(
+    BuildContext context, {
+    required int teamId,
+  }) {
+    final repository = context.read<ProjectRepository>();
+    return CreateSheet.show<ProjectSummaryResponse>(
       context,
-      (_) => const NewProjectSheet(),
+      (_) => BlocProvider(
+        create: (_) => _CreateProject(repository.createProject, tag: 'Chat'),
+        child: NewProjectSheet(teamId: teamId),
+      ),
     );
   }
-
-  // ponytail: 템플릿이 만들어 주는 채널 목록은 시안 그대로 박아 둔다. 서버가
-  // 템플릿을 내려주게 되면 이 목록을 응답으로 갈아끼운다.
-  static const templates = [
-    (
-      label: '개발 프로젝트',
-      meta: '채널 5개 자동 구성',
-      channels: ['# 일반', '# 백엔드', '# 프론트엔드', '🔊 데일리', '📝 회의록'],
-    ),
-    (
-      label: '디자인 프로젝트',
-      meta: '채널 4개',
-      channels: ['# 일반', '# 피드백', '📁 에셋', '📝 회의록'],
-    ),
-    (label: '운영 프로젝트', meta: '채널 3개', channels: ['# 공지', '🪝 웹훅', '🔑 계정 공유']),
-    (label: '빈 프로젝트', meta: '채널 없이 시작', channels: <String>[]),
-  ];
 
   @override
   State<NewProjectSheet> createState() => _NewProjectSheetState();
 }
 
 class _NewProjectSheetState extends State<NewProjectSheet> {
-  int _template = 0;
   String _name = '';
+  String _description = '';
 
   /// 이름이 있어야 프로젝트를 만들 수 있다.
   bool get _canSubmit => _name.trim().isNotEmpty;
 
   @override
   Widget build(BuildContext context) {
-    return CreateSheet(
-      title: '새 프로젝트',
-      children: [
-        const _SectionLabel('템플릿'),
-        Column(
-          spacing: AppSpacing.s8,
+    return BlocConsumer<_CreateProject, AsyncState<ProjectSummaryResponse>>(
+      listener: (context, state) {
+        if (state case AsyncSuccess(:final data)) {
+          Navigator.of(context).pop(data);
+        }
+      },
+      builder: (context, state) {
+        // 성공 직후 닫히기 전 한 프레임도 잠가 둔다.
+        final submitting = state is AsyncLoading || state is AsyncSuccess;
+        final description = _description.trim();
+
+        return CreateSheet(
+          title: '새 프로젝트',
+          dismissible: !submitting,
           children: [
-            for (final (index, template) in NewProjectSheet.templates.indexed)
-              SelectableCard(
-                selected: index == _template,
-                onTap: () => setState(() => _template = index),
-                child: _Template(
-                  label: template.label,
-                  meta: template.meta,
-                  channels: template.channels,
-                ),
+            CoworkTextField(
+              labelText: '프로젝트 이름',
+              hintText: '새 프로젝트',
+              enabled: !submitting,
+              textInputAction: TextInputAction.next,
+              onChanged: (value) => setState(() => _name = value),
+            ),
+            CoworkTextField(
+              labelText: '프로젝트 설명',
+              hintText: '어떤 프로젝트인지 한 줄로 적어보세요 (선택)',
+              enabled: !submitting,
+              textInputAction: TextInputAction.done,
+              onChanged: (value) => setState(() => _description = value),
+            ),
+            if (state case AsyncFailure(:final message))
+              CreateSheetError(
+                title: '프로젝트를 만들지 못했어요',
+                message: message ?? '잠시 후 다시 시도해 주세요.',
               ),
-          ],
-        ),
-        CoworkTextField(
-          labelText: '프로젝트 이름',
-          hintText: '새 프로젝트',
-          textInputAction: TextInputAction.done,
-          onChanged: (value) => setState(() => _name = value),
-        ),
-        SizedBox(
-          width: double.infinity,
-          child: CoworkButton(
-            label: '프로젝트 만들기',
-            size: CoworkButtonSize.large,
-            enabled: _canSubmit,
-            onPressed: () => Navigator.of(context).pop((
-              template: NewProjectSheet.templates[_template].label,
-              name: _name,
-            )),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-/// 템플릿 카드 안의 제목 + 채널 수 + 만들어질 채널 칩.
-class _Template extends StatelessWidget {
-  const _Template({
-    required this.label,
-    required this.meta,
-    required this.channels,
-  });
-
-  final String label;
-
-  /// 오른쪽에 붙는 요약. (예: `채널 5개 자동 구성`)
-  final String meta;
-
-  /// 템플릿이 만들어 줄 채널 이름. 비어 있으면 칩 줄을 그리지 않는다.
-  final List<String> channels;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      spacing: AppSpacing.s8,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Flexible(
-              child: Text(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                // labelXs(13px) 를 시안(14px)에 맞추고, height:null 로 폰트 기본 행간 적용.
-                style: AppFont.labelXs.copyWith(
-                  fontSize: 14,
-                  height: null,
-                  color: colors.onSurface,
+            SizedBox(
+              width: double.infinity,
+              child: CoworkButton(
+                label: submitting ? '프로젝트 생성 중…' : '프로젝트 만들기',
+                size: CoworkButtonSize.large,
+                enabled: _canSubmit && !submitting,
+                onPressed: () => context.read<_CreateProject>().add(
+                  CommandEvent.run(
+                    CreateProjectRequest(
+                      teamId: widget.teamId,
+                      name: _name.trim(),
+                      description: description.isEmpty ? null : description,
+                    ),
+                  ),
                 ),
               ),
             ),
-            Text(
-              meta,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: AppFont.subtextS.copyWith(
-                height: null,
-                color: colors.onSurfaceVariant,
-              ),
-            ),
           ],
-        ),
-        if (channels.isNotEmpty)
-          Wrap(
-            spacing: AppSpacing.s6,
-            runSpacing: AppSpacing.s6,
-            children: [
-              for (final channel in channels) _ChannelChip(label: channel),
-            ],
-          ),
-      ],
-    );
-  }
-}
-
-/// 템플릿이 만들어 줄 채널 하나를 나타내는 칩.
-class _ChannelChip extends StatelessWidget {
-  const _ChannelChip({required this.label});
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-
-    return Container(
-      // ponytail: 시안은 칩 배경도 카드와 같은 토큰이라 미선택 카드에서 칩이 사라진다.
-      // 두 상태 모두에서 읽히도록 한 단계 밝은 토큰을 쓴다.
-      decoration: BoxDecoration(
-        color: colors.surfaceContainerHigh,
-        borderRadius: BorderRadius.circular(AppRadius.r6),
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-      child: Text(
-        label,
-        style: AppFont.subtextS.copyWith(
-          fontSize: 11,
-          height: null,
-          color: colors.onSurfaceVariant,
-        ),
-      ),
+        );
+      },
     );
   }
 }

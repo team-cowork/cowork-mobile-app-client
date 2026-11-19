@@ -6,6 +6,7 @@ import 'package:cowork_app/core/network/chat_socket.dart';
 import 'package:cowork_app/feature/channel/data/repositories/channel_repository.dart';
 import 'package:cowork_app/feature/notifications/data/repositories/notification_repository.dart';
 import 'package:cowork_app/feature/profile/data/repositories/profile_repository.dart';
+import 'package:cowork_app/feature/project/data/repositories/project_repository.dart';
 import 'package:cowork_app/feature/team/data/repositories/team_repository.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
@@ -16,8 +17,8 @@ import '../notifications/notification_test_stream.dart';
 
 /// 채팅 홈 테스트용 가짜 게이트웨이.
 ///
-/// 팀·채널을 들고 있다가 게이트웨이처럼 서비스 prefix(`/team`, `/channel`)로 요청을
-/// 가른다. 단계별로 실패([failTeams]·[failChannels]·[failCreate])나 응답 지연
+/// 팀·채널·프로젝트를 들고 있다가 게이트웨이처럼 서비스 prefix(`/team`, `/channel`,
+/// `/project`)로 요청을 가른다. 단계별로 실패([failTeams]·[failChannels]·[failCreate])나 응답 지연
 /// ([createGate])을 걸어, 화면이 어느 단계가 실패했는지 구분하는지 확인한다.
 class FakeChatServer implements HttpClientAdapter {
   FakeChatServer({
@@ -60,6 +61,22 @@ class FakeChatServer implements HttpClientAdapter {
 
   final List<Map<String, dynamic>> teams;
   final Map<int, List<Map<String, dynamic>>> channels;
+
+  /// 팀 id → 프로젝트 목록(서버 순서). 기본은 프로젝트가 없다.
+  final projects = <int, List<Map<String, dynamic>>>{};
+
+  /// 프로젝트 생성 요청 본문.
+  final createdProjects = <Map<String, dynamic>>[];
+
+  /// 채널 수정 요청 본문(`PATCH /channels/{id}`). 채널 id 와 함께 남긴다.
+  final updatedChannels = <(int, Map<String, dynamic>)>[];
+
+  ServerFailure? failProjects;
+  ServerFailure? failCreateProject;
+  ServerFailure? failUpdateChannel;
+
+  /// 팀 id 별로 걸어 두면 그 팀 프로젝트 목록 응답을 이 Future 가 끝날 때까지 붙잡는다.
+  final projectGates = <int, Future<void>>{};
 
   /// 걸어 두면 해당 단계가 그 실패로 응답한다.
   ServerFailure? failTeams;
@@ -210,6 +227,27 @@ class FakeChatServer implements HttpClientAdapter {
       await createGate;
       return _respond(options, failCreate, () => _create(body));
     }
+    if (path.startsWith('/channel/channels/') && options.method == 'PATCH') {
+      final channelId = int.parse(path.split('/')[3]);
+      updatedChannels.add((channelId, body));
+      return _respond(
+        options,
+        failUpdateChannel,
+        () => _updateChannel(channelId, body),
+      );
+    }
+    if (path == '/project/projects' && options.method == 'POST') {
+      return _respond(options, failCreateProject, () => _createProject(body));
+    }
+    if (path == '/project/projects') {
+      final teamId = int.parse(options.uri.queryParameters['teamId']!);
+      await projectGates[teamId];
+      return _respond(
+        options,
+        failProjects,
+        () => {'content': projects[teamId] ?? const [], 'last': true},
+      );
+    }
     return _json({'message': '없는 경로: $path'}, 404);
   }
 
@@ -266,6 +304,35 @@ class FakeChatServer implements HttpClientAdapter {
     };
     channels.putIfAbsent(body['teamId'] as int, () => []).add(channel);
     return channel;
+  }
+
+  /// 서버처럼 보낸 필드만 바꾼다.
+  Map<String, dynamic> _updateChannel(
+    int channelId,
+    Map<String, dynamic> body,
+  ) {
+    final channel = channels.values
+        .expand((list) => list)
+        .firstWhere((channel) => channel['id'] == channelId);
+    channel.addAll(body);
+    return channel;
+  }
+
+  /// 서버처럼 팀의 마지막 순서에 둔다.
+  Map<String, dynamic> _createProject(Map<String, dynamic> body) {
+    createdProjects.add(body);
+    final teamId = body['teamId'] as int;
+    final teamProjects = projects.putIfAbsent(teamId, () => []);
+    final project = {
+      'id': _nextId++,
+      'teamId': teamId,
+      'name': body['name'],
+      'description': body['description'],
+      'status': 'ACTIVE',
+      'position': teamProjects.length,
+    };
+    teamProjects.add(project);
+    return project;
   }
 
   static ResponseBody _respond(
@@ -347,6 +414,10 @@ ProfileRepository profileRepositoryOf(FakeChatServer server) =>
 ChannelRepository channelRepositoryOf(FakeChatServer server) =>
     ChannelRepository.withDio(_dioOf(server, 'channel'));
 
+/// [server] 로 요청을 보내는 프로젝트 저장소.
+ProjectRepository projectRepositoryOf(FakeChatServer server) =>
+    ProjectRepository.withDio(_dioOf(server, 'project'));
+
 /// 가짜 채팅 소켓. 구독한 팀·채널 방을 기록하고, 테스트가 서버 이벤트를 [push] 한다.
 class FakeChatSocket implements ChatSocket {
   final _events = StreamController<SocketEvent>.broadcast();
@@ -355,8 +426,15 @@ class FakeChatSocket implements ChatSocket {
   final joined = <int>{};
 
   /// 서버가 [name] 이벤트를 보낸 것처럼 흘린다.
-  void push(String name, Map<String, dynamic> data) =>
-      _events.add((name: name, data: data));
+  ///
+  /// 실제 [ChatSocket] 은 [ChatSocket.listenedEvents] 에 없는 이벤트를 받지 않는다.
+  /// 가짜가 그 목록을 건너뛰면 목록에 빠진 이벤트도 테스트가 통과하므로 똑같이 막는다.
+  void push(String name, Map<String, dynamic> data) {
+    if (!ChatSocket.listenedEvents.contains(name)) {
+      throw ArgumentError.value(name, 'name', 'ChatSocket 이 받지 않는 이벤트');
+    }
+    _events.add((name: name, data: data));
+  }
 
   @override
   Stream<SocketEvent> get events => _events.stream;
@@ -411,6 +489,7 @@ Widget chatTestApp(
     RepositoryProvider.value(value: teamRepositoryOf(server)),
     RepositoryProvider.value(value: channelRepositoryOf(server)),
     RepositoryProvider.value(value: profileRepositoryOf(server)),
+    RepositoryProvider.value(value: projectRepositoryOf(server)),
     RepositoryProvider<ChatSocket>.value(value: socket ?? FakeChatSocket()),
     RepositoryProvider.value(
       value: notifications ?? NotificationRepository(FakeNotificationStream()),

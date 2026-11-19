@@ -60,6 +60,29 @@ void main() {
     expect(find.text('멤버 초대'), findsNothing);
   });
 
+  testWidgets('생성 권한이 없는 팀에서는 채널·카테고리 만들기와 그룹 + 를 보이지 않는다', (tester) async {
+    final server = FakeChatServer()
+      ..projects[2] = [
+        {'id': 5, 'name': '앱'},
+      ];
+    await pumpChat(tester, server);
+
+    await openMenu(tester, '코워크');
+    expect(find.text('채널 만들기'), findsOneWidget);
+    expect(find.text('카테고리 만들기'), findsOneWidget);
+    await tester.tap(find.byIcon(AppIcon.close));
+    await tester.pumpAndSettle();
+
+    await openMemberTeamMenu(tester);
+    expect(find.text('채널 만들기'), findsNothing);
+    expect(find.text('카테고리 만들기'), findsNothing);
+    await tester.tap(find.byIcon(AppIcon.close));
+    await tester.pumpAndSettle();
+
+    expect(find.text('앱'), findsOneWidget);
+    expect(find.bySemanticsLabel('앱 에 채널 만들기'), findsNothing);
+  });
+
   testWidgets('소유자에게는 팀 나가기를 보이지 않는다', (tester) async {
     await pumpChat(tester, FakeChatServer());
 

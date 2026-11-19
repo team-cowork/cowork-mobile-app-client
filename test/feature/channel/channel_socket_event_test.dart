@@ -80,4 +80,34 @@ void main() {
       isNull,
     );
   });
+
+  test('channel:updated 의 projectId 를 채널에 싣는다', () {
+    final event = ChannelSocketEvent.from((
+      name: 'channel:updated',
+      data: {
+        'channelId': 7,
+        'teamId': 1,
+        'name': '회의',
+        'viewType': 'TEXT',
+        'projectId': 5,
+      },
+    ));
+
+    expect((event as ChannelUpserted).channel.projectId, 5);
+  });
+
+  test('project 이벤트는 그 팀의 프로젝트 목록을 다시 읽게 한다', () {
+    for (final name in [
+      'project:created',
+      'project:updated',
+      'project:deleted',
+    ]) {
+      final event = ChannelSocketEvent.from((
+        name: name,
+        // 생성·수정은 이름·상태 등도 오지만 팀 id 만 쓴다.
+        data: {'projectId': 5, 'teamId': 1, 'name': '앱', 'status': 'ACTIVE'},
+      ));
+      expect((event as ProjectsChanged).teamId, 1);
+    }
+  });
 }

@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:cowork_app/core/utils/async_state.dart';
 import 'package:cowork_app/feature/channel/presentation/blocs/channel_list/channel_list_bloc.dart';
+import 'package:cowork_app/feature/project/data/model/responses/project_summary_response.dart';
 import 'package:cowork_app/feature/team/data/model/requests/create_team_request.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -15,6 +16,7 @@ Future<ChannelListBloc> _loaded(
   final bloc = ChannelListBloc(
     teamRepositoryOf(server),
     channelRepositoryOf(server),
+    projectRepositoryOf(server),
     socket ?? FakeChatSocket(),
     profileRepository: profileRepositoryOf(server),
   )..add(const ChannelListEvent.requested());
@@ -258,6 +260,29 @@ void main() {
       expect(_data(bloc).canInviteMembers, isTrue);
     });
 
+    test('멤버인 팀은 채널·프로젝트 생성 권한을 역할로 정한다', () async {
+      final noRole = await onMemberTeam(FakeChatServer());
+      addTearDown(noRole.close);
+      expect(_data(noRole).canCreateChannels, isFalse);
+      expect(_data(noRole).canCreateProjects, isFalse);
+
+      final withRole = await onMemberTeam(
+        FakeChatServer()
+          ..permissions[2] = {'manage_channels': true, 'manage_projects': true},
+      );
+      addTearDown(withRole.close);
+      expect(_data(withRole).canCreateChannels, isTrue);
+      expect(_data(withRole).canCreateProjects, isTrue);
+    });
+
+    test('소유자인 팀은 채널·프로젝트를 만들 수 있다', () async {
+      final bloc = await _loaded(FakeChatServer()..permissions.clear());
+      addTearDown(bloc.close);
+
+      expect(_data(bloc).canCreateChannels, isTrue);
+      expect(_data(bloc).canCreateProjects, isTrue);
+    });
+
     test('권한을 못 읽어도 홈은 보이고 멤버 초대는 숨기지 않는다', () async {
       final server = FakeChatServer()
         ..failPermissions = const ServerFailure(503);
@@ -266,6 +291,8 @@ void main() {
 
       expect(channelIds(bloc), [20]);
       expect(_data(bloc).canInviteMembers, isTrue);
+      expect(_data(bloc).canCreateChannels, isTrue);
+      expect(_data(bloc).canCreateProjects, isTrue);
     });
   });
 
@@ -345,5 +372,219 @@ void main() {
 
     expect(_data(bloc).teamId, 1);
     expect(_data(bloc).workspaceName, '코워크');
+  });
+  group('프로젝트별 묶기', () {
+    /// 그룹 이름 → 그 그룹 채널 id.
+    Map<String, List<int>> groupsOf(ChannelListBloc bloc) => {
+      for (final group in _data(bloc).channelGroups)
+        group.name: [
+          for (final channel in group.channels) int.parse(channel.id),
+        ],
+    };
+
+    FakeChatServer serverWithProjects() =>
+        FakeChatServer(
+            channels: {
+              1: [
+                {'id': 10, 'name': '일반', 'viewType': 'TEXT', 'projectId': null},
+                {'id': 11, 'name': '배포', 'viewType': 'WEBHOOK', 'projectId': 6},
+                {'id': 12, 'name': '기획', 'viewType': 'TEXT', 'projectId': 5},
+                // 볼 수 없는 프로젝트의 채널.
+                {'id': 13, 'name': '비밀', 'viewType': 'TEXT', 'projectId': 99},
+              ],
+            },
+          )
+          ..projects[1] = [
+            {'id': 5, 'name': '앱'},
+            {'id': 6, 'name': '서버'},
+            {'id': 7, 'name': '빈 프로젝트'},
+          ];
+
+    test('프로젝트 순서대로 묶고, 프로젝트 밖 채널은 맨 끝 채널 그룹에 둔다', () async {
+      final bloc = await _loaded(serverWithProjects());
+      addTearDown(bloc.close);
+
+      expect(groupsOf(bloc), {
+        '앱': [12],
+        '서버': [11],
+        '빈 프로젝트': <int>[],
+        '채널': [10, 13],
+      });
+      expect(
+        [for (final group in _data(bloc).channelGroups) group.projectId],
+        [5, 6, 7, null],
+      );
+    });
+
+    test('프로젝트 목록만 실패하면 홈은 그대로 열고 채널을 한 그룹에 둔다', () async {
+      final server = serverWithProjects()
+        ..failProjects = const ServerFailure(503);
+      final bloc = await _loaded(server);
+      addTearDown(bloc.close);
+
+      expect(groupsOf(bloc), {
+        '채널': [10, 11, 12, 13],
+      });
+    });
+
+    test('보던 팀의 project 이벤트가 오면 프로젝트 목록만 다시 읽는다', () async {
+      final server = serverWithProjects();
+      final socket = FakeChatSocket();
+      final bloc = await _loaded(server, socket: socket);
+      addTearDown(bloc.close);
+      server.requests.clear();
+
+      server.projects[1]!.insert(0, {'id': 8, 'name': '새 프로젝트'});
+      socket.push('project:created', {'projectId': 8, 'teamId': 1});
+      await pumpEventQueue();
+
+      expect(server.requests, ['GET /project/projects']);
+      expect(groupsOf(bloc).keys, ['새 프로젝트', '앱', '서버', '빈 프로젝트', '채널']);
+    });
+
+    test('다른 팀의 project 이벤트는 읽지 않는다', () async {
+      final server = serverWithProjects();
+      final socket = FakeChatSocket();
+      final bloc = await _loaded(server, socket: socket);
+      addTearDown(bloc.close);
+      server.requests.clear();
+
+      socket.push('project:deleted', {'projectId': 50, 'teamId': 2});
+      await pumpEventQueue();
+
+      expect(server.requests, isEmpty);
+    });
+
+    test('지워진 프로젝트의 채널은 채널 그룹으로 옮긴다', () async {
+      final server = serverWithProjects();
+      final socket = FakeChatSocket();
+      final bloc = await _loaded(server, socket: socket);
+      addTearDown(bloc.close);
+
+      server.projects[1]!.removeWhere((project) => project['id'] == 5);
+      socket.push('project:deleted', {'projectId': 5, 'teamId': 1});
+      await pumpEventQueue();
+
+      expect(groupsOf(bloc), {
+        '서버': [11],
+        '빈 프로젝트': <int>[],
+        '채널': [10, 12, 13],
+      });
+    });
+
+    test('channel:updated 의 projectId 로 채널을 다른 그룹으로 옮긴다', () async {
+      final socket = FakeChatSocket();
+      final bloc = await _loaded(serverWithProjects(), socket: socket);
+      addTearDown(bloc.close);
+
+      socket.push('channel:updated', {
+        'channelId': 10,
+        'teamId': 1,
+        'name': '일반',
+        'viewType': 'TEXT',
+        'projectId': 7,
+      });
+      await pumpEventQueue();
+
+      expect(groupsOf(bloc)['빈 프로젝트'], [10]);
+      expect(groupsOf(bloc)['채널'], [13]);
+    });
+
+    test('채널 목록을 읽는 동안 온 project 이벤트도 놓치지 않는다', () async {
+      final server = serverWithProjects();
+      final socket = FakeChatSocket();
+      final gate = Completer<void>();
+      server.channelGates[1] = gate.future;
+      final bloc = ChannelListBloc(
+        teamRepositoryOf(server),
+        channelRepositoryOf(server),
+        projectRepositoryOf(server),
+        socket,
+        profileRepository: profileRepositoryOf(server),
+      )..add(const ChannelListEvent.requested());
+      addTearDown(bloc.close);
+      await pumpEventQueue();
+
+      // 같이 읽은 프로젝트 목록은 이미 왔고, 그 뒤 프로젝트가 생겼다.
+      server.projects[1]!.add({'id': 8, 'name': '늦은 프로젝트'});
+      socket.push('project:created', {'projectId': 8, 'teamId': 1});
+      await pumpEventQueue();
+      gate.complete();
+      await pumpEventQueue();
+
+      expect(groupsOf(bloc).keys, contains('늦은 프로젝트'));
+    });
+
+    test('만든 프로젝트는 다시 읽지 않고 빈 그룹으로 붙인다', () async {
+      final server = serverWithProjects();
+      final bloc = await _loaded(server);
+      addTearDown(bloc.close);
+      server.requests.clear();
+
+      bloc.add(
+        const ChannelListEvent.projectAdded(
+          ProjectSummaryResponse(id: 9, name: '마케팅'),
+        ),
+      );
+      await pumpEventQueue();
+
+      expect(server.requests, isEmpty);
+      expect(groupsOf(bloc).keys, ['앱', '서버', '빈 프로젝트', '마케팅', '채널']);
+    });
+
+    test('재연결 후 프로젝트를 기다리는 사이 다른 팀으로 옮기면 옛 팀 화면을 내보내지 않는다', () async {
+      final server = serverWithProjects();
+      final socket = FakeChatSocket();
+      final bloc = await _loaded(server, socket: socket);
+      addTearDown(bloc.close);
+      final projectsGate = Completer<void>();
+      server.projectGates[1] = projectsGate.future;
+      server.channelGates[2] = Completer<void>().future;
+
+      socket.reconnect();
+      await pumpEventQueue();
+      // 재연결 읽기는 채널을 받고 프로젝트를 기다린다. 그 사이 2 번 팀을 고른다.
+      bloc.add(const ChannelListEvent.teamSelected(2));
+      await pumpEventQueue();
+      projectsGate.complete();
+      await pumpEventQueue();
+
+      // 2 번 팀 채널은 아직 오지 않았으니 로딩이어야 한다.
+      expect(bloc.state, isA<AsyncLoading<ChannelListData>>());
+    });
+
+    test('재연결 후 프로젝트를 기다리는 사이 온 채널 변경을 응답으로 덮지 않는다', () async {
+      final server = serverWithProjects();
+      final socket = FakeChatSocket();
+      final bloc = await _loaded(server, socket: socket);
+      addTearDown(bloc.close);
+      final projectsGate = Completer<void>();
+      server.projectGates[1] = projectsGate.future;
+
+      socket.reconnect();
+      await pumpEventQueue();
+      // 응답의 채널 목록에는 아직 10 번이 있다.
+      socket.push('channel:deleted', {'channelId': 10, 'teamId': 1});
+      await pumpEventQueue();
+      projectsGate.complete();
+      await pumpEventQueue();
+
+      expect(groupsOf(bloc)['채널'], [13]);
+    });
+
+    test('재연결하면 프로젝트 목록도 다시 읽는다', () async {
+      final server = serverWithProjects();
+      final socket = FakeChatSocket();
+      final bloc = await _loaded(server, socket: socket);
+      addTearDown(bloc.close);
+
+      server.projects[1] = [
+        {'id': 6, 'name': '서버'},
+      ];
+      socket.reconnect();
+      await pumpEventQueue();
+
+      expect(groupsOf(bloc).keys, ['서버', '채널']);
+    });
   });
 }
