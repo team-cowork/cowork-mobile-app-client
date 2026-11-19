@@ -263,6 +263,8 @@ def write_report(path: Path, title: str, results: list[dict], uncovered: dict[st
         counts[r["status"]] = counts.get(r["status"], 0) + 1
     score = score_of(counts)
     lines = [REPORT_MARKER, f"## 🧬 뮤테이션 테스트 ({title})", ""]
+    if note is None and not results and not uncovered:
+        note = "바뀐 `lib/` 코드에 변이할 지점(비교·논리 연산자, true/false 등)이 없어 돌리지 않았습니다."
     if note:
         lines += [note, ""]
     if results:
