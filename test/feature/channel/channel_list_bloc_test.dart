@@ -208,7 +208,11 @@ void main() {
     expect(_data(bloc).isTeamOwner, isFalse);
   });
 
-  test('새로 만든 팀은 생성 응답에 역할이 없어도 내가 소유자다', () async {
+  List<int> shortcutIds(ChannelListBloc bloc) => [
+    for (final shortcut in _data(bloc).workspaceShortcuts) shortcut.id,
+  ];
+
+  test('새로 만든 팀은 생성 응답에 역할이 없어도 내가 소유자이고, 있던 팀은 단축 바에 남는다', () async {
     final server = FakeChatServer();
     final bloc = await _loaded(server);
     addTearDown(bloc.close);
@@ -222,11 +226,8 @@ void main() {
     );
 
     expect(_data(bloc).isTeamOwner, isTrue);
+    expect(shortcutIds(bloc), [1, 2, team.id]);
   });
-
-  List<int> shortcutIds(ChannelListBloc bloc) => [
-    for (final shortcut in _data(bloc).workspaceShortcuts) shortcut.id,
-  ];
 
   test('단축 바는 보고 있는 팀만 선택된 것으로 보인다', () async {
     final server = FakeChatServer();
@@ -238,22 +239,6 @@ void main() {
         if (shortcut.isSelected) shortcut.id,
     ];
     expect(selected, [1]);
-  });
-
-  test('새 팀을 만들면 있던 팀은 단축 바에 남기고 새 팀을 붙인다', () async {
-    final server = FakeChatServer();
-    final bloc = await _loaded(server);
-    addTearDown(bloc.close);
-    final team = await teamRepositoryOf(
-      server,
-    ).createTeam(const CreateTeamRequest(name: '새 팀'));
-
-    bloc.add(ChannelListEvent.teamCreated(team));
-    await bloc.stream.firstWhere(
-      (s) => s is AsyncSuccess<ChannelListData> && s.data.teamId == team.id,
-    );
-
-    expect(shortcutIds(bloc), [1, 2, team.id]);
   });
 
   group('다른 사람이 나를 팀에 넣으면', () {
