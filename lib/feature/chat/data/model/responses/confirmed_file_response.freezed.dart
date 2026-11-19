@@ -14,7 +14,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$ConfirmedFileResponse {
 
-/// 확정 키(`chat-files/...`). 회의록 `attachments` 에는 이 키를 보낸다.
+/// 확정 키(`chat-files/...`). 메시지·회의록 `attachments` 에는 이 키를 보낸다.
  String get objectKey;/// 서버가 기록한 파일 이름. 업로드 주소를 받을 때 보낸 이름이다.
  String get name;
 /// Create a copy of ConfirmedFileResponse
@@ -212,7 +212,7 @@ class _ConfirmedFileResponse implements ConfirmedFileResponse {
   const _ConfirmedFileResponse({this.objectKey = '', this.name = ''});
   
 
-/// 확정 키(`chat-files/...`). 회의록 `attachments` 에는 이 키를 보낸다.
+/// 확정 키(`chat-files/...`). 메시지·회의록 `attachments` 에는 이 키를 보낸다.
 @override@JsonKey() final  String objectKey;
 /// 서버가 기록한 파일 이름. 업로드 주소를 받을 때 보낸 이름이다.
 @override@JsonKey() final  String name;

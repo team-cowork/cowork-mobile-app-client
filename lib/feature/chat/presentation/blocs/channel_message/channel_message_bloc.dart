@@ -10,17 +10,23 @@ import '../../../../../core/network/http_error_message.dart';
 import '../../../../../core/utils/async_state.dart';
 import '../../../../../core/utils/logger.dart';
 import '../../../../../shared/domain/profile_entity.dart';
+import '../../../../../shared/domain/upload_file.dart';
 import '../../../../../shared/utils/chat_author.dart';
 import '../../../../../shared/utils/client_message_id.dart';
 import '../../../../channel/data/repositories/channel_repository.dart';
 import '../../../../profile/data/repositories/profile_repository.dart';
 import '../../../data/model/chat_message_mapping.dart';
 import '../../../data/model/message_socket_event.dart';
+import '../../../data/model/message_type.dart';
 import '../../../data/model/requests/edit_message_request.dart';
+import '../../../data/model/requests/message_attachment_request.dart';
 import '../../../data/model/requests/send_message_request.dart';
+import '../../../data/model/responses/attachment_response.dart';
 import '../../../data/model/responses/message_response.dart';
+import '../../../data/repositories/chat_file_repository.dart';
 import '../../../data/repositories/message_repository.dart';
 import '../../../domain/chat_message.dart';
+import '../../../domain/chat_upload.dart';
 
 part 'channel_message_event.dart';
 part 'channel_message_state.dart';
@@ -39,12 +45,16 @@ part 'channel_message_state.dart';
 /// 최근 메시지까지 이어져 있지 않을 수 있어([ChannelConversation.hasNewer]), 이후
 /// 메시지는 아래로 내릴 때 이어 읽는다. 그동안 소켓으로 온 새 메시지는 사이가 비므로
 /// 붙이지 않고, 읽음도 알리지 않는다. 그 상태에서 보내면 최근 대화로 옮긴 뒤 보낸다.
+///
+/// 파일은 글처럼 먼저 보여 준 뒤 올리고 보낸다. 실패하면 지우지 않고 실패로 남겨,
+/// 파일을 다시 고르지 않고 다시 보내거나 지울 수 있게 한다.
 class ChannelMessageBloc
     extends Bloc<ChannelMessageEvent, ChannelMessageState> {
   ChannelMessageBloc({
     required this.channelId,
     required ChannelRepository channelRepository,
     required MessageRepository messageRepository,
+    required ChatFileRepository fileRepository,
     required ProfileRepository profileRepository,
     required ChatSocket socket,
     Stream<AppLifecycleState>? lifecycle,
@@ -55,6 +65,7 @@ class ChannelMessageBloc
   }) : _now = now,
        _channelRepository = channelRepository,
        _messageRepository = messageRepository,
+       _fileRepository = fileRepository,
        _profileRepository = profileRepository,
        _socket = socket,
        super(const ChannelMessageState.initial()) {
@@ -62,6 +73,8 @@ class ChannelMessageBloc
     on<ChannelMessageOlderRequested>(_onLoadOlder);
     on<ChannelMessageNewerRequested>(_onLoadNewer);
     on<ChannelMessageSent>(_onSend);
+    on<ChannelMessageRetried>(_onRetry);
+    on<ChannelMessageDiscarded>(_onDiscard);
     on<ChannelMessageEdited>(_onEdit);
     on<ChannelMessageDeleted>(_onDelete);
     on<_ChannelMessageSocketEventReceived>(_onSocketEvent);
@@ -107,8 +120,15 @@ class ChannelMessageBloc
 
   static const _maxMarkReadRetries = 3;
 
+  /// 한 메시지에 붙일 수 있는 파일 수의 서버 상한.
+  ///
+  /// 서버는 넘으면 전송할 때 거절하는데, 그때는 파일을 이미 다 올린 뒤다. 올리기 전에
+  /// 막아 헛된 업로드를 줄인다.
+  static const maxAttachments = 10;
+
   final ChannelRepository _channelRepository;
   final MessageRepository _messageRepository;
+  final ChatFileRepository _fileRepository;
   final ProfileRepository _profileRepository;
   final ChatSocket _socket;
   late final StreamSubscription<MessageSocketEvent?> _socketEvents;
@@ -171,6 +191,10 @@ class ChannelMessageBloc
   /// 보낸 메시지(`clientMessageId`)별 저장 확인 타이머.
   final _confirmTimers = <String, Timer>{};
 
+  /// 보내는 중이거나 보내지 못한 파일 메시지(`clientMessageId`)별 전송 상태. 저장된
+  /// 메시지가 오거나 지우면 뺀다.
+  final _outgoing = <String, _OutgoingFiles>{};
+
   Future<void> _onLoad(
     ChannelMessageRequested event,
     Emitter<ChannelMessageState> emit,
@@ -179,6 +203,7 @@ class ChannelMessageBloc
     _generation++;
     _header = null;
     _pending.clear();
+    _outgoing.clear();
     _focusId = null;
     _hasNewer = false;
     _loadingNewer = false;
@@ -378,25 +403,42 @@ class ChannelMessageBloc
     }
   }
 
+  /// [ChannelMessageSent.accepted] 는 메시지를 대화에 올리면 true, 그 전에 멈추면 false
+  /// 로 완료한다.
   Future<void> _onSend(
     ChannelMessageSent event,
     Emitter<ChannelMessageState> emit,
   ) async {
-    final text = event.text.trim();
-    if (_header == null || text.isEmpty) return;
-    // 과거 위치를 보는 중이면 사이가 빈 목록 끝에 붙이지 않도록 최근 대화로 옮긴다.
-    if (!await _jumpToLatest()) {
-      _emit(emit, error: '최근 대화를 불러오지 못해 보낼 수 없어요. 다시 보내 주세요.');
-      return;
+    void accept() {
+      if (event.accepted case final accepted? when !accepted.isCompleted) {
+        accepted.complete(true);
+      }
     }
-    // 들어올 때 내 정보를 못 읽었으면 보내기 전에 한 번 더 읽는다.
-    if (_myId == null) await _loadMe();
-    final myId = _myId;
-    if (myId == null) {
-      // 입력창은 이미 비워졌으니 조용히 버리지 않고 알린다.
-      _emit(emit, error: '내 정보를 불러오지 못해 보낼 수 없어요. 잠시 후 다시 시도해 주세요.');
-      return;
+
+    try {
+      final text = event.text.trim();
+      if (_header == null) return;
+      if (event.files.isNotEmpty) {
+        await _sendFiles(text, event.files, emit, onAccepted: accept);
+        return;
+      }
+      if (text.isEmpty) return;
+      await _sendText(text, emit, onAccepted: accept);
+    } finally {
+      if (event.accepted case final accepted? when !accepted.isCompleted) {
+        accepted.complete(false);
+      }
     }
+  }
+
+  /// [text] 를 보낸다. 대화에 올리면 [onAccepted] 를 부른다.
+  Future<void> _sendText(
+    String text,
+    Emitter<ChannelMessageState> emit, {
+    required void Function() onAccepted,
+  }) async {
+    final myId = await _readyToSend(emit);
+    if (myId == null) return;
 
     final clientMessageId = newClientMessageId();
     _messages.add(
@@ -409,6 +451,7 @@ class ChannelMessageBloc
         clientMessageId: clientMessageId,
       ),
     );
+    onAccepted();
     _emit(emit);
     // 과거 위치에서 옮겨 왔으면 이제 최근 메시지를 보고 있다. 보내기가 실패해도 읽었다.
     _markRead();
@@ -429,6 +472,147 @@ class ChannelMessageBloc
       // 소켓으로 이미 저장된 메시지가 왔으면 id 가 바뀌어 있어 지워지지 않는다.
       _messages.removeWhere((message) => message.id == clientMessageId);
       _emit(emit, error: _reasonOf('메시지를 보내지 못했어요.', e));
+    }
+  }
+
+  /// 보내기 전에 최근 대화로 옮기고 내 id 를 확인한다. 보낼 수 없으면 알리고 null.
+  Future<int?> _readyToSend(Emitter<ChannelMessageState> emit) async {
+    // 과거 위치를 보는 중이면 사이가 빈 목록 끝에 붙이지 않도록 최근 대화로 옮긴다.
+    if (!await _jumpToLatest()) {
+      _emit(emit, error: '최근 대화를 불러오지 못해 보낼 수 없어요. 다시 보내 주세요.');
+      return null;
+    }
+    // 들어올 때 내 정보를 못 읽었으면 보내기 전에 한 번 더 읽는다.
+    if (_myId == null) await _loadMe();
+    final myId = _myId;
+    if (myId == null) {
+      // 입력창은 되돌아오지만 왜 안 갔는지 알 수 있게 알린다.
+      _emit(emit, error: '내 정보를 불러오지 못해 보낼 수 없어요. 잠시 후 다시 시도해 주세요.');
+    }
+    return myId;
+  }
+
+  /// [text] 와 [files] 를 한 메시지로 보낸다. 먼저 보여 주고, 올리는 동안 진행률을
+  /// 바꾼다. [text] 는 비어도 된다. 대화에 올리면 [onAccepted] 를 부른다.
+  Future<void> _sendFiles(
+    String text,
+    List<UploadFile> files,
+    Emitter<ChannelMessageState> emit, {
+    required void Function() onAccepted,
+  }) async {
+    if (files.length > maxAttachments) {
+      _emit(emit, error: '파일은 한 번에 $maxAttachments개까지 보낼 수 있어요.');
+      return;
+    }
+    final myId = await _readyToSend(emit);
+    if (myId == null) return;
+
+    final clientMessageId = newClientMessageId();
+    _outgoing[clientMessageId] = _OutgoingFiles(text, files);
+    _messages.add(
+      MessageResponse(
+        id: clientMessageId,
+        channelId: channelId,
+        authorId: myId,
+        content: text,
+        type: MessageType.file,
+        attachments: [
+          for (final file in files)
+            AttachmentResponse(
+              name: file.name,
+              size: file.size,
+              mimeType: ChatFileRepository.contentTypeOf(file.name),
+            ),
+        ],
+        createdAt: DateTime.now(),
+        clientMessageId: clientMessageId,
+      ),
+    );
+    onAccepted();
+    _emit(emit);
+    _markRead();
+    await _deliver(clientMessageId, emit);
+  }
+
+  /// 보내지 못한 파일 메시지를 다시 보낸다.
+  Future<void> _onRetry(
+    ChannelMessageRetried event,
+    Emitter<ChannelMessageState> emit,
+  ) async {
+    if (_outgoing[event.messageId]?.failed != true) return;
+    await _deliver(event.messageId, emit);
+  }
+
+  /// 보내지 못한 파일 메시지를 지운다. 서버에 저장되지 않았으니 화면에서만 뺀다.
+  void _onDiscard(
+    ChannelMessageDiscarded event,
+    Emitter<ChannelMessageState> emit,
+  ) {
+    if (_outgoing[event.messageId]?.failed != true) return;
+    _outgoing.remove(event.messageId);
+    _confirmTimers.remove(event.messageId)?.cancel();
+    _messages.removeWhere((message) => message.id == event.messageId);
+    _emit(emit);
+  }
+
+  /// [clientMessageId] 파일 메시지의 파일을 올리고 보낸다. 이미 올린 파일은 다시 올리지
+  /// 않는다. 실패하면 메시지를 남겨 두고 실패로 표시한다.
+  ///
+  /// 다시 보낼 때도 같은 `clientMessageId` 를 쓴다. 서버는 올린 파일을 처음 붙인
+  /// `clientMessageId` 로만 다시 붙여 주고, 메시지도 그 값으로 한 번만 저장한다. 그래서
+  /// 앞선 전송이 사실은 저장됐어도 두 번 올라가지 않는다.
+  Future<void> _deliver(
+    String clientMessageId,
+    Emitter<ChannelMessageState> emit,
+  ) async {
+    final outgoing = _outgoing[clientMessageId];
+    if (outgoing == null || outgoing.sending) return;
+    outgoing
+      ..sending = true
+      ..failed = false;
+    _emit(emit);
+
+    try {
+      for (final (index, file) in outgoing.files.indexed) {
+        if (outgoing.objectKeys[index] != null) continue;
+        final confirmed = await _fileRepository.upload(
+          channelId,
+          file,
+          onProgress: (ratio) {
+            if (outgoing.report(index, ratio) && _isPending(clientMessageId)) {
+              _emit(emit);
+            }
+          },
+        );
+        outgoing.objectKeys[index] = confirmed.objectKey;
+      }
+      await _messageRepository.sendMessage(
+        channelId,
+        SendMessageRequest(
+          content: outgoing.content,
+          clientMessageId: clientMessageId,
+          type: MessageType.file,
+          attachments: [
+            for (final key in outgoing.objectKeys)
+              MessageAttachmentRequest(objectKey: key!),
+          ],
+        ),
+      );
+      outgoing.sending = false;
+      if (_isPending(clientMessageId) && !isClosed) {
+        _confirmTimers[clientMessageId] = Timer(
+          confirmTimeout,
+          () => add(_ChannelMessageConfirmTimedOut(clientMessageId)),
+        );
+      }
+    } catch (e, s) {
+      Logger.e('파일 전송 실패', tag: 'Chat', error: e, stackTrace: s);
+      outgoing
+        ..sending = false
+        ..failed = true;
+      // 그사이 저장된 메시지가 소켓으로 왔거나 지웠으면 알릴 게 없다.
+      if (!_isPending(clientMessageId)) return;
+      _emit(emit, error: _reasonOf('파일을 보내지 못했어요.', e));
     }
   }
 
@@ -502,6 +686,13 @@ class ChannelMessageBloc
     if (!_isPending(event.clientMessageId)) {
       _emit(emit);
       _markRead();
+      return;
+    }
+    // 파일 메시지는 다시 고르지 않아도 되게 남겨 두고 실패로 표시한다. 다시 보내도
+    // 같은 `clientMessageId` 라 서버에 두 번 저장되지 않는다.
+    if (_outgoing[event.clientMessageId] case final outgoing?) {
+      outgoing.failed = true;
+      _emit(emit, error: '파일이 전송되지 않았어요. 다시 보내 주세요.');
       return;
     }
     _messages.removeWhere((message) => message.id == event.clientMessageId);
@@ -594,6 +785,7 @@ class ChannelMessageBloc
             ..addAll(unsaved);
         }
         _confirmTimers.remove(message.clientMessageId)?.cancel();
+        _outgoing.remove(message.clientMessageId);
         if (!message.isSystem && !_authors.containsKey(message.authorId)) {
           _resolveAuthorsLater([message.authorId]);
         }
@@ -668,6 +860,7 @@ class ChannelMessageBloc
     ];
     for (final id in confirmed) {
       _confirmTimers.remove(id)?.cancel();
+      _outgoing.remove(id);
     }
 
     _hasOlder = full && (older.isEmpty || _hasOlder);
@@ -799,6 +992,7 @@ class ChannelMessageBloc
             _authorOf(message),
             now: now,
             editable: _isEditable(message),
+            upload: _outgoing[message.id]?.state,
           ),
       ],
       hasOlder: _hasOlder,
@@ -841,4 +1035,48 @@ class ChannelMessageBloc
 
   static String _reasonOf(String fallback, Object error) =>
       failureMessageOf(error) ?? fallback;
+}
+
+/// 보내는 중이거나 보내지 못한 파일 메시지 하나의 전송 상태.
+class _OutgoingFiles {
+  _OutgoingFiles(this.content, this.files)
+    : objectKeys = List.filled(files.length, null),
+      _total = files.fold(0, (sum, file) => sum + file.size);
+
+  /// 파일과 같이 보낼 글. 비어도 된다.
+  final String content;
+
+  final List<UploadFile> files;
+
+  /// 올린 파일의 확정 키. 다시 보낼 때 이미 올린 파일은 건너뛴다.
+  final List<String?> objectKeys;
+
+  final int _total;
+  double _progress = 0;
+
+  /// 지금 올리거나 보내는 중이다. 같은 메시지를 겹쳐 보내지 않는다.
+  bool sending = false;
+
+  /// 보내지 못했다.
+  bool failed = false;
+
+  ChatUpload get state => ChatUpload(progress: _progress, failed: failed);
+
+  /// [index] 번째 파일을 [ratio] 만큼 올렸다. 화면에 보일 퍼센트가 바뀌었으면 true.
+  ///
+  /// 올리는 동안 아주 자주 불리므로, 퍼센트가 바뀔 때만 화면을 다시 그리게 한다.
+  bool report(int index, double ratio) {
+    var sent = 0.0;
+    for (final (i, file) in files.indexed) {
+      if (i == index) {
+        sent += file.size * ratio.clamp(0, 1);
+      } else if (objectKeys[i] != null) {
+        sent += file.size;
+      }
+    }
+    final next = _total == 0 ? 1.0 : sent / _total;
+    final changed = (next * 100).floor() != (_progress * 100).floor();
+    _progress = next;
+    return changed;
+  }
 }

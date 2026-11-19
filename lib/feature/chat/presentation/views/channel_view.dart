@@ -10,10 +10,14 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/network/chat_socket.dart';
 import '../../../../core/utils/app_lifecycle.dart';
 import '../../../../core/utils/async_state.dart';
+import '../../../../core/utils/logger.dart';
+import '../../../../shared/domain/upload_file.dart';
 import '../../../../shared/utils/external_url.dart';
+import '../../../../shared/utils/file_picking.dart';
 import '../../../../shared/widgets/bloc_scaffold.dart';
 import '../../../channel/data/repositories/channel_repository.dart';
 import '../../../profile/data/repositories/profile_repository.dart';
+import '../../data/repositories/chat_file_repository.dart';
 import '../../data/repositories/message_repository.dart';
 import '../../domain/chat_message.dart';
 import '../blocs/channel_message/channel_message_bloc.dart';
@@ -28,6 +32,7 @@ class ChannelView extends StatelessWidget {
     this.dmName,
     this.isDirect = false,
     this.openUrl = launchExternally,
+    this.pickFiles = pickUploadFiles,
     super.key,
   });
 
@@ -46,6 +51,9 @@ class ChannelView extends StatelessWidget {
   /// 첨부파일 주소를 여는 방법. 테스트에서 바꾼다.
   final UrlOpener openUrl;
 
+  /// 보낼 파일을 고르는 방법. 테스트에서 기기 선택 창 대신 가짜 파일을 넣는다.
+  final UploadFilesPicker pickFiles;
+
   /// 열 때 보여 줄 메시지(검색 결과에서 고른 것). 없으면 최근 메시지부터 연다.
   final String? focusMessageId;
 
@@ -56,6 +64,7 @@ class ChannelView extends StatelessWidget {
         channelId: channelId,
         channelRepository: context.read<ChannelRepository>(),
         messageRepository: context.read<MessageRepository>(),
+        fileRepository: context.read<ChatFileRepository>(),
         profileRepository: context.read<ProfileRepository>(),
         socket: context.read<ChatSocket>(),
         lifecycle: appLifecycleStates(),
@@ -104,14 +113,14 @@ class ChannelView extends StatelessWidget {
               Expanded(
                 child: _MessageList(data: data, openUrl: openUrl),
               ),
-              const Padding(
-                padding: EdgeInsets.fromLTRB(
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
                   AppSpacing.s12,
                   AppSpacing.s8,
                   AppSpacing.s12,
                   AppSpacing.s24,
                 ),
-                child: _MessageComposer(),
+                child: _MessageComposer(pickFiles: pickFiles),
               ),
             ],
           ),
@@ -380,6 +389,19 @@ class _MessageListState extends State<_MessageList> {
   }
 
   Widget _row(BuildContext context, ChatMessage message) {
+    // 보내는 중이거나 보내지 못한 파일 메시지는 서버에 없어 스레드·첨부를 열 수 없다.
+    // 보내지 못했으면 눌러서 다시 보내거나 지운다.
+    if (message.upload case final upload?) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s4),
+        child: ChatMessageRow(
+          message: message,
+          onTap: upload.failed
+              ? () => _showFailedActions(context, message)
+              : null,
+        ),
+      );
+    }
     final row = ChatMessageRow(
       message: message,
       onTap: () => context.push(
@@ -444,7 +466,19 @@ class _MessageListState extends State<_MessageList> {
     ChatMessage message,
   ) async {
     final bloc = context.read<ChannelMessageBloc>();
-    final action = await _MessageActionSheet.show(context);
+    final action = await _ActionSheet.show(context, const [
+      _ActionItem(
+        icon: Icons.edit_outlined,
+        label: '메시지 수정',
+        value: _MessageAction.edit,
+      ),
+      _ActionItem(
+        icon: Icons.delete_outline,
+        label: '메시지 삭제',
+        value: _MessageAction.delete,
+        destructive: true,
+      ),
+    ]);
     if (!context.mounted || action == null) return;
 
     switch (action) {
@@ -467,22 +501,74 @@ class _MessageListState extends State<_MessageList> {
         }
     }
   }
+
+  /// 보내지 못한 파일 메시지를 눌렀을 때. 다시 보낼지 지울지 고르게 한다.
+  static Future<void> _showFailedActions(
+    BuildContext context,
+    ChatMessage message,
+  ) async {
+    final bloc = context.read<ChannelMessageBloc>();
+    final action = await _ActionSheet.show(context, const [
+      _ActionItem(
+        icon: Icons.refresh,
+        label: '다시 보내기',
+        value: _FailedFileAction.retry,
+      ),
+      _ActionItem(
+        icon: Icons.delete_outline,
+        label: '삭제',
+        value: _FailedFileAction.discard,
+        destructive: true,
+      ),
+    ]);
+    switch (action) {
+      case _FailedFileAction.retry:
+        bloc.add(ChannelMessageEvent.retried(message.id));
+      case _FailedFileAction.discard:
+        bloc.add(ChannelMessageEvent.discarded(message.id));
+      case null:
+        break;
+    }
+  }
 }
 
 enum _MessageAction { edit, delete }
 
-/// 내 메시지 메뉴. 고른 동작을 돌려주고, 그냥 닫으면 null.
-class _MessageActionSheet extends StatelessWidget {
-  const _MessageActionSheet();
+enum _FailedFileAction { retry, discard }
 
-  static Future<_MessageAction?> show(BuildContext context) =>
-      showModalBottomSheet<_MessageAction>(
+enum _AttachSource { photo, file }
+
+/// [_ActionSheet] 의 한 줄.
+class _ActionItem<T> {
+  const _ActionItem({
+    required this.icon,
+    required this.label,
+    required this.value,
+    this.destructive = false,
+  });
+
+  final IconData icon;
+  final String label;
+
+  /// 이 줄을 고르면 시트가 돌려줄 값.
+  final T value;
+  final bool destructive;
+}
+
+/// 아래에서 올라오는 메뉴. 고른 줄의 값을 돌려주고, 그냥 닫으면 null.
+class _ActionSheet<T> extends StatelessWidget {
+  const _ActionSheet({required this.items});
+
+  final List<_ActionItem<T>> items;
+
+  static Future<T?> show<T>(BuildContext context, List<_ActionItem<T>> items) =>
+      showModalBottomSheet<T>(
         context: context,
         backgroundColor: AppColors.neutral800,
         shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
         ),
-        builder: (_) => const _MessageActionSheet(),
+        builder: (_) => _ActionSheet<T>(items: items),
       );
 
   @override
@@ -505,17 +591,7 @@ class _MessageActionSheet extends StatelessWidget {
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
-            const _MessageActionRow(
-              icon: Icons.edit_outlined,
-              label: '메시지 수정',
-              action: _MessageAction.edit,
-            ),
-            const _MessageActionRow(
-              icon: Icons.delete_outline,
-              label: '메시지 삭제',
-              action: _MessageAction.delete,
-              destructive: true,
-            ),
+            for (final item in items) _ActionRow<T>(item: item),
           ],
         ),
       ),
@@ -523,33 +599,25 @@ class _MessageActionSheet extends StatelessWidget {
   }
 }
 
-class _MessageActionRow extends StatelessWidget {
-  const _MessageActionRow({
-    required this.icon,
-    required this.label,
-    required this.action,
-    this.destructive = false,
-  });
+class _ActionRow<T> extends StatelessWidget {
+  const _ActionRow({required this.item});
 
-  final IconData icon;
-  final String label;
-  final _MessageAction action;
-  final bool destructive;
+  final _ActionItem<T> item;
 
   @override
   Widget build(BuildContext context) {
-    final color = destructive ? AppColors.red400 : AppColors.darkOnSurface;
+    final color = item.destructive ? AppColors.red400 : AppColors.darkOnSurface;
 
     return InkWell(
-      onTap: () => Navigator.of(context).pop(action),
+      onTap: () => Navigator.of(context).pop(item.value),
       child: Container(
         height: 52,
         padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s20),
         child: Row(
           spacing: AppSpacing.s14,
           children: [
-            Icon(icon, size: 20, color: color),
-            Text(label, style: AppFont.labelS.copyWith(color: color)),
+            Icon(item.icon, size: 20, color: color),
+            Text(item.label, style: AppFont.labelS.copyWith(color: color)),
           ],
         ),
       ),
@@ -627,9 +695,11 @@ class _EditMessageSheetState extends State<_EditMessageSheet> {
   }
 }
 
-/// 입력창. 보내면 비운다.
+/// 입력창. 고른 파일은 위에 모아 두었다가 글과 함께 한 메시지로 보낸다. 보내면 비운다.
 class _MessageComposer extends StatefulWidget {
-  const _MessageComposer();
+  const _MessageComposer({required this.pickFiles});
+
+  final UploadFilesPicker pickFiles;
 
   @override
   State<_MessageComposer> createState() => _MessageComposerState();
@@ -638,26 +708,166 @@ class _MessageComposer extends StatefulWidget {
 class _MessageComposerState extends State<_MessageComposer> {
   final _controller = TextEditingController();
 
+  /// 보낼 때 같이 보낼 파일. 아직 올리지 않았다.
+  final _files = <UploadFile>[];
+
   @override
   void dispose() {
     _controller.dispose();
     super.dispose();
   }
 
-  void _send() {
+  /// 보내자마자 입력창을 비운다. 보내기 전에 멈추면(사유는 Bloc 이 알린다) 글과 파일을
+  /// 되돌려 다시 보낼 수 있게 한다.
+  Future<void> _send() async {
     final text = _controller.text;
-    if (text.trim().isEmpty) return;
-    context.read<ChannelMessageBloc>().add(ChannelMessageEvent.sent(text));
+    final files = List.of(_files);
+    if (text.trim().isEmpty && files.isEmpty) return;
+    final accepted = Completer<bool>();
+    context.read<ChannelMessageBloc>().add(
+      ChannelMessageEvent.sent(text, files: files, accepted: accepted),
+    );
     _controller.clear();
+    setState(_files.clear);
+
+    if (await accepted.future || !mounted) return;
+    // 기다리는 사이 새로 쓴 글은 덮어쓰지 않는다.
+    if (_controller.text.isEmpty) _controller.text = text;
+    final room = ChannelMessageBloc.maxAttachments - _files.length;
+    setState(() => _files.insertAll(0, files.take(room)));
+  }
+
+  /// 사진이나 파일을 골라 입력창 위에 모은다. 보내기를 눌러야 보낸다.
+  Future<void> _attach() async {
+    final source = await _ActionSheet.show(context, const [
+      _ActionItem(
+        icon: Icons.image_outlined,
+        label: '사진',
+        value: _AttachSource.photo,
+      ),
+      _ActionItem(
+        icon: Icons.insert_drive_file_outlined,
+        label: '파일',
+        value: _AttachSource.file,
+      ),
+    ]);
+    if (source == null) return;
+
+    final List<UploadFile> files;
+    try {
+      files = await widget.pickFiles(images: source == _AttachSource.photo);
+    } catch (e, s) {
+      Logger.e('보낼 파일 선택 실패', tag: 'Chat', error: e, stackTrace: s);
+      if (mounted) ChannelView._notify(context, '고른 파일을 읽지 못했어요.');
+      return;
+    }
+    if (!mounted || files.isEmpty) return;
+
+    // 한 메시지에 붙일 수 있는 만큼만 담는다. 넘치면 보낼 때가 아니라 지금 알린다.
+    const max = ChannelMessageBloc.maxAttachments;
+    final room = max - _files.length;
+    setState(() => _files.addAll(files.take(room)));
+    if (files.length > room) {
+      ChannelView._notify(context, '파일은 한 번에 $max개까지 보낼 수 있어요.');
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return CoworkMessageComposer(
-      hintText: '메시지를 입력하세요',
-      controller: _controller,
-      onSubmitted: (_) => _send(),
-      onSend: _send,
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      spacing: AppSpacing.s8,
+      children: [
+        if (_files.isNotEmpty)
+          _PickedFiles(
+            files: _files,
+            onRemove: (index) => setState(() => _files.removeAt(index)),
+          ),
+        CoworkMessageComposer(
+          hintText: '메시지를 입력하세요',
+          controller: _controller,
+          onSubmitted: (_) => _send(),
+          onSend: _send,
+          onAttach: _attach,
+        ),
+      ],
+    );
+  }
+}
+
+/// 입력창 위에 보이는, 보낼 때 같이 보낼 파일들. 가로로 넘긴다.
+class _PickedFiles extends StatelessWidget {
+  const _PickedFiles({required this.files, required this.onRemove});
+
+  final List<UploadFile> files;
+
+  /// 그 파일을 뺀다. 몇 번째 파일인지 넘긴다.
+  final ValueChanged<int> onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 44,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: files.length,
+        separatorBuilder: (_, _) => const SizedBox(width: AppSpacing.s8),
+        itemBuilder: (context, index) => _PickedFileChip(
+          file: files[index],
+          onRemove: () => onRemove(index),
+        ),
+      ),
+    );
+  }
+}
+
+class _PickedFileChip extends StatelessWidget {
+  const _PickedFileChip({required this.file, required this.onRemove});
+
+  final UploadFile file;
+  final VoidCallback onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final isImage = ChatFileRepository.contentTypeOf(
+      file.name,
+    ).startsWith('image/');
+
+    return Container(
+      padding: const EdgeInsets.only(left: AppSpacing.s12),
+      decoration: BoxDecoration(
+        color: colors.surface,
+        border: Border.all(color: colors.outlineVariant),
+        borderRadius: BorderRadius.circular(AppRadius.r14),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        spacing: AppSpacing.s8,
+        children: [
+          Icon(
+            isImage ? Icons.image_outlined : Icons.insert_drive_file_outlined,
+            size: 18,
+            color: colors.onSurfaceVariant,
+          ),
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 160),
+            child: Text(
+              file.name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AppFont.labelS.copyWith(color: colors.onSurface),
+            ),
+          ),
+          IconButton(
+            onPressed: onRemove,
+            tooltip: '${file.name} 빼기',
+            visualDensity: VisualDensity.compact,
+            icon: Icon(Icons.close, size: 16, color: colors.onSurfaceVariant),
+          ),
+        ],
+      ),
     );
   }
 }

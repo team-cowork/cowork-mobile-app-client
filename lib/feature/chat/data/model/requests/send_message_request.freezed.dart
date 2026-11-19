@@ -14,7 +14,8 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$SendMessageRequest {
 
- String get content; String get clientMessageId; String? get parentMessageId;
+ String get content; String get clientMessageId; String? get parentMessageId;/// `TEXT`(생략 시) 또는 `FILE`.
+ String? get type; List<MessageAttachmentRequest>? get attachments;
 /// Create a copy of SendMessageRequest
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -27,16 +28,16 @@ $SendMessageRequestCopyWith<SendMessageRequest> get copyWith => _$SendMessageReq
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SendMessageRequest&&(identical(other.content, content) || other.content == content)&&(identical(other.clientMessageId, clientMessageId) || other.clientMessageId == clientMessageId)&&(identical(other.parentMessageId, parentMessageId) || other.parentMessageId == parentMessageId));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is SendMessageRequest&&(identical(other.content, content) || other.content == content)&&(identical(other.clientMessageId, clientMessageId) || other.clientMessageId == clientMessageId)&&(identical(other.parentMessageId, parentMessageId) || other.parentMessageId == parentMessageId)&&(identical(other.type, type) || other.type == type)&&const DeepCollectionEquality().equals(other.attachments, attachments));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,content,clientMessageId,parentMessageId);
+int get hashCode => Object.hash(runtimeType,content,clientMessageId,parentMessageId,type,const DeepCollectionEquality().hash(attachments));
 
 @override
 String toString() {
-  return 'SendMessageRequest(content: $content, clientMessageId: $clientMessageId, parentMessageId: $parentMessageId)';
+  return 'SendMessageRequest(content: $content, clientMessageId: $clientMessageId, parentMessageId: $parentMessageId, type: $type, attachments: $attachments)';
 }
 
 
@@ -47,7 +48,7 @@ abstract mixin class $SendMessageRequestCopyWith<$Res>  {
   factory $SendMessageRequestCopyWith(SendMessageRequest value, $Res Function(SendMessageRequest) _then) = _$SendMessageRequestCopyWithImpl;
 @useResult
 $Res call({
- String content, String clientMessageId, String? parentMessageId
+ String content, String clientMessageId, String? parentMessageId, String? type, List<MessageAttachmentRequest>? attachments
 });
 
 
@@ -64,12 +65,14 @@ class _$SendMessageRequestCopyWithImpl<$Res>
 
 /// Create a copy of SendMessageRequest
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? content = null,Object? clientMessageId = null,Object? parentMessageId = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? content = null,Object? clientMessageId = null,Object? parentMessageId = freezed,Object? type = freezed,Object? attachments = freezed,}) {
   return _then(_self.copyWith(
 content: null == content ? _self.content : content // ignore: cast_nullable_to_non_nullable
 as String,clientMessageId: null == clientMessageId ? _self.clientMessageId : clientMessageId // ignore: cast_nullable_to_non_nullable
 as String,parentMessageId: freezed == parentMessageId ? _self.parentMessageId : parentMessageId // ignore: cast_nullable_to_non_nullable
-as String?,
+as String?,type: freezed == type ? _self.type : type // ignore: cast_nullable_to_non_nullable
+as String?,attachments: freezed == attachments ? _self.attachments : attachments // ignore: cast_nullable_to_non_nullable
+as List<MessageAttachmentRequest>?,
   ));
 }
 
@@ -154,10 +157,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String content,  String clientMessageId,  String? parentMessageId)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String content,  String clientMessageId,  String? parentMessageId,  String? type,  List<MessageAttachmentRequest>? attachments)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _SendMessageRequest() when $default != null:
-return $default(_that.content,_that.clientMessageId,_that.parentMessageId);case _:
+return $default(_that.content,_that.clientMessageId,_that.parentMessageId,_that.type,_that.attachments);case _:
   return orElse();
 
 }
@@ -175,10 +178,10 @@ return $default(_that.content,_that.clientMessageId,_that.parentMessageId);case 
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String content,  String clientMessageId,  String? parentMessageId)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String content,  String clientMessageId,  String? parentMessageId,  String? type,  List<MessageAttachmentRequest>? attachments)  $default,) {final _that = this;
 switch (_that) {
 case _SendMessageRequest():
-return $default(_that.content,_that.clientMessageId,_that.parentMessageId);case _:
+return $default(_that.content,_that.clientMessageId,_that.parentMessageId,_that.type,_that.attachments);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -195,10 +198,10 @@ return $default(_that.content,_that.clientMessageId,_that.parentMessageId);case 
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String content,  String clientMessageId,  String? parentMessageId)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String content,  String clientMessageId,  String? parentMessageId,  String? type,  List<MessageAttachmentRequest>? attachments)?  $default,) {final _that = this;
 switch (_that) {
 case _SendMessageRequest() when $default != null:
-return $default(_that.content,_that.clientMessageId,_that.parentMessageId);case _:
+return $default(_that.content,_that.clientMessageId,_that.parentMessageId,_that.type,_that.attachments);case _:
   return null;
 
 }
@@ -208,14 +211,25 @@ return $default(_that.content,_that.clientMessageId,_that.parentMessageId);case 
 
 /// @nodoc
 
-@JsonSerializable(includeIfNull: false, createFactory: false)
+@JsonSerializable(includeIfNull: false, explicitToJson: true, createFactory: false)
 class _SendMessageRequest implements SendMessageRequest {
-  const _SendMessageRequest({required this.content, required this.clientMessageId, this.parentMessageId});
+  const _SendMessageRequest({required this.content, required this.clientMessageId, this.parentMessageId, this.type, final  List<MessageAttachmentRequest>? attachments}): _attachments = attachments;
   
 
 @override final  String content;
 @override final  String clientMessageId;
 @override final  String? parentMessageId;
+/// `TEXT`(생략 시) 또는 `FILE`.
+@override final  String? type;
+ final  List<MessageAttachmentRequest>? _attachments;
+@override List<MessageAttachmentRequest>? get attachments {
+  final value = _attachments;
+  if (value == null) return null;
+  if (_attachments is EqualUnmodifiableListView) return _attachments;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(value);
+}
+
 
 /// Create a copy of SendMessageRequest
 /// with the given fields replaced by the non-null parameter values.
@@ -230,16 +244,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _SendMessageRequest&&(identical(other.content, content) || other.content == content)&&(identical(other.clientMessageId, clientMessageId) || other.clientMessageId == clientMessageId)&&(identical(other.parentMessageId, parentMessageId) || other.parentMessageId == parentMessageId));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _SendMessageRequest&&(identical(other.content, content) || other.content == content)&&(identical(other.clientMessageId, clientMessageId) || other.clientMessageId == clientMessageId)&&(identical(other.parentMessageId, parentMessageId) || other.parentMessageId == parentMessageId)&&(identical(other.type, type) || other.type == type)&&const DeepCollectionEquality().equals(other._attachments, _attachments));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,content,clientMessageId,parentMessageId);
+int get hashCode => Object.hash(runtimeType,content,clientMessageId,parentMessageId,type,const DeepCollectionEquality().hash(_attachments));
 
 @override
 String toString() {
-  return 'SendMessageRequest(content: $content, clientMessageId: $clientMessageId, parentMessageId: $parentMessageId)';
+  return 'SendMessageRequest(content: $content, clientMessageId: $clientMessageId, parentMessageId: $parentMessageId, type: $type, attachments: $attachments)';
 }
 
 
@@ -250,7 +264,7 @@ abstract mixin class _$SendMessageRequestCopyWith<$Res> implements $SendMessageR
   factory _$SendMessageRequestCopyWith(_SendMessageRequest value, $Res Function(_SendMessageRequest) _then) = __$SendMessageRequestCopyWithImpl;
 @override @useResult
 $Res call({
- String content, String clientMessageId, String? parentMessageId
+ String content, String clientMessageId, String? parentMessageId, String? type, List<MessageAttachmentRequest>? attachments
 });
 
 
@@ -267,12 +281,14 @@ class __$SendMessageRequestCopyWithImpl<$Res>
 
 /// Create a copy of SendMessageRequest
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? content = null,Object? clientMessageId = null,Object? parentMessageId = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? content = null,Object? clientMessageId = null,Object? parentMessageId = freezed,Object? type = freezed,Object? attachments = freezed,}) {
   return _then(_SendMessageRequest(
 content: null == content ? _self.content : content // ignore: cast_nullable_to_non_nullable
 as String,clientMessageId: null == clientMessageId ? _self.clientMessageId : clientMessageId // ignore: cast_nullable_to_non_nullable
 as String,parentMessageId: freezed == parentMessageId ? _self.parentMessageId : parentMessageId // ignore: cast_nullable_to_non_nullable
-as String?,
+as String?,type: freezed == type ? _self.type : type // ignore: cast_nullable_to_non_nullable
+as String?,attachments: freezed == attachments ? _self._attachments : attachments // ignore: cast_nullable_to_non_nullable
+as List<MessageAttachmentRequest>?,
   ));
 }
 

@@ -44,6 +44,7 @@ void main() {
           RepositoryProvider.value(
             value: MessageRepository.withDio(chat: messageDio(gateway, 'chat')),
           ),
+          RepositoryProvider.value(value: chatFileRepositoryOf(gateway)),
           RepositoryProvider.value(
             value: ProfileRepository.withDio(messageDio(gateway, 'user')),
           ),
