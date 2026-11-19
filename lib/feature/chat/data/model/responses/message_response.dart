@@ -1,6 +1,7 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
 
 import 'attachment_response.dart';
+import 'webhook_author_response.dart';
 
 part 'message_response.freezed.dart';
 part 'message_response.g.dart';
@@ -18,7 +19,12 @@ abstract class MessageResponse with _$MessageResponse {
     /// MongoDB ObjectId.
     @JsonKey(name: '_id') required String id,
     required int channelId,
-    required int authorId,
+
+    /// 보낸 사람 id. 웹훅 메시지는 사람이 보낸 게 아니라 null 이다.
+    int? authorId,
+
+    /// 웹훅 메시지의 작성자. 사람이 보낸 메시지는 null.
+    WebhookAuthorResponse? webhook,
     @Default('') String content,
 
     /// `TEXT` / `FILE` / `SYSTEM`. 시스템 메시지는 사람이 쓴 게 아니다.
@@ -39,4 +45,7 @@ abstract class MessageResponse with _$MessageResponse {
       _$MessageResponseFromJson(json);
 
   bool get isSystem => type == 'SYSTEM';
+
+  /// 이름을 사용자 정보에서 찾아야 하는 작성자 id. 시스템·웹훅 메시지는 null 이다.
+  int? get personId => isSystem || webhook != null ? null : authorId;
 }

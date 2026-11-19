@@ -511,6 +511,26 @@ void main() {
     expect(gateway.calls, isNot(contains(startsWith('GET /user/users/batch'))));
   });
 
+  test('작성자 id 없이 온 웹훅 메시지는 웹훅 이름으로 보이고 사람 이름을 찾지 않는다', () async {
+    final gateway = FakeMessageGateway();
+    final socket = FakeChatSocket();
+    final bloc = await _loaded(gateway, socket);
+    addTearDown(bloc.close);
+
+    socket.push('message', {
+      ...messageJson('m3', 0, 'main 에 커밋 3개를 푸시했어요'),
+      'authorId': null,
+      'webhook': {'id': 2, 'name': 'github-webhook', 'avatarUrl': null},
+    });
+    await pumpEventQueue();
+
+    final message = _data(bloc).messages.last;
+    expect(message.text, 'main 에 커밋 3개를 푸시했어요');
+    expect(message.author.name, 'github-webhook');
+    expect(message.editable, isFalse);
+    expect(gateway.calls, isNot(contains(startsWith('GET /user/users/batch'))));
+  });
+
   test('다시 읽는 사이 소켓으로 온 더 최근 메시지는 잃지 않는다', () async {
     final gateway = FakeMessageGateway();
     final socket = FakeChatSocket();

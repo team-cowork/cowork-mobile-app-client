@@ -12,7 +12,13 @@ _MessageResponse _$MessageResponseFromJson(
   final val = _MessageResponse(
     id: $checkedConvert('_id', (v) => v as String),
     channelId: $checkedConvert('channelId', (v) => (v as num).toInt()),
-    authorId: $checkedConvert('authorId', (v) => (v as num).toInt()),
+    authorId: $checkedConvert('authorId', (v) => (v as num?)?.toInt()),
+    webhook: $checkedConvert(
+      'webhook',
+      (v) => v == null
+          ? null
+          : WebhookAuthorResponse.fromJson(v as Map<String, dynamic>),
+    ),
     content: $checkedConvert('content', (v) => v as String? ?? ''),
     type: $checkedConvert('type', (v) => v as String? ?? 'TEXT'),
     attachments: $checkedConvert(
@@ -37,6 +43,7 @@ Map<String, dynamic> _$MessageResponseToJson(_MessageResponse instance) =>
       '_id': instance.id,
       'channelId': instance.channelId,
       'authorId': instance.authorId,
+      'webhook': instance.webhook,
       'content': instance.content,
       'type': instance.type,
       'attachments': instance.attachments,

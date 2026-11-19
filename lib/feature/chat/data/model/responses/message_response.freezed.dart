@@ -16,7 +16,9 @@ T _$identity<T>(T value) => value;
 mixin _$MessageResponse {
 
 /// MongoDB ObjectId.
-@JsonKey(name: '_id') String get id; int get channelId; int get authorId; String get content;/// `TEXT` / `FILE` / `SYSTEM`. 시스템 메시지는 사람이 쓴 게 아니다.
+@JsonKey(name: '_id') String get id; int get channelId;/// 보낸 사람 id. 웹훅 메시지는 사람이 보낸 게 아니라 null 이다.
+ int? get authorId;/// 웹훅 메시지의 작성자. 사람이 보낸 메시지는 null.
+ WebhookAuthorResponse? get webhook; String get content;/// `TEXT` / `FILE` / `SYSTEM`. 시스템 메시지는 사람이 쓴 게 아니다.
  String get type;/// 붙은 파일. `FILE` 메시지는 [content] 가 비어 있을 수 있다.
  List<AttachmentResponse> get attachments; DateTime get createdAt;/// 스레드 답글이면 부모 메시지 id. 최상위 메시지는 null.
  String? get parentMessageId;/// 보낸 쪽이 붙인 멱등성 키. 내가 보낸 메시지를 맞춰 볼 때 쓴다.
@@ -33,16 +35,16 @@ $MessageResponseCopyWith<MessageResponse> get copyWith => _$MessageResponseCopyW
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is MessageResponse&&(identical(other.id, id) || other.id == id)&&(identical(other.channelId, channelId) || other.channelId == channelId)&&(identical(other.authorId, authorId) || other.authorId == authorId)&&(identical(other.content, content) || other.content == content)&&(identical(other.type, type) || other.type == type)&&const DeepCollectionEquality().equals(other.attachments, attachments)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.parentMessageId, parentMessageId) || other.parentMessageId == parentMessageId)&&(identical(other.clientMessageId, clientMessageId) || other.clientMessageId == clientMessageId));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is MessageResponse&&(identical(other.id, id) || other.id == id)&&(identical(other.channelId, channelId) || other.channelId == channelId)&&(identical(other.authorId, authorId) || other.authorId == authorId)&&(identical(other.webhook, webhook) || other.webhook == webhook)&&(identical(other.content, content) || other.content == content)&&(identical(other.type, type) || other.type == type)&&const DeepCollectionEquality().equals(other.attachments, attachments)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.parentMessageId, parentMessageId) || other.parentMessageId == parentMessageId)&&(identical(other.clientMessageId, clientMessageId) || other.clientMessageId == clientMessageId));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,channelId,authorId,content,type,const DeepCollectionEquality().hash(attachments),createdAt,parentMessageId,clientMessageId);
+int get hashCode => Object.hash(runtimeType,id,channelId,authorId,webhook,content,type,const DeepCollectionEquality().hash(attachments),createdAt,parentMessageId,clientMessageId);
 
 @override
 String toString() {
-  return 'MessageResponse(id: $id, channelId: $channelId, authorId: $authorId, content: $content, type: $type, attachments: $attachments, createdAt: $createdAt, parentMessageId: $parentMessageId, clientMessageId: $clientMessageId)';
+  return 'MessageResponse(id: $id, channelId: $channelId, authorId: $authorId, webhook: $webhook, content: $content, type: $type, attachments: $attachments, createdAt: $createdAt, parentMessageId: $parentMessageId, clientMessageId: $clientMessageId)';
 }
 
 
@@ -53,11 +55,11 @@ abstract mixin class $MessageResponseCopyWith<$Res>  {
   factory $MessageResponseCopyWith(MessageResponse value, $Res Function(MessageResponse) _then) = _$MessageResponseCopyWithImpl;
 @useResult
 $Res call({
-@JsonKey(name: '_id') String id, int channelId, int authorId, String content, String type, List<AttachmentResponse> attachments, DateTime createdAt, String? parentMessageId, String? clientMessageId
+@JsonKey(name: '_id') String id, int channelId, int? authorId, WebhookAuthorResponse? webhook, String content, String type, List<AttachmentResponse> attachments, DateTime createdAt, String? parentMessageId, String? clientMessageId
 });
 
 
-
+$WebhookAuthorResponseCopyWith<$Res>? get webhook;
 
 }
 /// @nodoc
@@ -70,12 +72,13 @@ class _$MessageResponseCopyWithImpl<$Res>
 
 /// Create a copy of MessageResponse
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? channelId = null,Object? authorId = null,Object? content = null,Object? type = null,Object? attachments = null,Object? createdAt = null,Object? parentMessageId = freezed,Object? clientMessageId = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? channelId = null,Object? authorId = freezed,Object? webhook = freezed,Object? content = null,Object? type = null,Object? attachments = null,Object? createdAt = null,Object? parentMessageId = freezed,Object? clientMessageId = freezed,}) {
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,channelId: null == channelId ? _self.channelId : channelId // ignore: cast_nullable_to_non_nullable
-as int,authorId: null == authorId ? _self.authorId : authorId // ignore: cast_nullable_to_non_nullable
-as int,content: null == content ? _self.content : content // ignore: cast_nullable_to_non_nullable
+as int,authorId: freezed == authorId ? _self.authorId : authorId // ignore: cast_nullable_to_non_nullable
+as int?,webhook: freezed == webhook ? _self.webhook : webhook // ignore: cast_nullable_to_non_nullable
+as WebhookAuthorResponse?,content: null == content ? _self.content : content // ignore: cast_nullable_to_non_nullable
 as String,type: null == type ? _self.type : type // ignore: cast_nullable_to_non_nullable
 as String,attachments: null == attachments ? _self.attachments : attachments // ignore: cast_nullable_to_non_nullable
 as List<AttachmentResponse>,createdAt: null == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
@@ -84,7 +87,19 @@ as String?,clientMessageId: freezed == clientMessageId ? _self.clientMessageId :
 as String?,
   ));
 }
+/// Create a copy of MessageResponse
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$WebhookAuthorResponseCopyWith<$Res>? get webhook {
+    if (_self.webhook == null) {
+    return null;
+  }
 
+  return $WebhookAuthorResponseCopyWith<$Res>(_self.webhook!, (value) {
+    return _then(_self.copyWith(webhook: value));
+  });
+}
 }
 
 
@@ -166,10 +181,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: '_id')  String id,  int channelId,  int authorId,  String content,  String type,  List<AttachmentResponse> attachments,  DateTime createdAt,  String? parentMessageId,  String? clientMessageId)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: '_id')  String id,  int channelId,  int? authorId,  WebhookAuthorResponse? webhook,  String content,  String type,  List<AttachmentResponse> attachments,  DateTime createdAt,  String? parentMessageId,  String? clientMessageId)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _MessageResponse() when $default != null:
-return $default(_that.id,_that.channelId,_that.authorId,_that.content,_that.type,_that.attachments,_that.createdAt,_that.parentMessageId,_that.clientMessageId);case _:
+return $default(_that.id,_that.channelId,_that.authorId,_that.webhook,_that.content,_that.type,_that.attachments,_that.createdAt,_that.parentMessageId,_that.clientMessageId);case _:
   return orElse();
 
 }
@@ -187,10 +202,10 @@ return $default(_that.id,_that.channelId,_that.authorId,_that.content,_that.type
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: '_id')  String id,  int channelId,  int authorId,  String content,  String type,  List<AttachmentResponse> attachments,  DateTime createdAt,  String? parentMessageId,  String? clientMessageId)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: '_id')  String id,  int channelId,  int? authorId,  WebhookAuthorResponse? webhook,  String content,  String type,  List<AttachmentResponse> attachments,  DateTime createdAt,  String? parentMessageId,  String? clientMessageId)  $default,) {final _that = this;
 switch (_that) {
 case _MessageResponse():
-return $default(_that.id,_that.channelId,_that.authorId,_that.content,_that.type,_that.attachments,_that.createdAt,_that.parentMessageId,_that.clientMessageId);case _:
+return $default(_that.id,_that.channelId,_that.authorId,_that.webhook,_that.content,_that.type,_that.attachments,_that.createdAt,_that.parentMessageId,_that.clientMessageId);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -207,10 +222,10 @@ return $default(_that.id,_that.channelId,_that.authorId,_that.content,_that.type
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: '_id')  String id,  int channelId,  int authorId,  String content,  String type,  List<AttachmentResponse> attachments,  DateTime createdAt,  String? parentMessageId,  String? clientMessageId)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: '_id')  String id,  int channelId,  int? authorId,  WebhookAuthorResponse? webhook,  String content,  String type,  List<AttachmentResponse> attachments,  DateTime createdAt,  String? parentMessageId,  String? clientMessageId)?  $default,) {final _that = this;
 switch (_that) {
 case _MessageResponse() when $default != null:
-return $default(_that.id,_that.channelId,_that.authorId,_that.content,_that.type,_that.attachments,_that.createdAt,_that.parentMessageId,_that.clientMessageId);case _:
+return $default(_that.id,_that.channelId,_that.authorId,_that.webhook,_that.content,_that.type,_that.attachments,_that.createdAt,_that.parentMessageId,_that.clientMessageId);case _:
   return null;
 
 }
@@ -222,13 +237,16 @@ return $default(_that.id,_that.channelId,_that.authorId,_that.content,_that.type
 
 @JsonSerializable(checked: true)
 class _MessageResponse extends MessageResponse {
-  const _MessageResponse({@JsonKey(name: '_id') required this.id, required this.channelId, required this.authorId, this.content = '', this.type = 'TEXT', final  List<AttachmentResponse> attachments = const [], required this.createdAt, this.parentMessageId, this.clientMessageId}): _attachments = attachments,super._();
+  const _MessageResponse({@JsonKey(name: '_id') required this.id, required this.channelId, this.authorId, this.webhook, this.content = '', this.type = 'TEXT', final  List<AttachmentResponse> attachments = const [], required this.createdAt, this.parentMessageId, this.clientMessageId}): _attachments = attachments,super._();
   factory _MessageResponse.fromJson(Map<String, dynamic> json) => _$MessageResponseFromJson(json);
 
 /// MongoDB ObjectId.
 @override@JsonKey(name: '_id') final  String id;
 @override final  int channelId;
-@override final  int authorId;
+/// 보낸 사람 id. 웹훅 메시지는 사람이 보낸 게 아니라 null 이다.
+@override final  int? authorId;
+/// 웹훅 메시지의 작성자. 사람이 보낸 메시지는 null.
+@override final  WebhookAuthorResponse? webhook;
 @override@JsonKey() final  String content;
 /// `TEXT` / `FILE` / `SYSTEM`. 시스템 메시지는 사람이 쓴 게 아니다.
 @override@JsonKey() final  String type;
@@ -260,16 +278,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _MessageResponse&&(identical(other.id, id) || other.id == id)&&(identical(other.channelId, channelId) || other.channelId == channelId)&&(identical(other.authorId, authorId) || other.authorId == authorId)&&(identical(other.content, content) || other.content == content)&&(identical(other.type, type) || other.type == type)&&const DeepCollectionEquality().equals(other._attachments, _attachments)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.parentMessageId, parentMessageId) || other.parentMessageId == parentMessageId)&&(identical(other.clientMessageId, clientMessageId) || other.clientMessageId == clientMessageId));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _MessageResponse&&(identical(other.id, id) || other.id == id)&&(identical(other.channelId, channelId) || other.channelId == channelId)&&(identical(other.authorId, authorId) || other.authorId == authorId)&&(identical(other.webhook, webhook) || other.webhook == webhook)&&(identical(other.content, content) || other.content == content)&&(identical(other.type, type) || other.type == type)&&const DeepCollectionEquality().equals(other._attachments, _attachments)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.parentMessageId, parentMessageId) || other.parentMessageId == parentMessageId)&&(identical(other.clientMessageId, clientMessageId) || other.clientMessageId == clientMessageId));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,channelId,authorId,content,type,const DeepCollectionEquality().hash(_attachments),createdAt,parentMessageId,clientMessageId);
+int get hashCode => Object.hash(runtimeType,id,channelId,authorId,webhook,content,type,const DeepCollectionEquality().hash(_attachments),createdAt,parentMessageId,clientMessageId);
 
 @override
 String toString() {
-  return 'MessageResponse(id: $id, channelId: $channelId, authorId: $authorId, content: $content, type: $type, attachments: $attachments, createdAt: $createdAt, parentMessageId: $parentMessageId, clientMessageId: $clientMessageId)';
+  return 'MessageResponse(id: $id, channelId: $channelId, authorId: $authorId, webhook: $webhook, content: $content, type: $type, attachments: $attachments, createdAt: $createdAt, parentMessageId: $parentMessageId, clientMessageId: $clientMessageId)';
 }
 
 
@@ -280,11 +298,11 @@ abstract mixin class _$MessageResponseCopyWith<$Res> implements $MessageResponse
   factory _$MessageResponseCopyWith(_MessageResponse value, $Res Function(_MessageResponse) _then) = __$MessageResponseCopyWithImpl;
 @override @useResult
 $Res call({
-@JsonKey(name: '_id') String id, int channelId, int authorId, String content, String type, List<AttachmentResponse> attachments, DateTime createdAt, String? parentMessageId, String? clientMessageId
+@JsonKey(name: '_id') String id, int channelId, int? authorId, WebhookAuthorResponse? webhook, String content, String type, List<AttachmentResponse> attachments, DateTime createdAt, String? parentMessageId, String? clientMessageId
 });
 
 
-
+@override $WebhookAuthorResponseCopyWith<$Res>? get webhook;
 
 }
 /// @nodoc
@@ -297,12 +315,13 @@ class __$MessageResponseCopyWithImpl<$Res>
 
 /// Create a copy of MessageResponse
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? channelId = null,Object? authorId = null,Object? content = null,Object? type = null,Object? attachments = null,Object? createdAt = null,Object? parentMessageId = freezed,Object? clientMessageId = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? channelId = null,Object? authorId = freezed,Object? webhook = freezed,Object? content = null,Object? type = null,Object? attachments = null,Object? createdAt = null,Object? parentMessageId = freezed,Object? clientMessageId = freezed,}) {
   return _then(_MessageResponse(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,channelId: null == channelId ? _self.channelId : channelId // ignore: cast_nullable_to_non_nullable
-as int,authorId: null == authorId ? _self.authorId : authorId // ignore: cast_nullable_to_non_nullable
-as int,content: null == content ? _self.content : content // ignore: cast_nullable_to_non_nullable
+as int,authorId: freezed == authorId ? _self.authorId : authorId // ignore: cast_nullable_to_non_nullable
+as int?,webhook: freezed == webhook ? _self.webhook : webhook // ignore: cast_nullable_to_non_nullable
+as WebhookAuthorResponse?,content: null == content ? _self.content : content // ignore: cast_nullable_to_non_nullable
 as String,type: null == type ? _self.type : type // ignore: cast_nullable_to_non_nullable
 as String,attachments: null == attachments ? _self._attachments : attachments // ignore: cast_nullable_to_non_nullable
 as List<AttachmentResponse>,createdAt: null == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
@@ -312,7 +331,19 @@ as String?,
   ));
 }
 
+/// Create a copy of MessageResponse
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$WebhookAuthorResponseCopyWith<$Res>? get webhook {
+    if (_self.webhook == null) {
+    return null;
+  }
 
+  return $WebhookAuthorResponseCopyWith<$Res>(_self.webhook!, (value) {
+    return _then(_self.copyWith(webhook: value));
+  });
+}
 }
 
 // dart format on

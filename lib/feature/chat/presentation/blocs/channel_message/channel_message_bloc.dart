@@ -594,8 +594,8 @@ class ChannelMessageBloc
             ..addAll(unsaved);
         }
         _confirmTimers.remove(message.clientMessageId)?.cancel();
-        if (!message.isSystem && !_authors.containsKey(message.authorId)) {
-          _resolveAuthorsLater([message.authorId]);
+        if (message.personId case final id? when !_authors.containsKey(id)) {
+          _resolveAuthorsLater([id]);
         }
         return true;
       case MessageEdited(:final messageId, :final content):
@@ -696,8 +696,7 @@ class ChannelMessageBloc
   Future<void> _fetchAuthors(Iterable<MessageResponse> messages) async {
     final unknown = {
       for (final message in messages)
-        if (!message.isSystem && !_authors.containsKey(message.authorId))
-          message.authorId,
+        if (message.personId case final id? when !_authors.containsKey(id)) id,
     };
     if (unknown.isEmpty) return;
     for (final user in await _profileRepository.fetchDisplayNames(unknown)) {
@@ -810,12 +809,22 @@ class ChannelMessageBloc
     );
   }
 
-  ProfileEntity _authorOf(MessageResponse message) => message.isSystem
-      ? systemChatAuthor(message.authorId)
-      : _authors[message.authorId] ?? unknownChatAuthor(message.authorId);
+  ProfileEntity _authorOf(MessageResponse message) => switch (message) {
+    MessageResponse(:final webhook?) => webhookChatAuthor(
+      webhook.id,
+      webhook.name,
+      avatarUrl: webhook.avatarUrl,
+    ),
+    MessageResponse(isSystem: true) => systemChatAuthor(message.authorId ?? 0),
+    MessageResponse(:final personId?) =>
+      _authors[personId] ?? unknownChatAuthor(personId),
+    _ => unknownChatAuthor(0),
+  };
 
   bool _isEditable(MessageResponse message) =>
-      !message.isSystem && _isSaved(message) && message.authorId == _myId;
+      message.personId != null &&
+      _isSaved(message) &&
+      message.personId == _myId;
 
   bool _isPending(String clientMessageId) =>
       _messages.any((message) => message.id == clientMessageId);
