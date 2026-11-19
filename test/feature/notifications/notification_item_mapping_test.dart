@@ -26,6 +26,17 @@ void main() {
     expect(notificationTimeOf(DateTime(2026, 10, 2, 9), now: now), '10월 2일');
   });
 
+  test('딱 1분, 딱 1시간이 지나면 다음 단위로 적는다', () {
+    expect(
+      notificationTimeOf(now.subtract(const Duration(minutes: 1)), now: now),
+      '1분 전',
+    );
+    expect(
+      notificationTimeOf(now.subtract(const Duration(hours: 1)), now: now),
+      '1시간 전',
+    );
+  });
+
   test('채팅 알림은 제목 첫 글자 아바타와 이동할 채널을 싣는다', () {
     final item = notificationItemOf(
       received(

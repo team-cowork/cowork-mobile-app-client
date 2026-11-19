@@ -144,6 +144,34 @@ void main() {
           .length;
       expect(listCalls, greaterThan(2));
     });
+
+    test('만든 이슈가 끝내 안 보이면 정한 횟수만큼만 다시 읽고 그만둔다', () async {
+      final server = FakeIssueServer();
+      final bloc = await _loaded(server);
+      addTearDown(bloc.close);
+      server.calls.clear();
+
+      bloc.add(const IssuesEvent.created(title: '반영되지 않는 이슈'));
+      // 간격(10ms) × 횟수보다 넉넉히 기다린다.
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+
+      final listCalls = server.calls
+          .where((c) => c == 'GET /project/projects/1/github-repos/7/issues')
+          .length;
+      expect(listCalls, IssuesBloc.maxRefreshAttempts);
+    });
+
+    test('기다리는 이슈가 없으면 새로고침은 한 번만 읽는다', () async {
+      final server = FakeIssueServer();
+      final bloc = await _loaded(server);
+      addTearDown(bloc.close);
+      server.calls.clear();
+
+      bloc.add(const IssuesEvent.refreshed());
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+
+      expect(server.calls, ['GET /project/projects/1/github-repos/7/issues']);
+    });
   });
 
   group('댓글 Cubit', () {

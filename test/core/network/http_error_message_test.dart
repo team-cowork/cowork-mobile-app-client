@@ -29,6 +29,11 @@ void main() {
     expect(messageOfBody('<html>502</html>'), isNull);
   });
 
+  test('오류 본문의 메시지가 비어 있으면 호출부 기본 문구를 쓰게 null 을 준다', () {
+    expect(messageOfBody('{"message":""}'), isNull);
+    expect(messageOfBody('{"error_description":""}'), isNull);
+  });
+
   group('failureMessageOf', () {
     final requestOptions = RequestOptions(path: '/x');
 
