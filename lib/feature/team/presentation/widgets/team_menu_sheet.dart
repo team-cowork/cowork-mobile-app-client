@@ -5,6 +5,8 @@ class TeamMenuSheet extends StatelessWidget {
   const TeamMenuSheet({
     required this.teamName,
     this.canInviteMembers = true,
+    this.canCreateChannels = true,
+    this.canCreateProjects = true,
     this.onOpenSettings,
     this.onInviteMembers,
     this.onCreateChannel,
@@ -17,6 +19,12 @@ class TeamMenuSheet extends StatelessWidget {
 
   /// '멤버 초대' 를 보일지. 초대 권한(`manage_invites`)이 없으면 숨긴다.
   final bool canInviteMembers;
+
+  /// '채널 만들기' 를 보일지. 채널 생성 권한(`manage_channels`)이 없으면 숨긴다.
+  final bool canCreateChannels;
+
+  /// '카테고리 만들기' 를 보일지. 프로젝트 생성 권한(`manage_projects`)이 없으면 숨긴다.
+  final bool canCreateProjects;
 
   /// '팀 설정' 을 눌렀을 때. 시트가 닫힌 뒤에 불린다.
   final VoidCallback? onOpenSettings;
@@ -41,6 +49,8 @@ class TeamMenuSheet extends StatelessWidget {
     BuildContext context, {
     required String teamName,
     bool canInviteMembers = true,
+    bool canCreateChannels = true,
+    bool canCreateProjects = true,
     VoidCallback? onOpenSettings,
     VoidCallback? onInviteMembers,
     VoidCallback? onCreateChannel,
@@ -56,6 +66,8 @@ class TeamMenuSheet extends StatelessWidget {
       builder: (_) => TeamMenuSheet(
         teamName: teamName,
         canInviteMembers: canInviteMembers,
+        canCreateChannels: canCreateChannels,
+        canCreateProjects: canCreateProjects,
         onOpenSettings: onOpenSettings,
         onInviteMembers: onInviteMembers,
         onCreateChannel: onCreateChannel,
@@ -116,12 +128,18 @@ class TeamMenuSheet extends StatelessWidget {
             _MenuRow(emoji: '⚙️', label: '팀 설정', onSelected: onOpenSettings),
             if (canInviteMembers)
               _MenuRow(emoji: '➕', label: '멤버 초대', onSelected: onInviteMembers),
-            _MenuRow(emoji: '#', label: '채널 만들기', onSelected: onCreateChannel),
-            _MenuRow(
-              emoji: '📁',
-              label: '카테고리 만들기',
-              onSelected: onCreateProject,
-            ),
+            if (canCreateChannels)
+              _MenuRow(
+                emoji: '#',
+                label: '채널 만들기',
+                onSelected: onCreateChannel,
+              ),
+            if (canCreateProjects)
+              _MenuRow(
+                emoji: '📁',
+                label: '카테고리 만들기',
+                onSelected: onCreateProject,
+              ),
             // '알림 설정' 은 뺐다. 서버에 "이 팀에 대한 내 알림" API 가 없다(#150).
             if (onLeaveTeam case final onLeaveTeam?) ...[
               const Divider(

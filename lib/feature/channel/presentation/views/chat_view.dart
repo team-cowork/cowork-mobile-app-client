@@ -96,6 +96,8 @@ class ChatView extends StatelessWidget {
                   context,
                   teamName: data.workspaceName,
                   canInviteMembers: data.canInviteMembers,
+                  canCreateChannels: data.canCreateChannels,
+                  canCreateProjects: data.canCreateProjects,
                   onOpenSettings: () => _openTeamSettings(context, teamId),
                   onInviteMembers: () => context.push('/teams/$teamId/invite'),
                   onCreateChannel: () => _createChannel(context, teamId),
@@ -119,8 +121,14 @@ class ChatView extends StatelessWidget {
               Expanded(
                 child: _ChannelList(
                   channelGroups: data.channelGroups,
-                  onCreateChannelIn: (projectId) =>
-                      _createChannel(context, teamId, projectId: projectId),
+                  // 채널을 만들 권한이 없으면 그룹 `+` 를 두지 않는다.
+                  onCreateChannelIn: data.canCreateChannels
+                      ? (projectId) => _createChannel(
+                          context,
+                          teamId,
+                          projectId: projectId,
+                        )
+                      : null,
                 ),
               ),
             ],
@@ -423,15 +431,13 @@ class _WorkspaceShortcutButton extends StatelessWidget {
 }
 
 class _ChannelList extends StatelessWidget {
-  const _ChannelList({
-    required this.channelGroups,
-    required this.onCreateChannelIn,
-  });
+  const _ChannelList({required this.channelGroups, this.onCreateChannelIn});
 
   final List<ChannelGroup> channelGroups;
 
   /// 프로젝트 그룹 헤더의 `+` 를 눌렀을 때. 그 프로젝트 id 를 넘긴다.
-  final ValueChanged<int> onCreateChannelIn;
+  /// null 이면 `+` 를 두지 않는다.
+  final ValueChanged<int>? onCreateChannelIn;
 
   @override
   Widget build(BuildContext context) {
@@ -445,9 +451,9 @@ class _ChannelList extends StatelessWidget {
               _ChannelGroupHeader(
                 label: group.name,
                 // 프로젝트 밖 채널은 팀 메뉴의 `채널 만들기` 로 만든다.
-                onAdd: switch (group.projectId) {
-                  final projectId? => () => onCreateChannelIn(projectId),
-                  null => null,
+                onAdd: switch ((group.projectId, onCreateChannelIn)) {
+                  (final projectId?, final create?) => () => create(projectId),
+                  _ => null,
                 },
               ),
               for (final channel in group.channels)

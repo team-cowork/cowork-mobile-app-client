@@ -11,4 +11,10 @@ enum TeamPermission {
 
   /// 초대 코드 만들기·목록·무효화, 사람 바로 초대.
   manageInvites,
+
+  /// 채널 만들기.
+  manageChannels,
+
+  /// 프로젝트(채널 카테고리) 만들기.
+  manageProjects,
 }

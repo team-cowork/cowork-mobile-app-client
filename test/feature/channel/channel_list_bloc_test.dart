@@ -260,6 +260,29 @@ void main() {
       expect(_data(bloc).canInviteMembers, isTrue);
     });
 
+    test('멤버인 팀은 채널·프로젝트 생성 권한을 역할로 정한다', () async {
+      final noRole = await onMemberTeam(FakeChatServer());
+      addTearDown(noRole.close);
+      expect(_data(noRole).canCreateChannels, isFalse);
+      expect(_data(noRole).canCreateProjects, isFalse);
+
+      final withRole = await onMemberTeam(
+        FakeChatServer()
+          ..permissions[2] = {'manage_channels': true, 'manage_projects': true},
+      );
+      addTearDown(withRole.close);
+      expect(_data(withRole).canCreateChannels, isTrue);
+      expect(_data(withRole).canCreateProjects, isTrue);
+    });
+
+    test('소유자인 팀은 채널·프로젝트를 만들 수 있다', () async {
+      final bloc = await _loaded(FakeChatServer()..permissions.clear());
+      addTearDown(bloc.close);
+
+      expect(_data(bloc).canCreateChannels, isTrue);
+      expect(_data(bloc).canCreateProjects, isTrue);
+    });
+
     test('권한을 못 읽어도 홈은 보이고 멤버 초대는 숨기지 않는다', () async {
       final server = FakeChatServer()
         ..failPermissions = const ServerFailure(503);
@@ -268,6 +291,8 @@ void main() {
 
       expect(channelIds(bloc), [20]);
       expect(_data(bloc).canInviteMembers, isTrue);
+      expect(_data(bloc).canCreateChannels, isTrue);
+      expect(_data(bloc).canCreateProjects, isTrue);
     });
   });
 

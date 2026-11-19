@@ -464,6 +464,8 @@ class ChannelListBloc extends Bloc<ChannelListEvent, ChannelListState> {
     workspaceName: '',
     isTeamOwner: false,
     canInviteMembers: false,
+    canCreateChannels: false,
+    canCreateProjects: false,
     workspaceShortcuts: [],
     channelGroups: [],
   );
@@ -635,6 +637,10 @@ class ChannelListBloc extends Bloc<ChannelListEvent, ChannelListState> {
         // 막는 쪽(초대 화면의 403 안내)이 낫다.
         canInviteMembers:
             _permissions?.contains(TeamPermission.manageInvites) ?? true,
+        canCreateChannels:
+            _permissions?.contains(TeamPermission.manageChannels) ?? true,
+        canCreateProjects:
+            _permissions?.contains(TeamPermission.manageProjects) ?? true,
         workspaceShortcuts: [
           for (final other in _teams)
             WorkspaceShortcut(
