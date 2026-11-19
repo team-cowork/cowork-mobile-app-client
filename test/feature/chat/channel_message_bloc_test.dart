@@ -1259,6 +1259,43 @@ void main() {
       expect(fileCalls(gateway).where((c) => c == send), hasLength(1));
     });
 
+    test('대화에 올리면 accepted 가 true, 보내기 전에 멈추면 false 다', () async {
+      final gateway = FakeMessageGateway()..failing = 'GET /user/users/me';
+      final bloc = await _loaded(gateway, FakeChatSocket());
+      addTearDown(bloc.close);
+
+      // 내 정보를 못 읽으면 올리지도 보내지도 않고 false.
+      final stopped = Completer<bool>();
+      bloc.add(
+        ChannelMessageEvent.sent(
+          '자료',
+          files: [uploadFileOf('a.pdf')],
+          accepted: stopped,
+        ),
+      );
+      expect(await stopped.future, isFalse);
+      await settle();
+      expect(fileCalls(gateway).where((c) => c.contains('/files/')), isEmpty);
+      expect(_texts(bloc), ['첫 번째', '두 번째']);
+
+      gateway.failing = null;
+      final sentFiles = Completer<bool>();
+      final sentText = Completer<bool>();
+      bloc
+        ..add(
+          ChannelMessageEvent.sent(
+            '',
+            files: [uploadFileOf('a.pdf')],
+            accepted: sentFiles,
+          ),
+        )
+        ..add(ChannelMessageEvent.sent('글', accepted: sentText));
+
+      expect(await sentFiles.future, isTrue);
+      expect(await sentText.future, isTrue);
+      await settle();
+    });
+
     test('한 번에 10개보다 많으면 올리지 않고 알린다', () async {
       final gateway = FakeMessageGateway();
       final bloc = await _loaded(gateway, FakeChatSocket());

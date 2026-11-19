@@ -19,6 +19,7 @@ sealed class ChannelMessageEvent extends Equatable {
   const factory ChannelMessageEvent.sent(
     String text, {
     List<UploadFile> files,
+    Completer<bool>? accepted,
   }) = ChannelMessageSent;
 
   /// 보내지 못한 파일 메시지를 다시 보낸다.
@@ -54,10 +55,15 @@ final class ChannelMessageNewerRequested extends ChannelMessageEvent {
 }
 
 final class ChannelMessageSent extends ChannelMessageEvent {
-  const ChannelMessageSent(this.text, {this.files = const []});
+  const ChannelMessageSent(this.text, {this.files = const [], this.accepted});
 
   final String text;
   final List<UploadFile> files;
+
+  /// 보낼 메시지를 대화에 올렸으면 true, 그 전에 멈췄으면(최근 대화로 못 옮김, 내 정보를
+  /// 못 읽음 등) false 로 완료된다. 입력창은 보내자마자 비우므로, false 면 글과 파일을
+  /// 되돌려 다시 보낼 수 있게 한다. 파일은 다시 고르기 번거롭기 때문이다.
+  final Completer<bool>? accepted;
 
   @override
   List<Object?> get props => [text, files];

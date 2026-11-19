@@ -403,14 +403,40 @@ class ChannelMessageBloc
     }
   }
 
+  /// [ChannelMessageSent.accepted] 는 메시지를 대화에 올리면 true, 그 전에 멈추면 false
+  /// 로 완료한다.
   Future<void> _onSend(
     ChannelMessageSent event,
     Emitter<ChannelMessageState> emit,
   ) async {
-    final text = event.text.trim();
-    if (_header == null) return;
-    if (event.files.isNotEmpty) return _sendFiles(text, event.files, emit);
-    if (text.isEmpty) return;
+    void accept() {
+      if (event.accepted case final accepted? when !accepted.isCompleted) {
+        accepted.complete(true);
+      }
+    }
+
+    try {
+      final text = event.text.trim();
+      if (_header == null) return;
+      if (event.files.isNotEmpty) {
+        await _sendFiles(text, event.files, emit, onAccepted: accept);
+        return;
+      }
+      if (text.isEmpty) return;
+      await _sendText(text, emit, onAccepted: accept);
+    } finally {
+      if (event.accepted case final accepted? when !accepted.isCompleted) {
+        accepted.complete(false);
+      }
+    }
+  }
+
+  /// [text] 를 보낸다. 대화에 올리면 [onAccepted] 를 부른다.
+  Future<void> _sendText(
+    String text,
+    Emitter<ChannelMessageState> emit, {
+    required void Function() onAccepted,
+  }) async {
     final myId = await _readyToSend(emit);
     if (myId == null) return;
 
@@ -425,6 +451,7 @@ class ChannelMessageBloc
         clientMessageId: clientMessageId,
       ),
     );
+    onAccepted();
     _emit(emit);
     // 과거 위치에서 옮겨 왔으면 이제 최근 메시지를 보고 있다. 보내기가 실패해도 읽었다.
     _markRead();
@@ -459,19 +486,20 @@ class ChannelMessageBloc
     if (_myId == null) await _loadMe();
     final myId = _myId;
     if (myId == null) {
-      // 입력창은 이미 비워졌으니 조용히 버리지 않고 알린다.
+      // 입력창은 되돌아오지만 왜 안 갔는지 알 수 있게 알린다.
       _emit(emit, error: '내 정보를 불러오지 못해 보낼 수 없어요. 잠시 후 다시 시도해 주세요.');
     }
     return myId;
   }
 
   /// [text] 와 [files] 를 한 메시지로 보낸다. 먼저 보여 주고, 올리는 동안 진행률을
-  /// 바꾼다. [text] 는 비어도 된다.
+  /// 바꾼다. [text] 는 비어도 된다. 대화에 올리면 [onAccepted] 를 부른다.
   Future<void> _sendFiles(
     String text,
     List<UploadFile> files,
-    Emitter<ChannelMessageState> emit,
-  ) async {
+    Emitter<ChannelMessageState> emit, {
+    required void Function() onAccepted,
+  }) async {
     if (files.length > maxAttachments) {
       _emit(emit, error: '파일은 한 번에 $maxAttachments개까지 보낼 수 있어요.');
       return;
@@ -500,6 +528,7 @@ class ChannelMessageBloc
         clientMessageId: clientMessageId,
       ),
     );
+    onAccepted();
     _emit(emit);
     _markRead();
     await _deliver(clientMessageId, emit);

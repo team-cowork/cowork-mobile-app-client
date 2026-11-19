@@ -579,6 +579,36 @@ void main() {
       expect(find.byTooltip('회의.pdf 빼기'), findsNothing);
     });
 
+    testWidgets('보내기 전에 멈추면 글과 파일을 입력창에 되돌린다', (tester) async {
+      final gateway = FakeMessageGateway()..failing = 'GET /user/users/me';
+      await pumpChannel(
+        tester,
+        gateway,
+        pickFiles: ({images = false}) async => [uploadFileOf('회의.pdf')],
+      );
+
+      await attach(tester, '파일');
+      await tester.enterText(find.byType(TextField), '자료 공유');
+      await send(tester);
+
+      expect(
+        find.text('내 정보를 불러오지 못해 보낼 수 없어요. 잠시 후 다시 시도해 주세요.'),
+        findsOneWidget,
+      );
+      expect(find.byTooltip('회의.pdf 빼기'), findsOneWidget);
+      expect(
+        tester.widget<TextField>(find.byType(TextField)).controller!.text,
+        '자료 공유',
+      );
+      expect(gateway.calls.where((c) => c.contains('/files/')), isEmpty);
+
+      gateway.failing = null;
+      await send(tester);
+
+      expect(gateway.bodies[sendCall]!['content'], '자료 공유');
+      expect(find.byTooltip('회의.pdf 빼기'), findsNothing);
+    });
+
     testWidgets('한 번에 10개까지만 담고, 넘으면 알린다', (tester) async {
       final gateway = FakeMessageGateway();
       await pumpChannel(

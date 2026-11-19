@@ -717,14 +717,24 @@ class _MessageComposerState extends State<_MessageComposer> {
     super.dispose();
   }
 
-  void _send() {
+  /// 보내자마자 입력창을 비운다. 보내기 전에 멈추면(사유는 Bloc 이 알린다) 글과 파일을
+  /// 되돌려 다시 보낼 수 있게 한다.
+  Future<void> _send() async {
     final text = _controller.text;
-    if (text.trim().isEmpty && _files.isEmpty) return;
+    final files = List.of(_files);
+    if (text.trim().isEmpty && files.isEmpty) return;
+    final accepted = Completer<bool>();
     context.read<ChannelMessageBloc>().add(
-      ChannelMessageEvent.sent(text, files: List.of(_files)),
+      ChannelMessageEvent.sent(text, files: files, accepted: accepted),
     );
     _controller.clear();
     setState(_files.clear);
+
+    if (await accepted.future || !mounted) return;
+    // 기다리는 사이 새로 쓴 글은 덮어쓰지 않는다.
+    if (_controller.text.isEmpty) _controller.text = text;
+    final room = ChannelMessageBloc.maxAttachments - _files.length;
+    setState(() => _files.insertAll(0, files.take(room)));
   }
 
   /// 사진이나 파일을 골라 입력창 위에 모은다. 보내기를 눌러야 보낸다.
