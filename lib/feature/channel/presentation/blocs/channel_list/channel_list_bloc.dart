@@ -276,8 +276,9 @@ class ChannelListBloc extends Bloc<ChannelListEvent, ChannelListState> {
     final changes = _resyncChanges = <ChannelListChange>[];
     final List<TeamSummaryResponse> teams;
     final List<Channel> channels;
+    final List<ProjectSummaryResponse>? projects;
     // 끊긴 동안 바뀐 프로젝트도 이벤트로 오지 않는다. 채널과 함께 다시 읽는다.
-    final projects = _fetchProjects(team.id);
+    final projectsRequest = _fetchProjects(team.id);
     try {
       // 403 만 보고 팀에서 빠졌다고 판단하면 막 만든 팀의 일시적인 403 에도 팀을 떠나
       // 버리므로, 팀 목록으로 확인한다.
@@ -290,6 +291,10 @@ class ChannelListBloc extends Bloc<ChannelListEvent, ChannelListState> {
         return;
       }
       channels = await _channelRepository.fetchChannels(team.id);
+      // 기다리는 것은 모두 여기서 끝낸다. 아래 확인과 화면 갱신 사이에 기다림이 끼면 그
+      // 사이 다른 팀으로 옮겨도 옛 팀 화면을 내보내고, [_resyncChanges] 가 이미 비워져
+      // 그 사이 온 변경을 응답으로 덮어 잃는다. 실패해도 던지지 않는다.
+      projects = await projectsRequest;
     } catch (e, s) {
       Logger.e('재연결 후 채널 목록 조회 실패', tag: 'Chat', error: e, stackTrace: s);
       return;
@@ -300,7 +305,7 @@ class ChannelListBloc extends Bloc<ChannelListEvent, ChannelListState> {
     if (state is! AsyncSuccess<ChannelListData>) return;
 
     _teams = teams;
-    _applyProjects(await projects);
+    _applyProjects(projects);
     emit(
       ChannelListState.success(
         _homeOf(teams.firstWhere((other) => other.id == team.id), channels),

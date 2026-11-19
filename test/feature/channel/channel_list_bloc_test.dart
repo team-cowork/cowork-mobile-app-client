@@ -507,6 +507,46 @@ void main() {
       expect(groupsOf(bloc).keys, ['앱', '서버', '빈 프로젝트', '마케팅', '채널']);
     });
 
+    test('재연결 후 프로젝트를 기다리는 사이 다른 팀으로 옮기면 옛 팀 화면을 내보내지 않는다', () async {
+      final server = serverWithProjects();
+      final socket = FakeChatSocket();
+      final bloc = await _loaded(server, socket: socket);
+      addTearDown(bloc.close);
+      final projectsGate = Completer<void>();
+      server.projectGates[1] = projectsGate.future;
+      server.channelGates[2] = Completer<void>().future;
+
+      socket.reconnect();
+      await pumpEventQueue();
+      // 재연결 읽기는 채널을 받고 프로젝트를 기다린다. 그 사이 2 번 팀을 고른다.
+      bloc.add(const ChannelListEvent.teamSelected(2));
+      await pumpEventQueue();
+      projectsGate.complete();
+      await pumpEventQueue();
+
+      // 2 번 팀 채널은 아직 오지 않았으니 로딩이어야 한다.
+      expect(bloc.state, isA<AsyncLoading<ChannelListData>>());
+    });
+
+    test('재연결 후 프로젝트를 기다리는 사이 온 채널 변경을 응답으로 덮지 않는다', () async {
+      final server = serverWithProjects();
+      final socket = FakeChatSocket();
+      final bloc = await _loaded(server, socket: socket);
+      addTearDown(bloc.close);
+      final projectsGate = Completer<void>();
+      server.projectGates[1] = projectsGate.future;
+
+      socket.reconnect();
+      await pumpEventQueue();
+      // 응답의 채널 목록에는 아직 10 번이 있다.
+      socket.push('channel:deleted', {'channelId': 10, 'teamId': 1});
+      await pumpEventQueue();
+      projectsGate.complete();
+      await pumpEventQueue();
+
+      expect(groupsOf(bloc)['채널'], [13]);
+    });
+
     test('재연결하면 프로젝트 목록도 다시 읽는다', () async {
       final server = serverWithProjects();
       final socket = FakeChatSocket();
