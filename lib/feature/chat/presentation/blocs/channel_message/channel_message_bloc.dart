@@ -17,6 +17,7 @@ import '../../../../channel/data/repositories/channel_repository.dart';
 import '../../../../profile/data/repositories/profile_repository.dart';
 import '../../../data/model/chat_message_mapping.dart';
 import '../../../data/model/message_socket_event.dart';
+import '../../../data/model/message_type.dart';
 import '../../../data/model/requests/edit_message_request.dart';
 import '../../../data/model/requests/message_attachment_request.dart';
 import '../../../data/model/requests/send_message_request.dart';
@@ -486,7 +487,7 @@ class ChannelMessageBloc
         channelId: channelId,
         authorId: myId,
         content: text,
-        type: 'FILE',
+        type: MessageType.file,
         attachments: [
           for (final file in files)
             AttachmentResponse(
@@ -561,7 +562,7 @@ class ChannelMessageBloc
         SendMessageRequest(
           content: outgoing.content,
           clientMessageId: clientMessageId,
-          type: 'FILE',
+          type: MessageType.file,
           attachments: [
             for (final key in outgoing.objectKeys)
               MessageAttachmentRequest(objectKey: key!),
