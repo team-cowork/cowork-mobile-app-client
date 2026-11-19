@@ -12,6 +12,7 @@ final class ChannelConversation extends Equatable {
     required this.name,
     required this.description,
     required this.messages,
+    this.type = ChannelType.chat,
     this.hasOlder = false,
     this.loadingOlder = false,
     this.hasNewer = false,
@@ -26,6 +27,9 @@ final class ChannelConversation extends Equatable {
 
   /// 오래된 것부터 최신 순.
   final List<ChatMessage> messages;
+
+  /// 채널 종류. 화면이 무엇을 보여 줄지(입력창을 둘지 등) 고른다.
+  final ChannelType type;
 
   /// 서버에 더 이전 메시지가 남아 있다.
   final bool hasOlder;
@@ -52,6 +56,7 @@ final class ChannelConversation extends Equatable {
     name: name,
     description: description,
     messages: messages,
+    type: type,
     hasOlder: hasOlder,
     loadingOlder: loadingOlder,
     hasNewer: hasNewer,
@@ -66,6 +71,7 @@ final class ChannelConversation extends Equatable {
     name,
     description,
     messages,
+    type,
     hasOlder,
     loadingOlder,
     hasNewer,

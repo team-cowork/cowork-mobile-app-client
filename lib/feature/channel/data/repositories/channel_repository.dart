@@ -3,6 +3,8 @@ import 'package:dio/dio.dart';
 import '../../../../core/network/dio_client.dart';
 import '../../../auth/data/auth_repository.dart';
 import '../../domain/channel.dart';
+import '../../domain/enums/channel_type.dart';
+import '../model/channel_view_type.dart';
 import '../model/requests/create_channel_request.dart';
 import '../model/requests/create_thread_request.dart';
 import '../model/requests/update_thread_request.dart';
@@ -12,7 +14,13 @@ import '../model/responses/channel_response.dart';
 import '../model/responses/thread_response.dart';
 
 /// 채널 화면 머리에 쓰는 채널 정보. [teamId] 는 DM 채널이면 null.
-typedef ChannelHeader = ({String name, String description, int? teamId});
+/// [type] 은 채널 화면이 무엇을 보여 줄지 고르는 데 쓴다.
+typedef ChannelHeader = ({
+  String name,
+  String description,
+  int? teamId,
+  ChannelType type,
+});
 
 /// channel 서비스의 채널 저장소.
 class ChannelRepository {
@@ -42,6 +50,7 @@ class ChannelRepository {
       name: channel.name,
       description: channel.description ?? '',
       teamId: channel.teamId,
+      type: channelTypeOf(channel.viewType),
     );
   }
 

@@ -13,6 +13,7 @@ import '../../../../../shared/domain/profile_entity.dart';
 import '../../../../../shared/utils/chat_author.dart';
 import '../../../../../shared/utils/client_message_id.dart';
 import '../../../../channel/data/repositories/channel_repository.dart';
+import '../../../../channel/domain/enums/channel_type.dart';
 import '../../../../profile/data/repositories/profile_repository.dart';
 import '../../../data/model/chat_message_mapping.dart';
 import '../../../data/model/message_socket_event.dart';
@@ -791,6 +792,7 @@ class ChannelMessageBloc
     return ChannelConversation(
       name: header.name,
       description: header.description,
+      type: header.type,
       messages: [
         for (final message in _messages)
           chatMessageOf(
