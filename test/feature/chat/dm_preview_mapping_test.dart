@@ -69,6 +69,22 @@ void main() {
       expect(empty.timestamp, '');
     });
 
+    test('글과 함께 보낸 파일은 글을, 빈 글 메시지는 빈 미리보기를 보인다', () {
+      final caption = directMessagePreviewOf(
+        conversation(dmJson(11, 2, content: '시안 보내요', type: 'FILE')),
+        other,
+        now: now,
+      );
+      final blank = directMessagePreviewOf(
+        conversation(dmJson(12, 2, content: '')),
+        other,
+        now: now,
+      );
+
+      expect(caption.lastMessage, '시안 보내요');
+      expect(blank.lastMessage, '');
+    });
+
     test('서버에 없는 접속 상태·고정·음소거·입력 중은 기본값으로 둔다', () {
       final preview = directMessagePreviewOf(
         conversation(dmJson(11, 2)),

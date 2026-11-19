@@ -393,6 +393,26 @@ void main() {
     expect(_data(bloc).hasOlder, isFalse);
   });
 
+  test('이전 메시지를 읽는 중에 또 요청해도 한 번만 읽는다', () async {
+    final gateway = FakeMessageGateway(
+      messages: [for (var i = 150; i > 0; i--) messageJson('m$i', 2, '메시지 $i')],
+    );
+    final bloc = await _loaded(gateway, FakeChatSocket());
+    addTearDown(bloc.close);
+
+    bloc
+      ..add(const ChannelMessageEvent.olderRequested())
+      ..add(const ChannelMessageEvent.olderRequested());
+    await bloc.stream.firstWhere(
+      (s) => s is AsyncSuccess<ChannelConversation> && !s.data.loadingOlder,
+    );
+    await pumpEventQueue();
+
+    expect(gateway.calls.where((c) => c.contains('before=')), [
+      'GET /chat/chat/channels/10/messages?before=m51',
+    ]);
+  });
+
   test('닫으면 채널 방에서 나간다', () async {
     final socket = FakeChatSocket();
     final bloc = await _loaded(FakeMessageGateway(), socket);
@@ -820,6 +840,40 @@ void main() {
         gateway.calls,
         isNot(contains('POST /chat/chat/channels/10/read')),
       );
+    });
+
+    test('최근 쪽을 읽는 중에 또 요청해도 한 번만 읽는다', () async {
+      final gateway = twoHundred();
+      final bloc = await focused(gateway, FakeChatSocket(), 'm100');
+      addTearDown(bloc.close);
+      gateway.calls.clear();
+
+      bloc
+        ..add(const ChannelMessageEvent.newerRequested())
+        ..add(const ChannelMessageEvent.newerRequested());
+      await bloc.stream.firstWhere(
+        (s) => s is AsyncSuccess<ChannelConversation> && !s.data.loadingNewer,
+      );
+      await pumpEventQueue();
+
+      expect(gateway.calls.where((c) => c.contains('after=')), hasLength(1));
+    });
+
+    test('보내려고 최근 대화로 옮기는 동안에는 이후 메시지를 따로 읽지 않는다', () async {
+      final gateway = twoHundred();
+      final bloc = await focused(gateway, FakeChatSocket(), 'm100');
+      addTearDown(bloc.close);
+      gateway.calls.clear();
+
+      bloc
+        ..add(const ChannelMessageEvent.sent('안녕'))
+        ..add(const ChannelMessageEvent.newerRequested());
+      await bloc.stream.firstWhere(
+        (s) => s is AsyncSuccess<ChannelConversation> && !s.data.hasNewer,
+      );
+      await pumpEventQueue();
+
+      expect(gateway.calls.where((c) => c.contains('after=')), isEmpty);
     });
 
     test('최근 메시지 근처면 이후 메시지가 없다고 본다', () async {
