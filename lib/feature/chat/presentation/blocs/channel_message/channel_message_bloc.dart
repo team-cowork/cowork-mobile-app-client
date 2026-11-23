@@ -726,8 +726,16 @@ class ChannelMessageBloc
         .whenComplete(() => _resolving.removeAll(ids));
   }
 
+  /// 채널 화면이 이 채널의 메시지를 보여 주는지. 채널을 아직 못 읽었으면 false.
+  bool get _showsMessages => switch (_header?.type) {
+    ChannelType.chat || ChannelType.webhook => true,
+    _ => false,
+  };
+
   /// 가장 최근에 저장된 메시지까지 읽었다고 알린다. 실패해도 화면엔 영향이 없다.
   void _markRead() {
+    // 앱이 메시지를 보여 주지 않는 종류(안내만 보임)는 사용자가 읽지 않았으니 알리지 않는다.
+    if (!_showsMessages) return;
     // 과거 위치를 보는 중이면 그보다 최근 메시지를 안 읽었으니 알리지 않는다.
     if (!_foreground || _closedReason != null || _hasNewer) return;
     final latest = _messages.reversed.where(_isSaved).firstOrNull;

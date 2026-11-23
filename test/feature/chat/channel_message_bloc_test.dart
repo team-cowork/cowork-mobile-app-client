@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:cowork_app/feature/channel/domain/enums/channel_type.dart';
 import 'package:cowork_app/core/utils/async_state.dart';
 import 'package:cowork_app/feature/channel/data/repositories/channel_repository.dart';
 import 'package:cowork_app/feature/chat/data/repositories/message_repository.dart';
@@ -529,6 +530,39 @@ void main() {
     expect(message.author.name, 'github-webhook');
     expect(message.editable, isFalse);
     expect(gateway.calls, isNot(contains(startsWith('GET /user/users/batch'))));
+  });
+
+  test('메시지를 보여 주지 않는 종류의 채널은 열거나 새 메시지가 와도 읽음으로 알리지 않는다', () async {
+    const read = 'POST /chat/chat/channels/10/read';
+    final gateway = FakeMessageGateway();
+    gateway.channel['viewType'] = 'FILE_SHARE';
+    final socket = FakeChatSocket();
+    final bloc = _bloc(gateway, socket)
+      ..add(const ChannelMessageEvent.requested());
+    addTearDown(bloc.close);
+    await bloc.stream.firstWhere((s) => s is AsyncSuccess<ChannelConversation>);
+    await pumpEventQueue();
+
+    expect(_data(bloc).type, ChannelType.file);
+    expect(gateway.calls, isNot(contains(read)));
+
+    socket.push('message', messageJson('m3', 2, '파일을 올렸어요'));
+    await pumpEventQueue();
+
+    expect(gateway.calls, isNot(contains(read)));
+  });
+
+  test('웹훅 채널은 열면 읽음으로 알린다', () async {
+    const read = 'POST /chat/chat/channels/10/read';
+    final gateway = FakeMessageGateway();
+    gateway.channel['viewType'] = 'WEBHOOK';
+    final bloc = _bloc(gateway, FakeChatSocket())
+      ..add(const ChannelMessageEvent.requested());
+    addTearDown(bloc.close);
+    await bloc.stream.firstWhere((s) => s is AsyncSuccess<ChannelConversation>);
+    await pumpEventQueue();
+
+    expect(gateway.calls, contains(read));
   });
 
   test('다시 읽는 사이 소켓으로 온 더 최근 메시지는 잃지 않는다', () async {
