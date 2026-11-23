@@ -225,6 +225,8 @@ def run_flutter(repo: Path, args: list[str], timeout: float | None):
 
 
 COMPILE_ERROR = re.compile(r"Failed to load|Compilation failed|^\S*lib/\S+:\d+:\d+: Error:", re.M)
+# flutter test 가 테스트를 돌렸으면 `00:01 +3 -1: ...` 같은 진행 줄을 남긴다.
+TESTS_RAN = re.compile(r"^\d+:\d+ \+\d+", re.M)
 
 
 def run_mutant(repo: Path, mutant: dict, tests: list[str], concurrency: int, timeout: float) -> str:
@@ -232,7 +234,6 @@ def run_mutant(repo: Path, mutant: dict, tests: list[str], concurrency: int, tim
     original = path.read_bytes()
     text = original.decode("utf-8")
     mutated = text[:mutant["start"]] + mutant["replacement"] + text[mutant["end"]:]
-    started = time.time()
     try:
         path.write_bytes(mutated.encode("utf-8"))
         code, output = run_flutter(repo, ["test", f"--concurrency={concurrency}", *tests], timeout)
@@ -240,12 +241,14 @@ def run_mutant(repo: Path, mutant: dict, tests: list[str], concurrency: int, tim
         path.write_bytes(original)
     if code is None:
         return "timeout"
-    if time.time() - started < 3:
-        # flutter 가 테스트를 돌리기도 전에 끝났다. killed 로 세면 점수가 부풀려진다.
-        raise RuntimeError(f"flutter test 가 {time.time() - started:.1f}초 만에 끝났습니다:\n{output[-2000:]}")
-    if code == 0:
-        return "survived"
-    return "invalid" if COMPILE_ERROR.search(output) else "killed"
+    # 컴파일 실패도 진행 줄(`+0 -1: loading ... [E]`)을 남기므로 먼저 가른다.
+    if COMPILE_ERROR.search(output):
+        return "invalid"
+    if not TESTS_RAN.search(output):
+        # flutter 가 테스트를 돌리지 못했다(도구 오류, 종료 중인 세션 등).
+        # 실패 코드라고 killed 로 세면 점수가 부풀려진다.
+        raise RuntimeError(f"flutter test 가 테스트를 돌리지 못했습니다:\n{output[-2000:]}")
+    return "survived" if code == 0 else "killed"
 
 
 # ---------------------------------------------------------------- 리포트
