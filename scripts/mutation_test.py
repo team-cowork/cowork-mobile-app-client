@@ -260,7 +260,8 @@ def score_of(counts: dict[str, int]) -> float | None:
 
 
 def write_report(path: Path, title: str, results: list[dict], uncovered: dict[str, int],
-                 skipped: int, note: str | None) -> None:
+                 skipped: list[str], note: str | None) -> None:
+    """[skipped] 는 돌리지 않은 변이가 있을 때 그 사유 문장들이다."""
     counts: dict[str, int] = {}
     for r in results:
         counts[r["status"]] = counts.get(r["status"], 0) + 1
@@ -284,8 +285,8 @@ def write_report(path: Path, title: str, results: list[dict], uncovered: dict[st
             "점수 = (killed + timeout) / (killed + timeout + survived)",
             "",
         ]
-    if skipped:
-        lines += [f"> 변이가 너무 많아 {skipped}개는 돌리지 않았습니다.", ""]
+    for reason in skipped:
+        lines += [f"> {reason}", ""]
     survived = [r for r in results if r["status"] == "survived"]
     if survived:
         lines += ["### 살아남은 변이", "", "| 위치 | 변이 | 코드 |", "|---|---|---|"]
@@ -314,6 +315,8 @@ def main() -> int:
     parser.add_argument("--concurrency", type=int, default=2, help="flutter test 동시 실행 수")
     parser.add_argument("--timeout", type=float, default=180, help="변이 하나당 제한 시간(초)")
     parser.add_argument("--max-mutants", type=int, default=0, help="돌릴 변이 수 상한 (0=제한 없음)")
+    parser.add_argument("--max-minutes", type=float, default=0,
+                        help="변이 실행에 쓸 시간 예산(분). 넘으면 남은 변이는 돌리지 않고 리포트를 쓴다 (0=제한 없음)")
     parser.add_argument("--skip-coverage", action="store_true", help="기존 coverage/lcov.info 를 쓴다")
     parser.add_argument("--report", default="mutation-report.md")
     parser.add_argument("--json", default="mutation-report.json")
@@ -334,7 +337,7 @@ def main() -> int:
         targets = {p.relative_to(repo).as_posix(): None for p in repo.glob("lib/**/*.dart")
                    if not p.name.endswith(GENERATED)}
     if not targets:
-        write_report(report, title, [], {}, 0, "변경된 `lib/` Dart 코드가 없어 건너뛰었습니다.")
+        write_report(report, title, [], {}, [], "변경된 `lib/` Dart 코드가 없어 건너뛰었습니다.")
         report_json.write_text("[]", encoding="utf-8")
         print("변경된 lib 코드 없음")
         return 0
@@ -343,7 +346,7 @@ def main() -> int:
         print("커버리지 수집 중 (flutter test --coverage)", flush=True)
         code, output = run_flutter(repo, ["test", "--coverage", f"--concurrency={args.concurrency}"], None)
         if code != 0:
-            write_report(report, title, [], {}, 0,
+            write_report(report, title, [], {}, [],
                          "기존 테스트가 실패해서 뮤테이션 테스트를 건너뛰었습니다. 테스트부터 고쳐 주세요.")
             report_json.write_text("[]", encoding="utf-8")
             print(output[-3000:])
@@ -363,16 +366,22 @@ def main() -> int:
             else:
                 uncovered[file] = uncovered.get(file, 0) + 1
 
-    skipped = 0
+    skipped = []
     if args.max_mutants and len(mutants) > args.max_mutants:
-        skipped = len(mutants) - args.max_mutants
+        skipped.append(f"변이가 너무 많아 {len(mutants) - args.max_mutants}개는 돌리지 않았습니다.")
         mutants = mutants[:args.max_mutants]
 
-    print(f"변이 {len(mutants)}개 실행 (커버리지 없음 {sum(uncovered.values())}, 생략 {skipped})", flush=True)
+    print(f"변이 {len(mutants)}개 실행 (커버리지 없음 {sum(uncovered.values())})", flush=True)
     results = []
     note = None
+    deadline = time.time() + args.max_minutes * 60 if args.max_minutes else None
     try:
         for i, m in enumerate(mutants, 1):
+            if deadline and time.time() >= deadline:
+                left = len(mutants) - i + 1
+                skipped.append(f"시간 예산({args.max_minutes:g}분)을 넘어 남은 {left}개는 돌리지 않았습니다.")
+                print(skipped[-1], flush=True)
+                break
             started = time.time()
             status = run_mutant(repo, m, m["tests"], args.concurrency, args.timeout)
             results.append({k: m[k] for k in ("file", "line", "op", "code")} | {"status": status})

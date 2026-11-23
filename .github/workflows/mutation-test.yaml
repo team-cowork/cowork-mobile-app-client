@@ -5,6 +5,8 @@ name: Mutation Test
 on:
   pull_request:
     branches: [develop]
+    # 드래프트에서 리뷰 요청으로 바뀔 때도 돈다.
+    types: [opened, synchronize, reopened, ready_for_review]
     paths:
       - 'lib/**'
       - 'test/**'
@@ -21,6 +23,8 @@ permissions:
 
 jobs:
   mutation_test:
+    # 드래프트 PR 은 푸시가 잦아 Actions 시간만 쓰므로 건너뛴다.
+    if: github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     timeout-minutes: 90
 
@@ -42,12 +46,17 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
+      # 잡 전체 제한(90분)에 걸리면 뒤의 리포트 단계가 돈다고 보장할 수 없다.
+      # 스크립트는 시간 예산(60분)이 지나면 남은 변이를 건너뛰고 리포트를 쓰고,
+      # 그래도 이 단계가 75분을 넘으면 단계만 끊겨 리포트 단계는 돈다.
       - name: Run mutation test on changed lines
+        timeout-minutes: 75
         run: |
           python3 scripts/mutation_test.py \
             --base "origin/${{ github.base_ref }}" \
             --concurrency 4 \
             --max-mutants 200 \
+            --max-minutes 60 \
             --report mutation-report.md \
             --json mutation-report.json
 
