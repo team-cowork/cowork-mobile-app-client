@@ -1,5 +1,6 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
 
+import '../message_type.dart';
 import 'attachment_response.dart';
 import 'webhook_author_response.dart';
 
@@ -44,7 +45,7 @@ abstract class MessageResponse with _$MessageResponse {
   factory MessageResponse.fromJson(Map<String, dynamic> json) =>
       _$MessageResponseFromJson(json);
 
-  bool get isSystem => type == 'SYSTEM';
+  bool get isSystem => type == MessageType.system;
 
   /// 이름을 사용자 정보에서 찾아야 하는 작성자 id. 시스템·웹훅 메시지는 null 이다.
   int? get personId => isSystem || webhook != null ? null : authorId;

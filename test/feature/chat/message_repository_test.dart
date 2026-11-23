@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:cowork_app/feature/chat/data/model/requests/edit_message_request.dart';
+import 'package:cowork_app/feature/chat/data/model/requests/message_attachment_request.dart';
 import 'package:cowork_app/feature/chat/data/model/requests/send_message_request.dart';
 import 'package:cowork_app/feature/chat/data/repositories/message_repository.dart';
 import 'package:dio/dio.dart';
@@ -216,6 +217,33 @@ void main() {
       'content': '답글',
       'clientMessageId': 'c-1',
       'parentMessageId': 'm1',
+    });
+  });
+
+  test('파일 전송은 FILE 형식과 확정 키를 보낸다', () async {
+    final server = _RecordingServer();
+
+    await _repository(server).sendMessage(
+      10,
+      const SendMessageRequest(
+        content: '',
+        clientMessageId: 'c-1',
+        type: 'FILE',
+        attachments: [
+          MessageAttachmentRequest(objectKey: 'chat-files/a'),
+          MessageAttachmentRequest(objectKey: 'chat-files/b'),
+        ],
+      ),
+    );
+
+    expect(server.bodies['POST /chat/chat/channels/10/messages'], {
+      'content': '',
+      'clientMessageId': 'c-1',
+      'type': 'FILE',
+      'attachments': [
+        {'objectKey': 'chat-files/a'},
+        {'objectKey': 'chat-files/b'},
+      ],
     });
   });
 

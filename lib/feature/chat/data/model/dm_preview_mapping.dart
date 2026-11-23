@@ -2,6 +2,7 @@ import '../../../../shared/domain/profile_entity.dart';
 import '../../../../shared/utils/chat_author.dart';
 import '../../domain/direct_message_preview.dart';
 import '../../domain/enums/dm_presence.dart';
+import 'message_type.dart';
 import 'responses/dm_conversation_response.dart';
 import 'responses/dm_last_message_response.dart';
 
@@ -30,7 +31,7 @@ DirectMessagePreview directMessagePreviewOf(
 /// 마지막 메시지 미리보기. 내가 보냈으면 `나: ` 를 앞에 붙이고, 파일만 있으면 안내
 /// 문구로 바꾼다.
 String _previewOf(DmLastMessageResponse last, int? myId) {
-  final text = last.content.isEmpty && last.type == 'FILE'
+  final text = last.content.isEmpty && last.type == MessageType.file
       ? '파일을 보냈어요'
       : last.content;
   final mine = last.authorId != null && last.authorId == myId;

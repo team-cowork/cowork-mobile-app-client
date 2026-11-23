@@ -6,6 +6,7 @@ import 'package:cowork_app/feature/chat/data/repositories/message_repository.dar
 import 'package:cowork_app/feature/chat/presentation/views/channel_view.dart';
 import 'package:cowork_app/feature/profile/data/repositories/profile_repository.dart';
 import 'package:cowork_app/shared/utils/external_url.dart';
+import 'package:cowork_app/shared/utils/file_picking.dart';
 import 'package:cowork_design_system/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -25,6 +26,7 @@ void main() {
     FakeChatSocket? socket,
     UrlOpener? openUrl,
     FakeFilesServer? files,
+    UploadFilesPicker? pickFiles,
   }) async {
     await tester.pumpWidget(
       MultiRepositoryProvider(
@@ -38,6 +40,7 @@ void main() {
               files: filesDio(files ?? FakeFilesServer()),
             ),
           ),
+          RepositoryProvider.value(value: chatFileRepositoryOf(gateway)),
           RepositoryProvider.value(
             value: ProfileRepository.withDio(messageDio(gateway, 'user')),
           ),
@@ -57,6 +60,7 @@ void main() {
                   dmName: dmName,
                   isDirect: isDirect,
                   openUrl: openUrl ?? (_) async => true,
+                  pickFiles: pickFiles ?? ({images = false}) async => [],
                 ),
               ),
               GoRoute(
@@ -534,6 +538,213 @@ void main() {
         lessThan(40),
         reason: '최근 메시지 아래가 비지 않는다',
       );
+    });
+  });
+
+  group('파일 보내기', () {
+    Future<void> attach(WidgetTester tester, String source) async {
+      await tester.tap(
+        find
+            .descendant(
+              of: find.byType(CoworkMessageComposer),
+              matching: find.byType(InkWell),
+            )
+            .first,
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(source));
+      await tester.pumpAndSettle();
+    }
+
+    Future<void> send(WidgetTester tester) async {
+      await tester.tap(
+        find
+            .descendant(
+              of: find.byType(CoworkMessageComposer),
+              matching: find.byType(InkWell),
+            )
+            .last,
+      );
+      await tester.pumpAndSettle();
+    }
+
+    const sendCall = 'POST /chat/chat/channels/10/messages';
+
+    testWidgets('고른 파일은 입력창 위에 모아 두고, 보내기를 눌러야 글과 함께 보낸다', (tester) async {
+      final gateway = FakeMessageGateway();
+      await pumpChannel(
+        tester,
+        gateway,
+        pickFiles: ({images = false}) async => [
+          uploadFileOf('회의.pdf'),
+          uploadFileOf('사진.png'),
+        ],
+      );
+
+      await attach(tester, '파일');
+
+      expect(find.text('회의.pdf'), findsOneWidget);
+      expect(find.text('사진.png'), findsOneWidget);
+      expect(gateway.calls, isNot(contains(sendCall)));
+      expect(gateway.calls.where((c) => c.contains('/files/')), isEmpty);
+
+      await tester.tap(find.byTooltip('사진.png 빼기'));
+      await tester.pumpAndSettle();
+      expect(find.text('사진.png'), findsNothing);
+
+      await tester.enterText(find.byType(TextField), '자료 공유');
+      await send(tester);
+
+      expect(gateway.bodies[sendCall], {
+        'content': '자료 공유',
+        'clientMessageId': isA<String>(),
+        'type': 'FILE',
+        'attachments': [
+          {'objectKey': 'chat-files/1'},
+        ],
+      });
+      // 보냈으면 입력창 위의 파일도 비운다. 보낸 메시지의 파일 카드 하나만 남는다.
+      expect(find.byTooltip('회의.pdf 빼기'), findsNothing);
+    });
+
+    testWidgets('보내기 전에 멈추면 글과 파일을 입력창에 되돌린다', (tester) async {
+      final gateway = FakeMessageGateway()..failing = 'GET /user/users/me';
+      await pumpChannel(
+        tester,
+        gateway,
+        pickFiles: ({images = false}) async => [uploadFileOf('회의.pdf')],
+      );
+
+      await attach(tester, '파일');
+      await tester.enterText(find.byType(TextField), '자료 공유');
+      await send(tester);
+
+      expect(
+        find.text('내 정보를 불러오지 못해 보낼 수 없어요. 잠시 후 다시 시도해 주세요.'),
+        findsOneWidget,
+      );
+      expect(find.byTooltip('회의.pdf 빼기'), findsOneWidget);
+      expect(
+        tester.widget<TextField>(find.byType(TextField)).controller!.text,
+        '자료 공유',
+      );
+      expect(gateway.calls.where((c) => c.contains('/files/')), isEmpty);
+
+      gateway.failing = null;
+      await send(tester);
+
+      expect(gateway.bodies[sendCall]!['content'], '자료 공유');
+      expect(find.byTooltip('회의.pdf 빼기'), findsNothing);
+    });
+
+    testWidgets('한 번에 10개까지만 담고, 넘으면 알린다', (tester) async {
+      final gateway = FakeMessageGateway();
+      await pumpChannel(
+        tester,
+        gateway,
+        pickFiles: ({images = false}) async => [
+          for (var i = 0; i < 11; i++) uploadFileOf('$i.txt'),
+        ],
+      );
+
+      await attach(tester, '파일');
+      expect(find.text('파일은 한 번에 10개까지 보낼 수 있어요.'), findsOneWidget);
+
+      await send(tester);
+
+      expect(
+        gateway.bodies[sendCall]!['attachments'] as List<Object?>,
+        hasLength(10),
+      );
+    });
+
+    testWidgets('사진을 고르면 올리는 동안 진행률을 보이고, 저장되면 파일 카드로 바뀐다', (tester) async {
+      final gate = Completer<void>();
+      final gateway = FakeMessageGateway()..uploadGate = gate.future;
+      final socket = FakeChatSocket();
+      bool? askedImages;
+      await pumpChannel(
+        tester,
+        gateway,
+        socket: socket,
+        pickFiles: ({images = false}) async {
+          askedImages = images;
+          return [uploadFileOf('회의.pdf'), uploadFileOf('사진.png')];
+        },
+      );
+
+      await attach(tester, '사진');
+      await send(tester);
+
+      expect(askedImages, isTrue);
+      expect(find.byType(CoworkFileUploadProgress), findsOneWidget);
+      expect(find.text('회의.pdf 외 1개'), findsOneWidget);
+
+      gate.complete();
+      await tester.pumpAndSettle();
+      final clientMessageId =
+          gateway.bodies['POST /chat/chat/channels/10/messages']!['clientMessageId']
+              as String;
+      socket.push('message', {
+        ...messageJson(
+          'm9',
+          1,
+          '',
+          type: 'FILE',
+          clientMessageId: clientMessageId,
+        ),
+        'attachments': [
+          {'name': '회의.pdf', 'size': 3, 'mimeType': 'application/pdf'},
+        ],
+      });
+      await tester.pumpAndSettle();
+
+      expect(find.byType(CoworkFileUploadProgress), findsNothing);
+      expect(find.text('회의.pdf'), findsOneWidget);
+    });
+
+    testWidgets('보내지 못한 파일 메시지를 눌러 다시 보내거나 지운다', (tester) async {
+      final gateway = FakeMessageGateway()
+        ..failingOnce.addAll(['PUT /upload/tmp-1', 'PUT /upload/tmp-2']);
+      await pumpChannel(
+        tester,
+        gateway,
+        pickFiles: ({images = false}) async => [uploadFileOf('회의.pdf')],
+      );
+
+      await attach(tester, '파일');
+      await send(tester);
+      expect(find.text('보내지 못했어요. 눌러서 다시 보내거나 지울 수 있어요.'), findsOneWidget);
+
+      await tester.tap(find.text('회의.pdf'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('다시 보내기'));
+      await tester.pumpAndSettle();
+      expect(gateway.calls, contains('PUT /upload/tmp-2'));
+      expect(find.text('보내지 못했어요. 눌러서 다시 보내거나 지울 수 있어요.'), findsOneWidget);
+
+      await tester.tap(find.text('회의.pdf'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('삭제'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('회의.pdf'), findsNothing);
+      expect(
+        gateway.calls,
+        isNot(contains('POST /chat/chat/channels/10/messages')),
+      );
+    });
+
+    testWidgets('파일을 읽지 못하면 알린다', (tester) async {
+      await pumpChannel(
+        tester,
+        FakeMessageGateway(),
+        pickFiles: ({images = false}) async => throw StateError('크기 모름'),
+      );
+
+      await attach(tester, '파일');
+
+      expect(find.text('고른 파일을 읽지 못했어요.'), findsOneWidget);
     });
   });
 }
