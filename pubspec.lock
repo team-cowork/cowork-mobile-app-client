@@ -169,6 +169,15 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "3.1.2"
+  cowork_design_tokens:
+    dependency: transitive
+    description:
+      path: "packages/flutter"
+      ref: "v0.1.0"
+      resolved-ref: ad97df86c7fb45087765423247a69987afae71fe
+      url: "https://github.com/team-cowork/cowork-design-system"
+    source: git
+    version: "0.1.0"
   cross_file:
     dependency: transitive
     description:

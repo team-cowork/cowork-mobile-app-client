@@ -12,6 +12,11 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  cowork_design_tokens:
+    git:
+      url: https://github.com/team-cowork/cowork-design-system
+      path: packages/flutter
+      ref: v0.1.0
   flutter_markdown: ^0.7.4
   flutter_svg: ^2.3.0
 
