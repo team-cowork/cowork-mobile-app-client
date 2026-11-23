@@ -123,7 +123,13 @@ class ChannelView extends StatelessWidget {
                     child: _MessageList(data: data, openUrl: openUrl),
                   ),
                 ],
-                _ => const [Expanded(child: _UnsupportedChannel())],
+                // 종류를 모두 적어, 새 종류가 생기면 어디에 보일지 컴파일 단계에서 정하게 한다.
+                ChannelType.file ||
+                ChannelType.accountShare ||
+                ChannelType.meetingNote ||
+                ChannelType.voice => const [
+                  Expanded(child: _UnsupportedChannel()),
+                ],
               },
             ],
           ),

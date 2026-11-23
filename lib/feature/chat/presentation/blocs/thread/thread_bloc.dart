@@ -451,17 +451,8 @@ class ThreadBloc extends Bloc<ThreadEvent, ThreadState> {
     );
   }
 
-  ProfileEntity _authorOf(MessageResponse message) => switch (message) {
-    MessageResponse(:final webhook?) => webhookChatAuthor(
-      webhook.id,
-      webhook.name,
-      avatarUrl: webhook.avatarUrl,
-    ),
-    MessageResponse(isSystem: true) => systemChatAuthor(message.authorId ?? 0),
-    MessageResponse(:final personId?) =>
-      _authors[personId] ?? unknownChatAuthor(personId),
-    _ => unknownChatAuthor(0),
-  };
+  ProfileEntity _authorOf(MessageResponse message) =>
+      messageAuthorOf(message, _authors);
 
   bool _hasReply(String clientMessageId) =>
       _replies.any((reply) => reply.clientMessageId == clientMessageId);
