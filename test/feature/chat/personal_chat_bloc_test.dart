@@ -197,7 +197,7 @@ void main() {
       ..add(const PersonalChatEvent.refreshed())
       ..add(const PersonalChatEvent.refreshed())
       ..add(const PersonalChatEvent.refreshed());
-    await Future<void>.delayed(const Duration(milliseconds: 100));
+    await pumpEventQueue(times: 50);
 
     // 처음 읽기와, 그동안 쌓인 요청을 몰아 한 번 더.
     expect(
