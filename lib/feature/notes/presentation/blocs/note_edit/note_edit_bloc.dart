@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../../core/network/http_error_message.dart';
 import '../../../../../core/utils/logger.dart';
+import '../../../../../shared/domain/upload_file.dart';
 import '../../../data/repositories/note_attachment_repository.dart';
 import '../../../data/repositories/notes_repository.dart';
 import '../../../data/repositories/note_template_repository.dart';
@@ -251,7 +252,7 @@ class NoteEditBloc extends Bloc<NoteEditEvent, NoteEditState> {
   ///
   /// 형식·크기 한도는 서버가 정하고 업로드 주소를 줄 때 거절하므로 여기서 따로 보지
   /// 않는다. 개수만 저장할 때에야 거절되어 미리 막는다([maxAttachments]).
-  String? _whyNotAttachable(NoteUploadFile file) {
+  String? _whyNotAttachable(UploadFile file) {
     if (_saving) return '저장하는 중이에요. 저장한 뒤 다시 붙여 주세요.';
     if (state.note.attachments.length + state.uploads.length >=
         maxAttachments) {

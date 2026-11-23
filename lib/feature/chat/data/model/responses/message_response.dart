@@ -1,5 +1,6 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
 
+import '../message_type.dart';
 import 'attachment_response.dart';
 
 part 'message_response.freezed.dart';
@@ -38,5 +39,5 @@ abstract class MessageResponse with _$MessageResponse {
   factory MessageResponse.fromJson(Map<String, dynamic> json) =>
       _$MessageResponseFromJson(json);
 
-  bool get isSystem => type == 'SYSTEM';
+  bool get isSystem => type == MessageType.system;
 }

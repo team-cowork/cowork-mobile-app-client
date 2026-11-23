@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:cowork_app/core/utils/async_state.dart';
 import 'package:cowork_app/feature/channel/data/repositories/channel_repository.dart';
 import 'package:cowork_app/feature/chat/data/repositories/message_repository.dart';
+import 'package:cowork_app/feature/chat/domain/chat_upload.dart';
 import 'package:cowork_app/feature/chat/presentation/blocs/channel_message/channel_message_bloc.dart';
 import 'package:cowork_app/feature/profile/data/repositories/profile_repository.dart';
 import 'package:flutter/widgets.dart';
@@ -26,6 +27,7 @@ ChannelMessageBloc _bloc(
   messageRepository: MessageRepository.withDio(
     chat: messageDio(gateway, 'chat'),
   ),
+  fileRepository: chatFileRepositoryOf(gateway),
   profileRepository: ProfileRepository.withDio(messageDio(gateway, 'user')),
   socket: socket,
   lifecycle: lifecycle,
@@ -1082,6 +1084,257 @@ void main() {
       expect(data.hasNewer, isFalse);
       expect(_texts(bloc).last, '메시지 200');
       expect(data.errorMessage, '메시지를 찾을 수 없어 최근 대화를 보여 드려요.');
+    });
+  });
+
+  group('파일 보내기', () {
+    const presign = 'POST /chat/chat/channels/10/files/presigned-url';
+    const confirm = 'POST /chat/chat/channels/10/files/confirm';
+    const send = 'POST /chat/chat/channels/10/messages';
+
+    /// 업로드 주소 → PUT → 확인을 파일마다 거쳐 요청이 길게 이어지므로, 이벤트 큐를
+    /// 기본(20번)보다 넉넉히 비운다.
+    Future<void> settle() => pumpEventQueue(times: 200);
+
+    /// 읽음 요청을 뺀 요청 기록.
+    List<String> fileCalls(FakeMessageGateway gateway) => [
+      for (final call in gateway.calls)
+        if (!call.endsWith('/read')) call,
+    ];
+
+    test('먼저 보여 준 뒤 올리고 FILE 메시지로 보내며, 저장되면 서버 메시지로 바꾼다', () async {
+      final gateway = FakeMessageGateway();
+      final socket = FakeChatSocket();
+      final bloc = await _loaded(gateway, socket);
+      addTearDown(bloc.close);
+
+      bloc.add(
+        ChannelMessageEvent.sent(
+          '',
+          files: [
+            uploadFileOf('자료.pdf', [1, 2, 3, 4]),
+            uploadFileOf('사진.png'),
+          ],
+        ),
+      );
+      await settle();
+
+      expect(fileCalls(gateway), [
+        presign,
+        'PUT /upload/tmp-1',
+        confirm,
+        presign,
+        'PUT /upload/tmp-2',
+        confirm,
+        send,
+      ]);
+      expect(gateway.uploads['/upload/tmp-1'], [1, 2, 3, 4]);
+      final pending = _data(bloc).messages.last;
+      expect(pending.upload, const ChatUpload(progress: 1));
+      expect(pending.attachments.map((a) => a.name), ['자료.pdf', '사진.png']);
+      expect(pending.attachments.first.mimeType, 'application/pdf');
+      expect(gateway.bodies[send], {
+        'content': '',
+        'clientMessageId': pending.id,
+        'type': 'FILE',
+        'attachments': [
+          {'objectKey': 'chat-files/1'},
+          {'objectKey': 'chat-files/2'},
+        ],
+      });
+
+      socket.push('message', {
+        ...messageJson('m9', 1, '', type: 'FILE', clientMessageId: pending.id),
+        'attachments': [
+          {'name': '자료.pdf', 'size': 4, 'mimeType': 'application/pdf'},
+          {'name': '사진.png', 'size': 3, 'mimeType': 'image/png'},
+        ],
+      });
+      await settle();
+
+      final saved = _data(bloc).messages.last;
+      expect(saved.id, 'm9');
+      expect(saved.upload, isNull);
+      expect(saved.attachments, hasLength(2));
+    });
+
+    test('올리다 실패하면 실패로 남기고, 다시 보내면 올린 파일은 건너뛰고 같은 id 로 보낸다', () async {
+      final gateway = FakeMessageGateway()
+        ..failingOnce.add('PUT /upload/tmp-2');
+      final bloc = await _loaded(gateway, FakeChatSocket());
+      addTearDown(bloc.close);
+
+      bloc.add(
+        ChannelMessageEvent.sent(
+          '',
+          files: [uploadFileOf('a.pdf'), uploadFileOf('b.pdf')],
+        ),
+      );
+      await settle();
+
+      final failed = _data(bloc).messages.last;
+      expect(failed.upload?.failed, isTrue);
+      expect(_data(bloc).errorMessage, isNotNull);
+      expect(fileCalls(gateway), isNot(contains(send)));
+
+      gateway.calls.clear();
+      bloc.add(ChannelMessageEvent.retried(failed.id));
+      await settle();
+
+      // 첫 파일(tmp-1)은 이미 확정돼 다시 올리지 않는다.
+      expect(fileCalls(gateway), [presign, 'PUT /upload/tmp-3', confirm, send]);
+      expect(gateway.bodies[send], {
+        'content': '',
+        'clientMessageId': failed.id,
+        'type': 'FILE',
+        'attachments': [
+          {'objectKey': 'chat-files/1'},
+          {'objectKey': 'chat-files/3'},
+        ],
+      });
+      expect(_data(bloc).messages.last.upload?.failed, isFalse);
+    });
+
+    test('글과 파일은 한 메시지로 보내고, 전송만 실패했으면 다시 보낼 때 파일은 다시 올리지 않는다', () async {
+      final gateway = FakeMessageGateway()..failingOnce.add(send);
+      final bloc = await _loaded(gateway, FakeChatSocket());
+      addTearDown(bloc.close);
+
+      bloc.add(
+        ChannelMessageEvent.sent('  회의 자료예요 ', files: [uploadFileOf('a.pdf')]),
+      );
+      await settle();
+      final failed = _data(bloc).messages.last;
+      expect(failed.text, '회의 자료예요');
+      expect(failed.upload?.failed, isTrue);
+
+      gateway.calls.clear();
+      bloc.add(ChannelMessageEvent.retried(failed.id));
+      await settle();
+
+      expect(fileCalls(gateway), [send]);
+      expect(gateway.bodies[send], {
+        'content': '회의 자료예요',
+        'clientMessageId': failed.id,
+        'type': 'FILE',
+        'attachments': [
+          {'objectKey': 'chat-files/1'},
+        ],
+      });
+    });
+
+    test('실패한 파일 메시지를 지우면 대화에서 빠진다', () async {
+      final gateway = FakeMessageGateway()..failing = 'PUT /upload/tmp-1';
+      final bloc = await _loaded(gateway, FakeChatSocket());
+      addTearDown(bloc.close);
+
+      bloc.add(ChannelMessageEvent.sent('', files: [uploadFileOf('a.pdf')]));
+      await settle();
+      bloc.add(ChannelMessageEvent.discarded(_data(bloc).messages.last.id));
+      await settle();
+
+      expect(_texts(bloc), ['첫 번째', '두 번째']);
+    });
+
+    test('보내는 중인 메시지는 지우거나 겹쳐 보내지 않는다', () async {
+      final gate = Completer<void>();
+      final gateway = FakeMessageGateway()..uploadGate = gate.future;
+      final bloc = await _loaded(gateway, FakeChatSocket());
+      addTearDown(bloc.close);
+
+      bloc.add(ChannelMessageEvent.sent('', files: [uploadFileOf('a.pdf')]));
+      await settle();
+      final sending = _data(bloc).messages.last;
+      expect(sending.upload?.failed, isFalse);
+
+      bloc
+        ..add(ChannelMessageEvent.discarded(sending.id))
+        ..add(ChannelMessageEvent.retried(sending.id));
+      await settle();
+      gate.complete();
+      await settle();
+
+      expect(_data(bloc).messages.last.id, sending.id);
+      expect(fileCalls(gateway).where((c) => c == presign), hasLength(1));
+      expect(fileCalls(gateway).where((c) => c == send), hasLength(1));
+    });
+
+    test('대화에 올리면 accepted 가 true, 보내기 전에 멈추면 false 다', () async {
+      final gateway = FakeMessageGateway()..failing = 'GET /user/users/me';
+      final bloc = await _loaded(gateway, FakeChatSocket());
+      addTearDown(bloc.close);
+
+      // 내 정보를 못 읽으면 올리지도 보내지도 않고 false.
+      final stopped = Completer<bool>();
+      bloc.add(
+        ChannelMessageEvent.sent(
+          '자료',
+          files: [uploadFileOf('a.pdf')],
+          accepted: stopped,
+        ),
+      );
+      expect(await stopped.future, isFalse);
+      await settle();
+      expect(fileCalls(gateway).where((c) => c.contains('/files/')), isEmpty);
+      expect(_texts(bloc), ['첫 번째', '두 번째']);
+
+      gateway.failing = null;
+      final sentFiles = Completer<bool>();
+      final sentText = Completer<bool>();
+      bloc
+        ..add(
+          ChannelMessageEvent.sent(
+            '',
+            files: [uploadFileOf('a.pdf')],
+            accepted: sentFiles,
+          ),
+        )
+        ..add(ChannelMessageEvent.sent('글', accepted: sentText));
+
+      expect(await sentFiles.future, isTrue);
+      expect(await sentText.future, isTrue);
+      await settle();
+    });
+
+    test('한 번에 10개보다 많으면 올리지 않고 알린다', () async {
+      final gateway = FakeMessageGateway();
+      final bloc = await _loaded(gateway, FakeChatSocket());
+      addTearDown(bloc.close);
+
+      bloc.add(
+        ChannelMessageEvent.sent(
+          '',
+          files: [
+            for (var i = 0; i <= ChannelMessageBloc.maxAttachments; i++)
+              uploadFileOf('$i.txt'),
+          ],
+        ),
+      );
+      await settle();
+
+      expect(fileCalls(gateway), isEmpty);
+      expect(_texts(bloc), ['첫 번째', '두 번째']);
+      expect(_data(bloc).errorMessage, '파일은 한 번에 10개까지 보낼 수 있어요.');
+    });
+
+    test('저장 확인이 오지 않으면 파일 메시지는 빼지 않고 실패로 남긴다', () async {
+      final gateway = FakeMessageGateway();
+      final bloc = await _loaded(
+        gateway,
+        FakeChatSocket(),
+        confirmTimeout: const Duration(milliseconds: 50),
+      );
+      addTearDown(bloc.close);
+
+      bloc.add(ChannelMessageEvent.sent('', files: [uploadFileOf('a.pdf')]));
+      await bloc.stream.firstWhere(
+        (s) =>
+            s is AsyncSuccess<ChannelConversation> &&
+            s.data.messages.last.upload?.failed == true,
+      );
+
+      expect(_data(bloc).messages.last.attachments.single.name, 'a.pdf');
+      expect(_data(bloc).errorMessage, '파일이 전송되지 않았어요. 다시 보내 주세요.');
     });
   });
 }

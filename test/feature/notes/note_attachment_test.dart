@@ -1,10 +1,11 @@
 import 'dart:async';
 
-import 'package:cowork_app/feature/notes/data/repositories/note_attachment_repository.dart';
+import 'package:cowork_app/feature/chat/data/repositories/chat_file_repository.dart';
 import 'package:cowork_app/feature/notes/domain/note.dart';
 import 'package:cowork_app/feature/notes/domain/note_attachment.dart';
 import 'package:cowork_app/feature/notes/presentation/utils/note_file_picker.dart';
 import 'package:cowork_app/feature/profile/data/profile_store.dart';
+import 'package:cowork_app/shared/domain/upload_file.dart';
 import 'package:cowork_app/shared/utils/external_url.dart';
 import 'package:cowork_design_system/design_system.dart';
 import 'package:flutter/material.dart';
@@ -13,7 +14,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'notes_test_server.dart';
 
 /// 바이트 [bytes] 를 담은 가짜 파일.
-NoteUploadFile _file(String name, [List<int> bytes = const [1, 2, 3]]) =>
+UploadFile _file(String name, [List<int> bytes = const [1, 2, 3]]) =>
     (name: name, size: bytes.length, read: () => Stream.value(bytes));
 
 /// 편집 화면은 섹션이 많아 기본 화면(600) 밖으로 밀리므로 세로를 넉넉히 준다.
@@ -61,15 +62,15 @@ void main() {
   group('저장소', () {
     test('MIME 은 이름으로 정하고, 서버와 이름이 다른 형식은 서버 이름으로 보낸다', () {
       expect(
-        NoteAttachmentRepository.contentTypeOf('자료.pdf'),
+        ChatFileRepository.contentTypeOf('자료.pdf'),
         'application/pdf',
       );
-      expect(NoteAttachmentRepository.contentTypeOf('사진.JPG'), 'image/jpeg');
+      expect(ChatFileRepository.contentTypeOf('사진.JPG'), 'image/jpeg');
       // mime 패키지는 audio/x-wav, 서버는 audio/wav 로 부른다.
-      expect(NoteAttachmentRepository.contentTypeOf('녹음.wav'), 'audio/wav');
+      expect(ChatFileRepository.contentTypeOf('녹음.wav'), 'audio/wav');
       // 모르는 형식도 서버에 묻는다.
       expect(
-        NoteAttachmentRepository.contentTypeOf('확장자없음'),
+        ChatFileRepository.contentTypeOf('확장자없음'),
         'application/octet-stream',
       );
     });

@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:cowork_app/feature/channel/data/repositories/channel_repository.dart';
+import 'package:cowork_app/feature/chat/data/repositories/chat_file_repository.dart';
 import 'package:cowork_app/feature/notes/data/repositories/note_attachment_repository.dart';
 import 'package:cowork_app/feature/notes/data/repositories/notes_repository.dart';
 import 'package:cowork_app/feature/notes/data/repositories/note_template_repository.dart';
@@ -476,9 +477,11 @@ NoteTemplateRepository noteTemplateRepositoryOf(HttpClientAdapter server) =>
 /// [server] 로 요청을 보내는 회의록 첨부 저장소. 스토리지 PUT 도 같은 서버로 간다.
 NoteAttachmentRepository noteAttachmentRepositoryOf(HttpClientAdapter server) =>
     NoteAttachmentRepository.withDio(
-      chat: _dioOf(server, 'chat'),
+      files: ChatFileRepository.withDio(
+        chat: _dioOf(server, 'chat'),
+        uploader: _dioOf(server, 'chat'),
+      ),
       channel: _dioOf(server, 'channel'),
-      uploader: _dioOf(server, 'chat'),
     );
 
 /// 회의록·템플릿 저장소를 `MaterialApp` 바깥에 깐다. 편집 화면처럼 새 라우트로
