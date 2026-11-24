@@ -5,6 +5,23 @@ import '../../domain/chat_message.dart';
 import '../../domain/chat_upload.dart';
 import 'responses/message_response.dart';
 
+/// [message] 의 작성자. 웹훅·시스템 메시지는 정해진 작성자로, 사람이 보낸 메시지는
+/// 이름을 받아 둔 [authors] 에서 찾고 아직 모르면 [unknownChatAuthor] 로 보인다.
+ProfileEntity messageAuthorOf(
+  MessageResponse message,
+  Map<int, ProfileEntity> authors,
+) => switch (message) {
+  MessageResponse(:final webhook?) => webhookChatAuthor(
+    webhook.id,
+    webhook.name,
+    avatarUrl: webhook.avatarUrl,
+  ),
+  MessageResponse(isSystem: true) => systemChatAuthor(message.authorId ?? 0),
+  MessageResponse(:final personId?) =>
+    authors[personId] ?? unknownChatAuthor(personId),
+  _ => unknownChatAuthor(0),
+};
+
 /// 서버 메시지를 화면 메시지로. 시각은 기기 시간대로 [now] 기준 상대 표기한다.
 ///
 /// [editable] 은 수정·삭제할 수 있는 메시지인지, [upload] 는 보내는 중인 파일 메시지의

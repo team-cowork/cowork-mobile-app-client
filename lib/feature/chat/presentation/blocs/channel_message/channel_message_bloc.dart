@@ -14,6 +14,7 @@ import '../../../../../shared/domain/upload_file.dart';
 import '../../../../../shared/utils/chat_author.dart';
 import '../../../../../shared/utils/client_message_id.dart';
 import '../../../../channel/data/repositories/channel_repository.dart';
+import '../../../../channel/domain/enums/channel_type.dart';
 import '../../../../profile/data/repositories/profile_repository.dart';
 import '../../../data/model/chat_message_mapping.dart';
 import '../../../data/model/message_socket_event.dart';
@@ -786,8 +787,8 @@ class ChannelMessageBloc
         }
         _confirmTimers.remove(message.clientMessageId)?.cancel();
         _outgoing.remove(message.clientMessageId);
-        if (!message.isSystem && !_authors.containsKey(message.authorId)) {
-          _resolveAuthorsLater([message.authorId]);
+        if (message.personId case final id? when !_authors.containsKey(id)) {
+          _resolveAuthorsLater([id]);
         }
         return true;
       case MessageEdited(:final messageId, :final content):
@@ -889,8 +890,7 @@ class ChannelMessageBloc
   Future<void> _fetchAuthors(Iterable<MessageResponse> messages) async {
     final unknown = {
       for (final message in messages)
-        if (!message.isSystem && !_authors.containsKey(message.authorId))
-          message.authorId,
+        if (message.personId case final id? when !_authors.containsKey(id)) id,
     };
     if (unknown.isEmpty) return;
     for (final user in await _profileRepository.fetchDisplayNames(unknown)) {
@@ -919,8 +919,16 @@ class ChannelMessageBloc
         .whenComplete(() => _resolving.removeAll(ids));
   }
 
+  /// 채널 화면이 이 채널의 메시지를 보여 주는지. 채널을 아직 못 읽었으면 false.
+  bool get _showsMessages => switch (_header?.type) {
+    ChannelType.chat || ChannelType.webhook => true,
+    _ => false,
+  };
+
   /// 가장 최근에 저장된 메시지까지 읽었다고 알린다. 실패해도 화면엔 영향이 없다.
   void _markRead() {
+    // 앱이 메시지를 보여 주지 않는 종류(안내만 보임)는 사용자가 읽지 않았으니 알리지 않는다.
+    if (!_showsMessages) return;
     // 과거 위치를 보는 중이면 그보다 최근 메시지를 안 읽었으니 알리지 않는다.
     if (!_foreground || _closedReason != null || _hasNewer) return;
     final latest = _messages.reversed.where(_isSaved).firstOrNull;
@@ -985,6 +993,7 @@ class ChannelMessageBloc
     return ChannelConversation(
       name: header.name,
       description: header.description,
+      type: header.type,
       messages: [
         for (final message in _messages)
           chatMessageOf(
@@ -1004,12 +1013,13 @@ class ChannelMessageBloc
     );
   }
 
-  ProfileEntity _authorOf(MessageResponse message) => message.isSystem
-      ? systemChatAuthor(message.authorId)
-      : _authors[message.authorId] ?? unknownChatAuthor(message.authorId);
+  ProfileEntity _authorOf(MessageResponse message) =>
+      messageAuthorOf(message, _authors);
 
   bool _isEditable(MessageResponse message) =>
-      !message.isSystem && _isSaved(message) && message.authorId == _myId;
+      message.personId != null &&
+      _isSaved(message) &&
+      message.personId == _myId;
 
   bool _isPending(String clientMessageId) =>
       _messages.any((message) => message.id == clientMessageId);

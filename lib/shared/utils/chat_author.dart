@@ -29,5 +29,14 @@ ProfileEntity chatAuthorOf(int id, String name) => name.isEmpty
 ProfileEntity systemChatAuthor(int id) =>
     ProfileEntity(id: id, name: '시스템', avatarInitial: '시');
 
+/// 웹훅 메시지의 작성자. 웹훅에 붙은 이름·아바타를 그대로 쓴다.
+ProfileEntity webhookChatAuthor(int id, String name, {String? avatarUrl}) =>
+    ProfileEntity(
+      id: id,
+      name: name.isEmpty ? '웹훅' : name,
+      avatarInitial: name.isEmpty ? '웹' : initialOf(name),
+      avatarUrl: avatarUrl,
+    );
+
 ChatAvatarColor chatAvatarColorOf(int authorId) =>
     _avatarColors[authorId % _avatarColors.length];
