@@ -257,6 +257,50 @@ void main() {
       expect(_paths(server, 'POST'), isEmpty);
     });
 
+    testWidgets('올리는 중인 파일도 20개 제한에 센다', (tester) async {
+      _tall(tester);
+      final server = FakeNotesServer()..holdUpload = Completer();
+      server.notes.first['attachments'] = [
+        for (var i = 0; i < 19; i++)
+          {'objectKey': 'chat-files/10/1/f$i.png', 'name': '사진$i.png'},
+      ];
+      await _openEditor(
+        tester,
+        server,
+        pickFile: () async => _file('스무번째.png'),
+      );
+
+      // 19개 + 올리는 중 1개 = 20개라 다음 파일은 받지 않는다.
+      await tester.tap(find.byIcon(Icons.attach_file));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byIcon(Icons.attach_file));
+      await tester.pumpAndSettle();
+
+      expect(find.text('첨부파일은 20개까지 붙일 수 있어요.'), findsOneWidget);
+      expect(_paths(server, 'POST'), [
+        '/chat/chat/channels/10/files/presigned-url',
+      ]);
+
+      server.holdUpload!.complete();
+      await tester.pumpAndSettle();
+    });
+
+    testWidgets('크기가 0 인 파일은 올리지 않고 알린다', (tester) async {
+      _tall(tester);
+      final server = FakeNotesServer();
+      await _openEditor(
+        tester,
+        server,
+        pickFile: () async => _file('빈 파일.txt', const []),
+      );
+
+      await tester.tap(find.byIcon(Icons.attach_file));
+      await tester.pumpAndSettle();
+
+      expect(find.text('빈 파일은 붙일 수 없어요.'), findsOneWidget);
+      expect(_paths(server, 'POST'), isEmpty);
+    });
+
     testWidgets('서버가 업로드를 거절하면 사유를 알리고 진행 카드를 지운다', (tester) async {
       _tall(tester);
       final server = FakeNotesServer()

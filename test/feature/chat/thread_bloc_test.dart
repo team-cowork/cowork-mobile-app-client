@@ -163,6 +163,27 @@ void main() {
     expect(_replyTexts(bloc), ['첫 번째 답글', '두 번째 답글']);
   });
 
+  test('같은 사유로 연달아 실패해도 매번 알린다', () async {
+    final gateway = _gateway();
+    final bloc = await _loaded(gateway, FakeChatSocket());
+    addTearDown(bloc.close);
+    gateway.failing = 'POST /chat/chat/channels/10/messages';
+    final failures = <String>[];
+    final sub = bloc.stream.listen((s) {
+      if (s case AsyncSuccess(:final data) when data.errorMessage != null) {
+        failures.add(data.errorMessage!);
+      }
+    });
+    addTearDown(sub.cancel);
+
+    bloc.add(const ThreadEvent.replySent('실패할 답글'));
+    await pumpEventQueue();
+    bloc.add(const ThreadEvent.replySent('실패할 답글'));
+    await pumpEventQueue();
+
+    expect(failures, hasLength(2));
+  });
+
   test('공백뿐인 답글은 보내지 않는다', () async {
     final gateway = _gateway();
     final bloc = await _loaded(gateway, FakeChatSocket());
