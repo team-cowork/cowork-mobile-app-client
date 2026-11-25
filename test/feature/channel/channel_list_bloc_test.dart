@@ -945,6 +945,35 @@ void main() {
       expect(unreadOf(bloc), {'20': 7});
     });
 
+    test('다시 읽는 사이 같은 팀을 더 나중에 읽었으면 늦게 온 응답은 버린다', () async {
+      final server = serverWithUnread();
+      final socket = FakeChatSocket();
+      final bloc = await _loaded(server, socket: socket);
+      addTearDown(bloc.close);
+
+      // 주기 읽기가 응답을 기다리는 사이…
+      final gate = Completer<void>();
+      server.unreadGate = gate.future;
+      bloc.add(const ChannelListEvent.visibilityChanged(visible: false));
+      bloc.add(const ChannelListEvent.visibilityChanged(visible: true));
+      await pumpEventQueue();
+
+      // …재연결로 다시 읽어 더 새 값(5)을 받았다.
+      server
+        ..unreadGate = null
+        ..unread[1] = {10: 5};
+      socket.reconnect();
+      await pumpEventQueue();
+      expect(unreadOf(bloc), {'10': 5});
+
+      // 먼저 시작한 읽기는 그보다 앞선 값(3)으로 늦게 온다.
+      server.unread[1] = {10: 3};
+      gate.complete();
+      await pumpEventQueue();
+
+      expect(unreadOf(bloc), {'10': 5});
+    });
+
     test('같은 숫자가 소켓으로 다시 오면 화면을 다시 내보내지 않는다', () async {
       final socket = FakeChatSocket();
       final bloc = await _loaded(serverWithUnread(), socket: socket);
