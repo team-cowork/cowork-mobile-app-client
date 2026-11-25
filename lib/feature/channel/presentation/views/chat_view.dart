@@ -1,10 +1,13 @@
 import 'package:cowork_design_system/design_system.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/network/chat_socket.dart';
+import '../../../../core/utils/app_lifecycle.dart';
 import '../../../../shared/widgets/bloc_scaffold.dart';
+import '../../../../shared/widgets/unread_count_badge.dart';
 import '../../../notifications/data/repositories/notification_repository.dart';
 import '../../../profile/data/repositories/profile_repository.dart';
 import '../../../project/data/repositories/project_repository.dart';
@@ -15,6 +18,7 @@ import '../../../team/presentation/widgets/new_team_sheet.dart';
 import '../../../team/presentation/widgets/team_action_dialog.dart';
 import '../../../team/presentation/widgets/team_menu_sheet.dart';
 import '../../data/repositories/channel_repository.dart';
+import '../../data/repositories/channel_unread_repository.dart';
 import '../../domain/channel.dart';
 import '../../domain/enums/channel_type.dart';
 import '../../domain/enums/workspace_avatar_color.dart';
@@ -34,7 +38,9 @@ class ChatView extends StatelessWidget {
         context.read<ProjectRepository>(),
         context.read<ChatSocket>(),
         profileRepository: context.read<ProfileRepository>(),
+        unreadRepository: context.read<ChannelUnreadRepository>(),
         invitedTeams: context.read<NotificationRepository>().invitedTeamIds,
+        lifecycle: appLifecycleStates(),
       )..add(const ChannelListRequested()),
       // 어느 단계(팀/채널)가 실패했는지는 설명 문구에 실려 온다. (#94)
       errorTitle: '홈을 불러오지 못했어요',
@@ -119,16 +125,20 @@ class ChatView extends StatelessWidget {
                 onAddTeam: () => _addTeam(context),
               ),
               Expanded(
-                child: _ChannelList(
-                  channelGroups: data.channelGroups,
-                  // 채널을 만들 권한이 없으면 그룹 `+` 를 두지 않는다.
-                  onCreateChannelIn: data.canCreateChannels
-                      ? (projectId) => _createChannel(
-                          context,
-                          teamId,
-                          projectId: projectId,
-                        )
-                      : null,
+                // 팀이 있을 때만 안 읽은 수를 읽으므로 채널 목록이 보이는지만 알린다.
+                child: _HomeVisibilityReporter(
+                  child: _ChannelList(
+                    channelGroups: data.channelGroups,
+                    unreadCounts: data.unreadCounts,
+                    // 채널을 만들 권한이 없으면 그룹 `+` 를 두지 않는다.
+                    onCreateChannelIn: data.canCreateChannels
+                        ? (projectId) => _createChannel(
+                            context,
+                            teamId,
+                            projectId: projectId,
+                          )
+                        : null,
+                  ),
                 ),
               ),
             ],
@@ -430,10 +440,58 @@ class _WorkspaceShortcutButton extends StatelessWidget {
   };
 }
 
+/// 홈이 화면에 보이는지 [ChannelListBloc] 에 알린다.
+///
+/// 위에 다른 화면이 쌓이면 Navigator 가, 다른 탭으로 가면 `MainShell` 이 그 아래
+/// [TickerMode] 를 끈다. 그 값으로 가려졌는지 안다.
+class _HomeVisibilityReporter extends StatefulWidget {
+  const _HomeVisibilityReporter({required this.child});
+
+  final Widget child;
+
+  @override
+  State<_HomeVisibilityReporter> createState() =>
+      _HomeVisibilityReporterState();
+}
+
+class _HomeVisibilityReporterState extends State<_HomeVisibilityReporter> {
+  ValueListenable<TickerModeData>? _tickerMode;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final tickerMode = TickerMode.getValuesNotifier(context);
+    if (identical(tickerMode, _tickerMode)) return;
+    _tickerMode?.removeListener(_report);
+    _tickerMode = tickerMode..addListener(_report);
+    _report();
+  }
+
+  void _report() => context.read<ChannelListBloc>().add(
+    ChannelListEvent.visibilityChanged(visible: _tickerMode!.value.enabled),
+  );
+
+  @override
+  void dispose() {
+    _tickerMode?.removeListener(_report);
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
+}
+
 class _ChannelList extends StatelessWidget {
-  const _ChannelList({required this.channelGroups, this.onCreateChannelIn});
+  const _ChannelList({
+    required this.channelGroups,
+    required this.unreadCounts,
+    this.onCreateChannelIn,
+  });
 
   final List<ChannelGroup> channelGroups;
+
+  /// 채널 id 별 안 읽은 수. 없는 채널은 0 이다.
+  final Map<String, int> unreadCounts;
 
   /// 프로젝트 그룹 헤더의 `+` 를 눌렀을 때. 그 프로젝트 id 를 넘긴다.
   /// null 이면 `+` 를 두지 않는다.
@@ -460,6 +518,7 @@ class _ChannelList extends StatelessWidget {
                 _ChannelGroupItem.type(
                   type: channel.type,
                   label: channel.name,
+                  unreadCount: unreadCounts[channel.id] ?? 0,
                   // 종류별 화면은 채널 화면이 서버에서 받은 종류로 고른다. 알림·검색으로
                   // 들어와도 같은 화면이 뜨게 하려는 것이다.
                   onTap: () => context.push('/chat/channel/${channel.id}'),
@@ -533,6 +592,7 @@ class _ChannelGroupItem extends StatelessWidget {
   const _ChannelGroupItem({
     required this.icon,
     required this.label,
+    this.unreadCount = 0,
     this.onTap,
   });
 
@@ -540,13 +600,23 @@ class _ChannelGroupItem extends StatelessWidget {
   factory _ChannelGroupItem.type({
     required ChannelType type,
     required String label,
+    int unreadCount = 0,
     VoidCallback? onTap,
   }) {
-    return _ChannelGroupItem(icon: _iconFor(type), label: label, onTap: onTap);
+    return _ChannelGroupItem(
+      icon: _iconFor(type),
+      label: label,
+      unreadCount: unreadCount,
+      onTap: onTap,
+    );
   }
 
   final Widget icon;
   final String label;
+
+  /// 안 읽은 메시지 수. 0 이면 배지를 두지 않는다.
+  final int unreadCount;
+
   final VoidCallback? onTap;
 
   static Widget _iconFor(ChannelType type) => switch (type) {
@@ -581,10 +651,16 @@ class _ChannelGroupItem extends StatelessWidget {
         children: [
           icon,
           const SizedBox(width: AppSpacing.s10),
-          Text(
-            label,
-            style: AppFont.subtextL.copyWith(color: AppColors.neutral300),
+          // 배지를 오른쪽 끝에 두려고 이름이 남은 폭을 채운다. 긴 이름은 줄인다.
+          Expanded(
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AppFont.subtextL.copyWith(color: AppColors.neutral300),
+            ),
           ),
+          if (unreadCount > 0) UnreadCountBadge(count: unreadCount),
         ],
       ),
     );

@@ -110,4 +110,28 @@ void main() {
       expect((event as ProjectsChanged).teamId, 1);
     }
   });
+
+  test('channel:unread:updated 는 채널 id 와 안 읽은 수를 담는다', () {
+    final event = ChannelSocketEvent.from((
+      name: 'channel:unread:updated',
+      data: {'channelId': 7, 'unreadCount': 0},
+    ));
+
+    final changed = event as UnreadCountChanged;
+    expect(changed.channelId, '7');
+    expect(changed.unreadCount, 0);
+  });
+
+  test('필드가 빠지거나 타입이 다른 channel:unread:updated 는 버린다', () {
+    for (final data in [
+      {'channelId': 7},
+      {'unreadCount': 1},
+      {'channelId': '7', 'unreadCount': 1},
+    ]) {
+      expect(
+        ChannelSocketEvent.from((name: 'channel:unread:updated', data: data)),
+        isNull,
+      );
+    }
+  });
 }

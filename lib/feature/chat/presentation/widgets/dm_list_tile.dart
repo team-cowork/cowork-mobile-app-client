@@ -2,6 +2,7 @@ import 'package:cowork_design_system/design_system.dart';
 import 'package:flutter/material.dart';
 
 import '../../../../shared/extensions/chat_avatar_color_mapping.dart';
+import '../../../../shared/widgets/unread_count_badge.dart';
 import '../../domain/direct_message_preview.dart';
 import '../../domain/enums/dm_presence.dart';
 import 'chat_color_mapping.dart';
@@ -105,26 +106,7 @@ class DmListTile extends StatelessWidget {
                   ),
                 ),
                 if (hasUnread)
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: AppSpacing.s6,
-                      vertical: 2,
-                    ),
-                    decoration: const BoxDecoration(
-                      color: AppColors.red400,
-                      shape: BoxShape.circle,
-                    ),
-                    child: Text(
-                      '${preview.unreadCount}',
-                      style: const TextStyle(
-                        fontFamily: AppFont.fontFamily,
-                        fontFamilyFallback: AppFont.fontFamilyFallback,
-                        fontSize: 11,
-                        fontWeight: AppFont.bold,
-                        color: AppColors.white,
-                      ),
-                    ),
-                  )
+                  UnreadCountBadge(count: preview.unreadCount)
                 else if (preview.isMuted)
                   AppIcon.muted(),
               ],

@@ -40,7 +40,13 @@ class _MainShellState extends State<MainShell> {
     return BaseScaffold(
       body: IndexedStack(
         index: _index,
-        children: [for (var i = 0; i < _items.length; i++) _tabView(i)],
+        children: [
+          // IndexedStack 은 가려진 탭의 TickerMode 를 끄지 않는다. 직접 꺼서 가려진 탭의
+          // 애니메이션을 멈추고, 탭이 자기가 보이는지 알 수 있게 한다. 채널 탭은 이 값으로
+          // 보이는 동안만 안 읽은 수를 다시 읽는다.
+          for (var i = 0; i < _items.length; i++)
+            TickerMode(enabled: i == _index, child: _tabView(i)),
+        ],
       ),
       bottomNavigationBar: CoworkBottomNavigationBar(
         items: _items,

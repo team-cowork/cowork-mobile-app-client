@@ -4,6 +4,7 @@ import 'dart:typed_data';
 
 import 'package:cowork_app/core/network/chat_socket.dart';
 import 'package:cowork_app/feature/channel/data/repositories/channel_repository.dart';
+import 'package:cowork_app/feature/channel/data/repositories/channel_unread_repository.dart';
 import 'package:cowork_app/feature/notifications/data/repositories/notification_repository.dart';
 import 'package:cowork_app/feature/profile/data/repositories/profile_repository.dart';
 import 'package:cowork_app/feature/project/data/repositories/project_repository.dart';
@@ -64,6 +65,15 @@ class FakeChatServer implements HttpClientAdapter {
 
   /// 팀 id → 프로젝트 목록(서버 순서). 기본은 프로젝트가 없다.
   final projects = <int, List<Map<String, dynamic>>>{};
+
+  /// 팀 id → 채널 id 별 안 읽은 수(`GET /chat/teams/{teamId}/unread`).
+  /// 기본은 안 읽은 메시지가 없다.
+  final unread = <int, Map<int, int>>{};
+
+  ServerFailure? failUnread;
+
+  /// 걸어 두면 안 읽은 수 응답을 이 Future 가 끝날 때까지 붙잡는다.
+  Future<void>? unreadGate;
 
   /// 프로젝트 생성 요청 본문.
   final createdProjects = <Map<String, dynamic>>[];
@@ -234,6 +244,21 @@ class FakeChatServer implements HttpClientAdapter {
         options,
         failUpdateChannel,
         () => _updateChannel(channelId, body),
+      );
+    }
+    // chat 서비스 prefix(`/chat`) 뒤에 컨트롤러 경로 `/chat/teams/{teamId}/unread`.
+    if (path.startsWith('/chat/chat/teams/') && path.endsWith('/unread')) {
+      final teamId = int.parse(path.split('/')[4]);
+      // 응답을 붙잡은 사이 바뀐 값을 주도록, 기다린 뒤에 읽는다.
+      await unreadGate;
+      return _respond(
+        options,
+        failUnread,
+        () => [
+          for (final MapEntry(key: channelId, value: count)
+              in (unread[teamId] ?? const <int, int>{}).entries)
+            {'channelId': channelId, 'unreadCount': count},
+        ],
       );
     }
     if (path == '/project/projects' && options.method == 'POST') {
@@ -414,6 +439,10 @@ ProfileRepository profileRepositoryOf(FakeChatServer server) =>
 ChannelRepository channelRepositoryOf(FakeChatServer server) =>
     ChannelRepository.withDio(_dioOf(server, 'channel'));
 
+/// [server] 로 요청을 보내는 안 읽은 수 저장소.
+ChannelUnreadRepository channelUnreadRepositoryOf(FakeChatServer server) =>
+    ChannelUnreadRepository.withDio(_dioOf(server, 'chat'));
+
 /// [server] 로 요청을 보내는 프로젝트 저장소.
 ProjectRepository projectRepositoryOf(FakeChatServer server) =>
     ProjectRepository.withDio(_dioOf(server, 'project'));
@@ -490,6 +519,7 @@ Widget chatTestApp(
     RepositoryProvider.value(value: channelRepositoryOf(server)),
     RepositoryProvider.value(value: profileRepositoryOf(server)),
     RepositoryProvider.value(value: projectRepositoryOf(server)),
+    RepositoryProvider.value(value: channelUnreadRepositoryOf(server)),
     RepositoryProvider<ChatSocket>.value(value: socket ?? FakeChatSocket()),
     RepositoryProvider.value(
       value: notifications ?? NotificationRepository(FakeNotificationStream()),

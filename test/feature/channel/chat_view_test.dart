@@ -4,6 +4,7 @@ import 'package:cowork_app/core/network/chat_socket.dart';
 import 'package:cowork_app/feature/channel/presentation/views/chat_view.dart';
 import 'package:cowork_app/feature/notifications/data/repositories/notification_repository.dart';
 import 'package:cowork_app/feature/notifications/presentation/views/notifications_view.dart';
+import 'package:cowork_app/shared/widgets/unread_count_badge.dart';
 import 'package:cowork_design_system/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -255,6 +256,99 @@ void main() {
     expect(find.text('홈을 불러오지 못했어요'), findsNothing);
   });
 
+  group('안 읽은 수', () {
+    int unreadRequests(FakeChatServer server) => server.requests
+        .where((r) => r == 'GET /chat/chat/teams/1/unread')
+        .length;
+
+    Finder badgeOf(String channelName) => find.descendant(
+      of: find.ancestor(of: find.text(channelName), matching: find.byType(Row)),
+      matching: find.byType(UnreadCountBadge),
+    );
+
+    testWidgets('안 읽은 채널 옆에 숫자 배지를 두고, 0 이면 두지 않는다', (tester) async {
+      final server = FakeChatServer()..unread[1] = {10: 3, 11: 0};
+      await pumpChat(tester, server);
+
+      expect(
+        find.descendant(of: badgeOf('일반'), matching: find.text('3')),
+        findsOneWidget,
+      );
+      expect(badgeOf('배포'), findsNothing);
+    });
+
+    testWidgets('읽음 처리돼 0 이 오면 배지가 사라진다', (tester) async {
+      final socket = FakeChatSocket();
+      final server = FakeChatServer()..unread[1] = {10: 3};
+      await pumpChat(tester, server, socket: socket);
+
+      socket.push('channel:unread:updated', {
+        'channelId': 10,
+        'unreadCount': 0,
+      });
+      await tester.pumpAndSettle();
+
+      expect(find.byType(UnreadCountBadge), findsNothing);
+    });
+
+    testWidgets('보이는 동안 30초마다 다시 읽는다', (tester) async {
+      final server = FakeChatServer();
+      await pumpChat(tester, server);
+      expect(unreadRequests(server), 1);
+
+      // 다른 사람이 메시지를 보냈다. 서버는 이를 소켓으로 알리지 않는다.
+      server.unread[1] = {10: 2};
+      await tester.pump(const Duration(seconds: 30));
+      await tester.pumpAndSettle();
+
+      expect(unreadRequests(server), 2);
+      expect(
+        find.descendant(of: badgeOf('일반'), matching: find.text('2')),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('위에 다른 화면이 쌓인 동안은 읽지 않고, 돌아오면 바로 읽는다', (tester) async {
+      final server = FakeChatServer();
+      final router = GoRouter(
+        routes: [
+          GoRoute(
+            path: '/',
+            builder: (_, _) => const ChatView(),
+            routes: [
+              GoRoute(
+                path: 'pushed',
+                builder: (_, _) => const Scaffold(body: Text('채널 화면')),
+              ),
+            ],
+          ),
+        ],
+      );
+      addTearDown(router.dispose);
+      await tester.pumpWidget(
+        chatTestApp(server, router: router, theme: AppTheme.dark()),
+      );
+      await tester.pumpAndSettle();
+      expect(unreadRequests(server), 1);
+
+      router.push('/pushed');
+      await tester.pumpAndSettle();
+      await tester.pump(const Duration(minutes: 2));
+      await tester.pumpAndSettle();
+      expect(unreadRequests(server), 1);
+
+      server.unread[1] = {10: 4};
+      router.pop();
+      await tester.pumpAndSettle();
+
+      expect(unreadRequests(server), 2);
+      expect(
+        find.descendant(of: badgeOf('일반'), matching: find.text('4')),
+        findsOneWidget,
+      );
+    });
+  });
+
   group('다른 사람이 나를 팀에 넣으면(MEMBER_INVITED)', () {
     /// 알림을 받기 시작한 저장소. testWidgets 본문 안에서 불러야 한다. setUp 에서
     /// 만들면 구독이 가짜 시간 밖에서 열려 pumpAndSettle 로 알림이 흘러가지 않는다.
@@ -357,6 +451,7 @@ void main() {
           RepositoryProvider.value(value: channelRepositoryOf(server)),
           RepositoryProvider.value(value: profileRepositoryOf(server)),
           RepositoryProvider.value(value: projectRepositoryOf(server)),
+          RepositoryProvider.value(value: channelUnreadRepositoryOf(server)),
           RepositoryProvider<ChatSocket>.value(value: FakeChatSocket()),
           RepositoryProvider.value(value: notifications),
         ],

@@ -236,7 +236,11 @@ def run_mutant(repo: Path, mutant: dict, tests: list[str], concurrency: int, tim
     mutated = text[:mutant["start"]] + mutant["replacement"] + text[mutant["end"]:]
     try:
         path.write_bytes(mutated.encode("utf-8"))
-        code, output = run_flutter(repo, ["test", f"--concurrency={concurrency}", *tests], timeout)
+        # GitHub Actions 에서는 기본 reporter 가 `github`(✅ 줄)라 진행 줄이 없다. 판정이
+        # 진행 줄에 기대므로 어디서 돌든 같은 출력이 나오게 고정한다.
+        code, output = run_flutter(
+            repo, ["test", "--reporter=expanded", f"--concurrency={concurrency}", *tests], timeout
+        )
     finally:
         path.write_bytes(original)
     if code is None:

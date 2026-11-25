@@ -4,23 +4,46 @@ import 'package:cowork_app/core/utils/async_state.dart';
 import 'package:cowork_app/feature/channel/presentation/blocs/channel_list/channel_list_bloc.dart';
 import 'package:cowork_app/feature/project/data/model/responses/project_summary_response.dart';
 import 'package:cowork_app/feature/team/data/model/requests/create_team_request.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'chat_test_server.dart';
+
+/// [server] 에 붙은 Bloc. 아직 아무것도 읽지 않았다.
+///
+/// [unreadPollInterval] 은 기본으로 길게 둬, 주기 읽기를 보는 테스트만 짧게 한다.
+ChannelListBloc _bloc(
+  FakeChatServer server, {
+  FakeChatSocket? socket,
+  Stream<int> invitedTeams = const Stream.empty(),
+  Stream<AppLifecycleState>? lifecycle,
+  Duration unreadPollInterval = const Duration(hours: 1),
+}) => ChannelListBloc(
+  teamRepositoryOf(server),
+  channelRepositoryOf(server),
+  projectRepositoryOf(server),
+  socket ?? FakeChatSocket(),
+  profileRepository: profileRepositoryOf(server),
+  unreadRepository: channelUnreadRepositoryOf(server),
+  invitedTeams: invitedTeams,
+  lifecycle: lifecycle,
+  unreadPollInterval: unreadPollInterval,
+);
 
 /// 첫 팀까지 불러온 Bloc.
 Future<ChannelListBloc> _loaded(
   FakeChatServer server, {
   FakeChatSocket? socket,
   Stream<int> invitedTeams = const Stream.empty(),
+  Stream<AppLifecycleState>? lifecycle,
+  Duration unreadPollInterval = const Duration(hours: 1),
 }) async {
-  final bloc = ChannelListBloc(
-    teamRepositoryOf(server),
-    channelRepositoryOf(server),
-    projectRepositoryOf(server),
-    socket ?? FakeChatSocket(),
-    profileRepository: profileRepositoryOf(server),
+  final bloc = _bloc(
+    server,
+    socket: socket,
     invitedTeams: invitedTeams,
+    lifecycle: lifecycle,
+    unreadPollInterval: unreadPollInterval,
   )..add(const ChannelListEvent.requested());
   await bloc.stream.firstWhere((s) => s is AsyncSuccess<ChannelListData>);
   return bloc;
@@ -577,13 +600,8 @@ void main() {
       final socket = FakeChatSocket();
       final gate = Completer<void>();
       server.channelGates[1] = gate.future;
-      final bloc = ChannelListBloc(
-        teamRepositoryOf(server),
-        channelRepositoryOf(server),
-        projectRepositoryOf(server),
-        socket,
-        profileRepository: profileRepositoryOf(server),
-      )..add(const ChannelListEvent.requested());
+      final bloc = _bloc(server, socket: socket)
+        ..add(const ChannelListEvent.requested());
       addTearDown(bloc.close);
       await pumpEventQueue();
 
@@ -667,6 +685,327 @@ void main() {
       await pumpEventQueue();
 
       expect(groupsOf(bloc).keys, ['서버', '채널']);
+    });
+  });
+
+  group('안 읽은 수', () {
+    Map<String, int> unreadOf(ChannelListBloc bloc) => _data(bloc).unreadCounts;
+
+    int unreadRequests(FakeChatServer server, int teamId) => server.requests
+        .where((r) => r == 'GET /chat/chat/teams/$teamId/unread')
+        .length;
+
+    FakeChatServer serverWithUnread() => FakeChatServer()
+      ..unread[1] = {10: 3}
+      ..unread[2] = {20: 7};
+
+    test('채널 목록과 함께 읽어 채널 id 별로 싣는다', () async {
+      final bloc = await _loaded(serverWithUnread());
+      addTearDown(bloc.close);
+
+      expect(unreadOf(bloc), {'10': 3});
+    });
+
+    test('안 읽은 수만 실패하면 홈은 그대로 열고 숫자 없이 보인다', () async {
+      final server = serverWithUnread()..failUnread = const ServerFailure(500);
+      final bloc = await _loaded(server);
+      addTearDown(bloc.close);
+
+      expect(channelIds(bloc), [10, 11]);
+      expect(unreadOf(bloc), isEmpty);
+    });
+
+    test('channel:unread:updated 가 오면 그 채널 숫자만 바꾼다', () async {
+      final server = serverWithUnread()..unread[1] = {10: 3, 11: 1};
+      final socket = FakeChatSocket();
+      final bloc = await _loaded(server, socket: socket);
+      addTearDown(bloc.close);
+
+      socket.push('channel:unread:updated', {
+        'channelId': 10,
+        'unreadCount': 0,
+      });
+      await pumpEventQueue();
+
+      expect(unreadOf(bloc), {'10': 0, '11': 1});
+    });
+
+    test('channel:updated 로 채널이 통째로 바뀌어도 숫자는 남는다', () async {
+      final socket = FakeChatSocket();
+      final bloc = await _loaded(serverWithUnread(), socket: socket);
+      addTearDown(bloc.close);
+
+      socket.push('channel:updated', {
+        'channelId': 10,
+        'teamId': 1,
+        'name': '새 이름',
+        'viewType': 'TEXT',
+      });
+      await pumpEventQueue();
+
+      expect(_data(bloc).channelGroups.last.channels.first.name, '새 이름');
+      expect(unreadOf(bloc), {'10': 3});
+    });
+
+    test('형식이 맞지 않는 channel:unread:updated 는 버린다', () async {
+      final socket = FakeChatSocket();
+      final bloc = await _loaded(serverWithUnread(), socket: socket);
+      addTearDown(bloc.close);
+
+      socket.push('channel:unread:updated', {'channelId': 10});
+      socket.push('channel:unread:updated', {
+        'channelId': '10',
+        'unreadCount': 0,
+      });
+      await pumpEventQueue();
+
+      expect(unreadOf(bloc), {'10': 3});
+    });
+
+    test('채널 목록을 읽는 동안 온 숫자도 목록을 받은 뒤 반영한다', () async {
+      final server = serverWithUnread();
+      final socket = FakeChatSocket();
+      final gate = Completer<void>();
+      server.channelGates[1] = gate.future;
+      final bloc = _bloc(server, socket: socket)
+        ..add(const ChannelListEvent.requested());
+      addTearDown(bloc.close);
+      await pumpEventQueue();
+
+      // 같이 읽은 안 읽은 수(3)는 이미 왔고, 그 뒤 읽음 처리됐다.
+      socket.push('channel:unread:updated', {
+        'channelId': 10,
+        'unreadCount': 0,
+      });
+      await pumpEventQueue();
+      gate.complete();
+      await bloc.stream.firstWhere((s) => s is AsyncSuccess<ChannelListData>);
+      await pumpEventQueue();
+
+      expect(unreadOf(bloc), {'10': 0});
+    });
+
+    test('팀을 바꾸면 이전 팀 숫자를 버리고 새 팀 숫자를 읽는다', () async {
+      final bloc = await _loaded(serverWithUnread());
+      addTearDown(bloc.close);
+
+      bloc.add(const ChannelListEvent.teamSelected(2));
+      await bloc.stream.firstWhere(
+        (s) => s is AsyncSuccess<ChannelListData> && s.data.teamId == 2,
+      );
+
+      expect(unreadOf(bloc), {'20': 7});
+    });
+
+    test('재연결하면 안 읽은 수도 다시 읽는다', () async {
+      final server = serverWithUnread();
+      final socket = FakeChatSocket();
+      final bloc = await _loaded(server, socket: socket);
+      addTearDown(bloc.close);
+
+      server.unread[1] = {10: 5};
+      socket.reconnect();
+      await pumpEventQueue();
+
+      expect(unreadOf(bloc), {'10': 5});
+    });
+
+    test('주기마다 다시 읽는다', () async {
+      final server = serverWithUnread();
+      final bloc = await _loaded(
+        server,
+        unreadPollInterval: const Duration(milliseconds: 10),
+      );
+      addTearDown(bloc.close);
+
+      // 다른 사람이 메시지를 보냈다. 서버는 이 변화를 소켓으로 알리지 않는다.
+      server.unread[1] = {10: 4};
+      await bloc.stream.firstWhere(
+        (s) =>
+            s is AsyncSuccess<ChannelListData> &&
+            s.data.unreadCounts['10'] == 4,
+      );
+    });
+
+    test('숫자가 그대로면 다시 읽어도 화면을 다시 내보내지 않는다', () async {
+      final server = serverWithUnread();
+      final bloc = await _loaded(
+        server,
+        unreadPollInterval: const Duration(milliseconds: 5),
+      );
+      addTearDown(bloc.close);
+      final states = <ChannelListState>[];
+      final subscription = bloc.stream.listen(states.add);
+      addTearDown(subscription.cancel);
+
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+
+      expect(unreadRequests(server, 1), greaterThan(2));
+      expect(states, isEmpty);
+    });
+
+    test('홈이 가려지면 다시 읽지 않고, 다시 보이면 바로 한 번 읽는다', () async {
+      final server = serverWithUnread();
+      final bloc = await _loaded(
+        server,
+        unreadPollInterval: const Duration(milliseconds: 10),
+      );
+      addTearDown(bloc.close);
+
+      bloc.add(const ChannelListEvent.visibilityChanged(visible: false));
+      await pumpEventQueue();
+      final whileHidden = unreadRequests(server, 1);
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      expect(unreadRequests(server, 1), whileHidden);
+
+      server.unread[1] = {10: 0};
+      bloc.add(const ChannelListEvent.visibilityChanged(visible: true));
+      await pumpEventQueue();
+
+      expect(unreadOf(bloc), {'10': 0});
+    });
+
+    test('보이는 중에 다시 보인다고 알려도 바로 읽지 않는다', () async {
+      final server = serverWithUnread();
+      final bloc = await _loaded(server);
+      addTearDown(bloc.close);
+
+      bloc.add(const ChannelListEvent.visibilityChanged(visible: true));
+      await pumpEventQueue();
+
+      expect(unreadRequests(server, 1), 1);
+    });
+
+    test('앱이 뒤로 가면 멈추고, 앞으로 오면 바로 한 번 읽는다', () async {
+      final server = serverWithUnread();
+      final lifecycle = StreamController<AppLifecycleState>();
+      addTearDown(lifecycle.close);
+      final bloc = await _loaded(
+        server,
+        lifecycle: lifecycle.stream,
+        unreadPollInterval: const Duration(milliseconds: 10),
+      );
+      addTearDown(bloc.close);
+
+      lifecycle.add(AppLifecycleState.paused);
+      await pumpEventQueue();
+      final whilePaused = unreadRequests(server, 1);
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      expect(unreadRequests(server, 1), whilePaused);
+
+      server.unread[1] = {10: 9};
+      lifecycle.add(AppLifecycleState.resumed);
+      await pumpEventQueue();
+
+      expect(unreadOf(bloc), {'10': 9});
+    });
+
+    test('다시 읽는 사이 소켓으로 온 숫자는 늦게 온 응답에 덮이지 않는다', () async {
+      final server = serverWithUnread();
+      final socket = FakeChatSocket();
+      final bloc = await _loaded(server, socket: socket);
+      addTearDown(bloc.close);
+
+      final gate = Completer<void>();
+      server.unreadGate = gate.future;
+      bloc.add(const ChannelListEvent.visibilityChanged(visible: false));
+      bloc.add(const ChannelListEvent.visibilityChanged(visible: true));
+      await pumpEventQueue();
+
+      // 읽기를 시작한 뒤 읽음 처리됐다. 응답은 그 전 값(3)이다.
+      socket.push('channel:unread:updated', {
+        'channelId': 10,
+        'unreadCount': 0,
+      });
+      await pumpEventQueue();
+      gate.complete();
+      await pumpEventQueue();
+
+      expect(unreadOf(bloc), {'10': 0});
+    });
+
+    test('다시 읽는 사이 다른 팀으로 옮기면 늦게 온 응답은 버린다', () async {
+      final server = serverWithUnread();
+      final bloc = await _loaded(server);
+      addTearDown(bloc.close);
+
+      final gate = Completer<void>();
+      server.unreadGate = gate.future;
+      bloc.add(const ChannelListEvent.visibilityChanged(visible: false));
+      bloc.add(const ChannelListEvent.visibilityChanged(visible: true));
+      await pumpEventQueue();
+      bloc.add(const ChannelListEvent.teamSelected(2));
+      await pumpEventQueue();
+      gate.complete();
+      await bloc.stream.firstWhere(
+        (s) => s is AsyncSuccess<ChannelListData> && s.data.teamId == 2,
+      );
+      await pumpEventQueue();
+
+      expect(unreadOf(bloc), {'20': 7});
+    });
+
+    test('다시 읽는 사이 같은 팀을 더 나중에 읽었으면 늦게 온 응답은 버린다', () async {
+      final server = serverWithUnread();
+      final socket = FakeChatSocket();
+      final bloc = await _loaded(server, socket: socket);
+      addTearDown(bloc.close);
+
+      // 주기 읽기가 응답을 기다리는 사이…
+      final gate = Completer<void>();
+      server.unreadGate = gate.future;
+      bloc.add(const ChannelListEvent.visibilityChanged(visible: false));
+      bloc.add(const ChannelListEvent.visibilityChanged(visible: true));
+      await pumpEventQueue();
+
+      // …재연결로 다시 읽어 더 새 값(5)을 받았다.
+      server
+        ..unreadGate = null
+        ..unread[1] = {10: 5};
+      socket.reconnect();
+      await pumpEventQueue();
+      expect(unreadOf(bloc), {'10': 5});
+
+      // 먼저 시작한 읽기는 그보다 앞선 값(3)으로 늦게 온다.
+      server.unread[1] = {10: 3};
+      gate.complete();
+      await pumpEventQueue();
+
+      expect(unreadOf(bloc), {'10': 5});
+    });
+
+    test('같은 숫자가 소켓으로 다시 오면 화면을 다시 내보내지 않는다', () async {
+      final socket = FakeChatSocket();
+      final bloc = await _loaded(serverWithUnread(), socket: socket);
+      addTearDown(bloc.close);
+      final states = <ChannelListState>[];
+      final subscription = bloc.stream.listen(states.add);
+      addTearDown(subscription.cancel);
+
+      // 내가 메시지를 보내면 서버가 같은 숫자로 다시 보낸다.
+      socket.push('channel:unread:updated', {
+        'channelId': 10,
+        'unreadCount': 3,
+      });
+      await pumpEventQueue();
+
+      expect(states, isEmpty);
+    });
+
+    test('닫는 사이 다시 보인다는 이벤트가 와도 타이머를 남기지 않는다', () async {
+      final bloc = await _loaded(
+        serverWithUnread(),
+        unreadPollInterval: const Duration(milliseconds: 10),
+      );
+      bloc.add(const ChannelListEvent.visibilityChanged(visible: false));
+      await pumpEventQueue();
+
+      // 홈이 닫히는 순간 다시 보인다는 알림이 겹쳤다.
+      bloc.add(const ChannelListEvent.visibilityChanged(visible: true));
+      await bloc.close();
+
+      // 남은 타이머가 닫힌 Bloc 에 이벤트를 넣으면 StateError 로 테스트가 실패한다.
+      await Future<void>.delayed(const Duration(milliseconds: 50));
     });
   });
 }
