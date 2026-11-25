@@ -331,8 +331,8 @@ class ThreadBloc extends Bloc<ThreadEvent, ThreadState> {
           _replies[index] = message;
         }
         _confirmTimers.remove(message.clientMessageId)?.cancel();
-        if (!message.isSystem && !_authors.containsKey(message.authorId)) {
-          _resolveAuthorsLater([message.authorId]);
+        if (message.personId case final id? when !_authors.containsKey(id)) {
+          _resolveAuthorsLater([id]);
         }
         return true;
       case MessageEdited(:final messageId, :final content):
@@ -391,8 +391,7 @@ class ThreadBloc extends Bloc<ThreadEvent, ThreadState> {
   Future<void> _fetchAuthors(Iterable<MessageResponse> messages) async {
     final unknown = {
       for (final message in messages)
-        if (!message.isSystem && !_authors.containsKey(message.authorId))
-          message.authorId,
+        if (message.personId case final id? when !_authors.containsKey(id)) id,
     };
     if (unknown.isEmpty) return;
     for (final user in await _profileRepository.fetchDisplayNames(unknown)) {
@@ -452,9 +451,8 @@ class ThreadBloc extends Bloc<ThreadEvent, ThreadState> {
     );
   }
 
-  ProfileEntity _authorOf(MessageResponse message) => message.isSystem
-      ? systemChatAuthor(message.authorId)
-      : _authors[message.authorId] ?? unknownChatAuthor(message.authorId);
+  ProfileEntity _authorOf(MessageResponse message) =>
+      messageAuthorOf(message, _authors);
 
   bool _hasReply(String clientMessageId) =>
       _replies.any((reply) => reply.clientMessageId == clientMessageId);

@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:cowork_app/feature/channel/domain/enums/channel_type.dart';
 import 'package:cowork_app/core/utils/async_state.dart';
 import 'package:cowork_app/feature/channel/data/repositories/channel_repository.dart';
 import 'package:cowork_app/feature/chat/data/repositories/message_repository.dart';
@@ -395,6 +396,26 @@ void main() {
     expect(_data(bloc).hasOlder, isFalse);
   });
 
+  test('이전 메시지를 읽는 중에 또 요청해도 한 번만 읽는다', () async {
+    final gateway = FakeMessageGateway(
+      messages: [for (var i = 150; i > 0; i--) messageJson('m$i', 2, '메시지 $i')],
+    );
+    final bloc = await _loaded(gateway, FakeChatSocket());
+    addTearDown(bloc.close);
+
+    bloc
+      ..add(const ChannelMessageEvent.olderRequested())
+      ..add(const ChannelMessageEvent.olderRequested());
+    await bloc.stream.firstWhere(
+      (s) => s is AsyncSuccess<ChannelConversation> && !s.data.loadingOlder,
+    );
+    await pumpEventQueue();
+
+    expect(gateway.calls.where((c) => c.contains('before=')), [
+      'GET /chat/chat/channels/10/messages?before=m51',
+    ]);
+  });
+
   test('닫으면 채널 방에서 나간다', () async {
     final socket = FakeChatSocket();
     final bloc = await _loaded(FakeMessageGateway(), socket);
@@ -511,6 +532,59 @@ void main() {
 
     expect(_data(bloc).messages.last.author.name, '시스템');
     expect(gateway.calls, isNot(contains(startsWith('GET /user/users/batch'))));
+  });
+
+  test('작성자 id 없이 온 웹훅 메시지는 웹훅 이름으로 보이고 사람 이름을 찾지 않는다', () async {
+    final gateway = FakeMessageGateway();
+    final socket = FakeChatSocket();
+    final bloc = await _loaded(gateway, socket);
+    addTearDown(bloc.close);
+
+    socket.push('message', {
+      ...messageJson('m3', 0, 'main 에 커밋 3개를 푸시했어요'),
+      'authorId': null,
+      'webhook': {'id': 2, 'name': 'github-webhook', 'avatarUrl': null},
+    });
+    await pumpEventQueue();
+
+    final message = _data(bloc).messages.last;
+    expect(message.text, 'main 에 커밋 3개를 푸시했어요');
+    expect(message.author.name, 'github-webhook');
+    expect(message.editable, isFalse);
+    expect(gateway.calls, isNot(contains(startsWith('GET /user/users/batch'))));
+  });
+
+  test('메시지를 보여 주지 않는 종류의 채널은 열거나 새 메시지가 와도 읽음으로 알리지 않는다', () async {
+    const read = 'POST /chat/chat/channels/10/read';
+    final gateway = FakeMessageGateway();
+    gateway.channel['viewType'] = 'FILE_SHARE';
+    final socket = FakeChatSocket();
+    final bloc = _bloc(gateway, socket)
+      ..add(const ChannelMessageEvent.requested());
+    addTearDown(bloc.close);
+    await bloc.stream.firstWhere((s) => s is AsyncSuccess<ChannelConversation>);
+    await pumpEventQueue();
+
+    expect(_data(bloc).type, ChannelType.file);
+    expect(gateway.calls, isNot(contains(read)));
+
+    socket.push('message', messageJson('m3', 2, '파일을 올렸어요'));
+    await pumpEventQueue();
+
+    expect(gateway.calls, isNot(contains(read)));
+  });
+
+  test('웹훅 채널은 열면 읽음으로 알린다', () async {
+    const read = 'POST /chat/chat/channels/10/read';
+    final gateway = FakeMessageGateway();
+    gateway.channel['viewType'] = 'WEBHOOK';
+    final bloc = _bloc(gateway, FakeChatSocket())
+      ..add(const ChannelMessageEvent.requested());
+    addTearDown(bloc.close);
+    await bloc.stream.firstWhere((s) => s is AsyncSuccess<ChannelConversation>);
+    await pumpEventQueue();
+
+    expect(gateway.calls, contains(read));
   });
 
   test('다시 읽는 사이 소켓으로 온 더 최근 메시지는 잃지 않는다', () async {
@@ -822,6 +896,40 @@ void main() {
         gateway.calls,
         isNot(contains('POST /chat/chat/channels/10/read')),
       );
+    });
+
+    test('최근 쪽을 읽는 중에 또 요청해도 한 번만 읽는다', () async {
+      final gateway = twoHundred();
+      final bloc = await focused(gateway, FakeChatSocket(), 'm100');
+      addTearDown(bloc.close);
+      gateway.calls.clear();
+
+      bloc
+        ..add(const ChannelMessageEvent.newerRequested())
+        ..add(const ChannelMessageEvent.newerRequested());
+      await bloc.stream.firstWhere(
+        (s) => s is AsyncSuccess<ChannelConversation> && !s.data.loadingNewer,
+      );
+      await pumpEventQueue();
+
+      expect(gateway.calls.where((c) => c.contains('after=')), hasLength(1));
+    });
+
+    test('보내려고 최근 대화로 옮기는 동안에는 이후 메시지를 따로 읽지 않는다', () async {
+      final gateway = twoHundred();
+      final bloc = await focused(gateway, FakeChatSocket(), 'm100');
+      addTearDown(bloc.close);
+      gateway.calls.clear();
+
+      bloc
+        ..add(const ChannelMessageEvent.sent('안녕'))
+        ..add(const ChannelMessageEvent.newerRequested());
+      await bloc.stream.firstWhere(
+        (s) => s is AsyncSuccess<ChannelConversation> && !s.data.hasNewer,
+      );
+      await pumpEventQueue();
+
+      expect(gateway.calls.where((c) => c.contains('after=')), isEmpty);
     });
 
     test('최근 메시지 근처면 이후 메시지가 없다고 본다', () async {

@@ -188,6 +188,24 @@ void main() {
     );
   });
 
+  test('읽는 동안 갱신이 여러 번 와도 끝난 뒤 한 번만 더 읽는다', () async {
+    final gateway = _gateway();
+    final bloc = await _loaded(gateway, FakeChatSocket());
+    addTearDown(bloc.close);
+
+    bloc
+      ..add(const PersonalChatEvent.refreshed())
+      ..add(const PersonalChatEvent.refreshed())
+      ..add(const PersonalChatEvent.refreshed());
+    await pumpEventQueue(times: 50);
+
+    // 처음 읽기와, 그동안 쌓인 요청을 몰아 한 번 더.
+    expect(
+      gateway.calls.where((call) => call == 'GET /chat/chat/dms'),
+      hasLength(2),
+    );
+  });
+
   test('숨기면 목록에서 빠지고 서버에 DELETE 를 보낸다', () async {
     final gateway = _gateway();
     final bloc = await _loaded(gateway, FakeChatSocket());

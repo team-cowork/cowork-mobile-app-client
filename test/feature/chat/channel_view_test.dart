@@ -149,6 +149,34 @@ void main() {
     expect(find.text('메시지 수정'), findsNothing);
   });
 
+  group('채널 종류', () {
+    testWidgets('일반 채팅 채널은 메시지와 입력창을 보인다', (tester) async {
+      await pumpChannel(tester, FakeMessageGateway(messages: [otherMessage]));
+
+      expect(messageText('남의 메시지'), findsOneWidget);
+      expect(find.text('메시지를 입력하세요'), findsOneWidget);
+    });
+
+    testWidgets('웹훅 채널은 메시지만 보이고 입력창은 없다', (tester) async {
+      final gateway = FakeMessageGateway(messages: [otherMessage]);
+      gateway.channel['viewType'] = 'WEBHOOK';
+      await pumpChannel(tester, gateway);
+
+      expect(messageText('남의 메시지'), findsOneWidget);
+      expect(find.text('메시지를 입력하세요'), findsNothing);
+    });
+
+    testWidgets('앱에서 아직 열 수 없는 종류는 안내를 보인다', (tester) async {
+      final gateway = FakeMessageGateway(messages: [otherMessage]);
+      gateway.channel['viewType'] = 'FILE_SHARE';
+      await pumpChannel(tester, gateway);
+
+      expect(find.text('아직 앱에서 열 수 없는 채널이에요'), findsOneWidget);
+      expect(messageText('남의 메시지'), findsNothing);
+      expect(find.text('메시지를 입력하세요'), findsNothing);
+    });
+  });
+
   testWidgets('메시지를 누르면 이 채널에서 그 메시지의 스레드로 간다', (tester) async {
     await pumpChannel(tester, FakeMessageGateway(messages: [otherMessage]));
 

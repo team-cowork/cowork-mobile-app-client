@@ -63,6 +63,7 @@ class _RouteAdapter implements HttpClientAdapter {
 
   /// 경로 끝부분 → (상태 코드, 본문)
   final Map<String, (int, String)> routes;
+  final requests = <RequestOptions>[];
 
   @override
   Future<ResponseBody> fetch(
@@ -70,6 +71,7 @@ class _RouteAdapter implements HttpClientAdapter {
     Stream<Uint8List>? requestStream,
     Future<void>? cancelFuture,
   ) async {
+    requests.add(options);
     final (status, body) = routes.entries
         .firstWhere((route) => options.path.endsWith(route.key))
         .value;
@@ -261,6 +263,8 @@ void main() {
             '__Host-cowork_session=s1; Path=/',
             // 지난 시도를 지우는 쿠키. 접두어는 같지만 값이 비어 있다.
             '__Host-cowork_oauth_old=; Path=/; Max-Age=0',
+            // 이름이 접두어뿐이라 시도마다 다른 꼬리(state 해시)가 없다.
+            '__Host-cowork_oauth_=x; Path=/',
             loginCookie,
             'after=1; Path=/',
           ],
@@ -551,6 +555,24 @@ void main() {
       expect(await repository.restoreSession(), isTrue);
       return repository;
     }
+
+    test('로그아웃 요청에만 access token 을 싣는다', () async {
+      final adapter = _RouteAdapter({
+        '/auth/refresh': (
+          200,
+          jsonEncode({'access_token': 'a', 'refresh_token': 'r2'}),
+        ),
+        '/auth/signout': (200, '{}'),
+      });
+      final repository = _signedIn(adapter);
+      expect(await repository.restoreSession(), isTrue);
+
+      await repository.signOut();
+
+      final [refresh, signout] = adapter.requests;
+      expect(refresh.headers.containsKey('Authorization'), isFalse);
+      expect(signout.headers['Authorization'], 'Bearer a');
+    });
 
     for (final (name, signout) in [
       ('서버가 거절해도(500)', (500, '')),

@@ -17,11 +17,12 @@ const _target = IssueTarget(projectId: 1, repoId: 7, label: '개발 · backend')
 IssuesData _data(IssuesBloc bloc) =>
     (bloc.state as AsyncSuccess<IssuesData>).data;
 
-Future<IssuesBloc> _loaded(FakeIssueServer server) async {
-  final bloc = IssuesBloc(
-    issueRepositoryOf(server),
-    refreshDelay: const Duration(milliseconds: 10),
-  )..add(const IssuesEvent.requested());
+Future<IssuesBloc> _loaded(
+  FakeIssueServer server, {
+  Duration refreshDelay = const Duration(milliseconds: 10),
+}) async {
+  final bloc = IssuesBloc(issueRepositoryOf(server), refreshDelay: refreshDelay)
+    ..add(const IssuesEvent.requested());
   await bloc.stream.firstWhere((s) => s is! AsyncLoading<IssuesData>);
   return bloc;
 }
@@ -143,6 +144,34 @@ void main() {
           .where((c) => c == 'GET /project/projects/1/github-repos/7/issues')
           .length;
       expect(listCalls, greaterThan(2));
+    });
+
+    test('만든 이슈가 끝내 안 보이면 정한 횟수만큼만 다시 읽고 그만둔다', () async {
+      final server = FakeIssueServer();
+      // 간격을 0 으로 두면 다시 읽기가 실제 시간을 기다리지 않고 이벤트 루프에서 돈다.
+      final bloc = await _loaded(server, refreshDelay: Duration.zero);
+      addTearDown(bloc.close);
+      server.calls.clear();
+
+      bloc.add(const IssuesEvent.created(title: '반영되지 않는 이슈'));
+      await pumpEventQueue(times: 200);
+
+      final listCalls = server.calls
+          .where((c) => c == 'GET /project/projects/1/github-repos/7/issues')
+          .length;
+      expect(listCalls, IssuesBloc.maxRefreshAttempts);
+    });
+
+    test('기다리는 이슈가 없으면 새로고침은 한 번만 읽는다', () async {
+      final server = FakeIssueServer();
+      final bloc = await _loaded(server, refreshDelay: Duration.zero);
+      addTearDown(bloc.close);
+      server.calls.clear();
+
+      bloc.add(const IssuesEvent.refreshed());
+      await pumpEventQueue(times: 200);
+
+      expect(server.calls, ['GET /project/projects/1/github-repos/7/issues']);
     });
   });
 

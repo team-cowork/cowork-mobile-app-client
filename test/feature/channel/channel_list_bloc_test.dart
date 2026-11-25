@@ -12,6 +12,7 @@ import 'chat_test_server.dart';
 Future<ChannelListBloc> _loaded(
   FakeChatServer server, {
   FakeChatSocket? socket,
+  Stream<int> invitedTeams = const Stream.empty(),
 }) async {
   final bloc = ChannelListBloc(
     teamRepositoryOf(server),
@@ -19,6 +20,7 @@ Future<ChannelListBloc> _loaded(
     projectRepositoryOf(server),
     socket ?? FakeChatSocket(),
     profileRepository: profileRepositoryOf(server),
+    invitedTeams: invitedTeams,
   )..add(const ChannelListEvent.requested());
   await bloc.stream.firstWhere((s) => s is AsyncSuccess<ChannelListData>);
   return bloc;
@@ -206,7 +208,11 @@ void main() {
     expect(_data(bloc).isTeamOwner, isFalse);
   });
 
-  test('새로 만든 팀은 생성 응답에 역할이 없어도 내가 소유자다', () async {
+  List<int> shortcutIds(ChannelListBloc bloc) => [
+    for (final shortcut in _data(bloc).workspaceShortcuts) shortcut.id,
+  ];
+
+  test('새로 만든 팀은 생성 응답에 역할이 없어도 내가 소유자이고, 있던 팀은 단축 바에 남는다', () async {
     final server = FakeChatServer();
     final bloc = await _loaded(server);
     addTearDown(bloc.close);
@@ -220,6 +226,82 @@ void main() {
     );
 
     expect(_data(bloc).isTeamOwner, isTrue);
+    expect(shortcutIds(bloc), [1, 2, team.id]);
+  });
+
+  test('단축 바는 보고 있는 팀만 선택된 것으로 보인다', () async {
+    final server = FakeChatServer();
+    final bloc = await _loaded(server);
+    addTearDown(bloc.close);
+
+    final selected = [
+      for (final shortcut in _data(bloc).workspaceShortcuts)
+        if (shortcut.isSelected) shortcut.id,
+    ];
+    expect(selected, [1]);
+  });
+
+  group('다른 사람이 나를 팀에 넣으면', () {
+    Map<String, dynamic> team(int id, String name) => {
+      'id': id,
+      'name': name,
+      'iconUrl': null,
+      'myRole': 'MEMBER',
+    };
+
+    test('보던 팀이 있으면 화면은 두고 단축 바에만 붙인다', () async {
+      final server = FakeChatServer();
+      final invites = StreamController<int>();
+      addTearDown(invites.close);
+      final bloc = await _loaded(server, invitedTeams: invites.stream);
+      addTearDown(bloc.close);
+
+      server.teams.add(team(3, '새 팀'));
+      invites.add(3);
+      await bloc.stream.firstWhere(
+        (s) =>
+            s is AsyncSuccess<ChannelListData> &&
+            s.data.workspaceShortcuts.any((shortcut) => shortcut.id == 3),
+      );
+
+      expect(_data(bloc).teamId, 1);
+      expect(shortcutIds(bloc), [1, 2, 3]);
+    });
+
+    test('읽은 팀 목록에 보던 팀이 없으면 낡은 응답으로 보고 버린다', () async {
+      final server = FakeChatServer();
+      final invites = StreamController<int>();
+      addTearDown(invites.close);
+      final bloc = await _loaded(server, invitedTeams: invites.stream);
+      addTearDown(bloc.close);
+
+      server.teams
+        ..removeWhere((t) => t['id'] == 1)
+        ..add(team(3, '새 팀'));
+      invites.add(3);
+      await pumpEventQueue();
+
+      expect(_data(bloc).teamId, 1);
+      expect(shortcutIds(bloc), [1, 2]);
+    });
+
+    test('팀이 없던 홈이면 초대받은 팀으로 들어간다', () async {
+      final server = FakeChatServer(teams: []);
+      final invites = StreamController<int>();
+      addTearDown(invites.close);
+      final bloc = await _loaded(server, invitedTeams: invites.stream);
+      addTearDown(bloc.close);
+      expect(_data(bloc).teamId, isNull);
+
+      // 초대받은 팀이 목록의 첫 팀이 아니어도 그 팀으로 들어간다.
+      server.teams.addAll([team(1, '코워크'), team(2, '디자인팀')]);
+      invites.add(2);
+      await bloc.stream.firstWhere(
+        (s) => s is AsyncSuccess<ChannelListData> && s.data.teamId != null,
+      );
+
+      expect(_data(bloc).teamId, 2);
+    });
   });
 
   group('팀에서 내 권한', () {

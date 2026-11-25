@@ -1,0 +1,93 @@
+name: Mutation Test
+
+# PR 에서 바뀐 lib 코드에만 뮤테이션 테스트를 돌리고 결과를 PR 코멘트로 남긴다.
+# 리포트 용도라 점수가 낮아도 PR 을 막지 않는다.
+on:
+  pull_request:
+    branches: [develop]
+    # 드래프트에서 리뷰 요청으로 바뀔 때도 돈다.
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - 'lib/**'
+      - 'test/**'
+      - 'scripts/mutation_test.py'
+      - '.github/workflows/mutation-test.yaml'
+
+concurrency:
+  group: mutation-test-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  mutation_test:
+    # 드래프트 PR 은 푸시가 잦아 Actions 시간만 쓰므로 건너뛴다.
+    if: github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # base 브랜치와의 merge-base 를 구하려면 기록이 필요하다.
+          fetch-depth: 0
+
+      - name: Read Flutter version from .fvmrc
+        run: echo "FLUTTER_VERSION=$(jq -r '.flutter' .fvmrc)" >> "$GITHUB_ENV"
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      # 잡 전체 제한(90분)에 걸리면 뒤의 리포트 단계가 돈다고 보장할 수 없다.
+      # 스크립트는 시간 예산(60분)이 지나면 남은 변이를 건너뛰고 리포트를 쓰고,
+      # 그래도 이 단계가 75분을 넘으면 단계만 끊겨 리포트 단계는 돈다.
+      - name: Run mutation test on changed lines
+        timeout-minutes: 75
+        run: |
+          python3 scripts/mutation_test.py \
+            --base "origin/${{ github.base_ref }}" \
+            --concurrency 4 \
+            --max-mutants 200 \
+            --max-minutes 60 \
+            --report mutation-report.md \
+            --json mutation-report.json
+
+      - name: Show report in job summary
+        if: always() && hashFiles('mutation-report.md') != ''
+        run: cat mutation-report.md >> "$GITHUB_STEP_SUMMARY"
+
+      # 같은 PR 에는 코멘트 하나만 두고 매번 고쳐 쓴다.
+      - name: Comment report on PR
+        if: always() && hashFiles('mutation-report.md') != ''
+        # fork PR 은 토큰에 쓰기 권한이 없어 실패한다. 리포트는 job summary 에 남아 있다.
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          comment_id=$(gh api "repos/$REPO/issues/$PR_NUMBER/comments" --paginate \
+            --jq '.[] | select(.body | contains("<!-- mutation-test-report -->")) | .id' | tail -n 1)
+          if [ -n "$comment_id" ]; then
+            gh api -X PATCH "repos/$REPO/issues/comments/$comment_id" -F body=@mutation-report.md > /dev/null
+          else
+            gh pr comment "$PR_NUMBER" -R "$REPO" --body-file mutation-report.md
+          fi
+
+      - name: Upload report
+        if: always() && hashFiles('mutation-report.json') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: mutation-report
+          path: |
+            mutation-report.md
+            mutation-report.json
+          if-no-files-found: ignore

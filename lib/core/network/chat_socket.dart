@@ -10,6 +10,10 @@ import '../utils/logger.dart';
 /// 서버가 소켓으로 보낸 이벤트 하나. [data] 는 이벤트 payload(JSON 객체)다.
 typedef SocketEvent = ({String name, Map<String, dynamic> data});
 
+/// 소켓을 만든다. 실제로는 [io.io] 이고, 테스트가 가짜 소켓을 넣을 때만 바꾼다.
+typedef SocketFactory =
+    io.Socket Function(String uri, Map<String, dynamic> options);
+
 /// cowork-chat socket.io 연결 (`/ws/chat`, namespace `/chat`).
 ///
 /// 채팅 메시지 수신도 같은 연결을 쓰게 되므로 앱에 하나만 두고 화면들이 나눠 쓴다.
@@ -24,10 +28,16 @@ typedef SocketEvent = ({String name, Map<String, dynamic> data});
 /// 끊긴 동안(백그라운드 등) 놓친 이벤트는 다시 받지 않는다. 서버의 끊김 복구는
 /// 2분까지만 되므로, 복구 없이 다시 붙으면 [reconnected] 로 알린다.
 class ChatSocket {
-  ChatSocket(this._auth, {String? origin})
-    : _origin = origin ?? socketOriginOf(DgsmOAuthConfig.apiBaseUrl);
+  ChatSocket(
+    this._auth, {
+    String? origin,
+    @visibleForTesting SocketFactory? createSocket,
+  }) : _origin = origin ?? socketOriginOf(DgsmOAuthConfig.apiBaseUrl),
+       _createSocket = createSocket ?? io.io;
 
   final AuthRepository _auth;
+
+  final SocketFactory _createSocket;
 
   /// 게이트웨이 origin. (예: `https://cowork.example.com`)
   final String _origin;
@@ -159,7 +169,7 @@ class ChatSocket {
     // 앞 연결이 남아 있으면 버린다. 덮어쓰기만 하면 연결이 새고 이벤트가 두 번 온다.
     _disconnect();
 
-    final socket = io.io(
+    final socket = _createSocket(
       '$_origin/chat',
       io.OptionBuilder()
           .setPath('/ws/chat')
