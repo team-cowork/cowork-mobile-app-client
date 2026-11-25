@@ -1,6 +1,8 @@
 import 'dart:async';
 
 import 'package:equatable/equatable.dart';
+import 'package:flutter/foundation.dart' show mapEquals;
+import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../../core/network/chat_socket.dart';
@@ -17,6 +19,7 @@ import '../../../../team/data/repositories/team_repository.dart';
 import '../../../../team/domain/enums/team_permission.dart';
 import '../../../data/model/channel_socket_event.dart';
 import '../../../data/repositories/channel_repository.dart';
+import '../../../data/repositories/channel_unread_repository.dart';
 import '../../../domain/channel.dart';
 import '../../../domain/enums/workspace_avatar_color.dart';
 import '../../../domain/workspace_shortcut.dart';
@@ -40,6 +43,13 @@ part 'channel_list_state.dart';
 ///
 /// 채널 목록과 함께 그 팀에서 내 권한도 읽어, 팀 메뉴가 할 수 없는 항목을 숨기게 한다.
 ///
+/// 채널별 안 읽은 수([ChannelUnreadRepository])도 채널 목록과 함께 읽는다. 실패해도
+/// 홈을 실패로 바꾸지 않고 숫자 없이 보여 준다. 서버는 내가 읽음 처리했을 때만
+/// `channel:unread:updated` 를 보내고, 다른 사람의 새 메시지로 늘어난 수는 보내지
+/// 않는다. 그래서 홈이 보이고([ChannelListVisibilityChanged]) 앱이 앞에 있는 동안
+/// [unreadPollInterval] 마다 다시 읽는다(웹과 같은 30초). 다시 보이게 되면 바로 한 번
+/// 읽는다. 채널에서 돌아오거나 앱으로 돌아온 경우다.
+///
 /// ponytail: 실패 단계를 문자열로 붙이는 건 임시다. 화면 제목까지 단계별로 나누는
 /// 작업은 #94 에서 한다.
 class ChannelListBloc extends Bloc<ChannelListEvent, ChannelListState> {
@@ -49,8 +59,12 @@ class ChannelListBloc extends Bloc<ChannelListEvent, ChannelListState> {
     this._projectRepository,
     this._socket, {
     required ProfileRepository profileRepository,
+    required ChannelUnreadRepository unreadRepository,
     Stream<int> invitedTeams = const Stream.empty(),
+    Stream<AppLifecycleState>? lifecycle,
+    this.unreadPollInterval = const Duration(seconds: 30),
   }) : _profileRepository = profileRepository,
+       _unreadRepository = unreadRepository,
        super(const ChannelListState.initial()) {
     on<ChannelListRequested>(_onLoad);
     on<ChannelListTeamSelected>(_onTeamSelected);
@@ -62,6 +76,13 @@ class ChannelListBloc extends Bloc<ChannelListEvent, ChannelListState> {
     on<_ChannelListSocketEventReceived>(_onSocketEvent);
     on<_ChannelListReconnected>(_onReconnected);
     on<_ChannelListTeamInvited>(_onTeamInvited);
+    on<ChannelListVisibilityChanged>(
+      (event, emit) => _updatePolling(visible: event.visible),
+    );
+    on<_ChannelListForegroundChanged>(
+      (event, emit) => _updatePolling(foreground: event.foreground),
+    );
+    on<_ChannelListUnreadPolled>(_onUnreadPolled);
 
     _socketEvents = _socket.events
         .map(ChannelSocketEvent.from)
@@ -73,16 +94,49 @@ class ChannelListBloc extends Bloc<ChannelListEvent, ChannelListState> {
     _invites = invitedTeams.listen(
       (teamId) => add(_ChannelListTeamInvited(teamId)),
     );
+    _lifecycle = lifecycle?.listen(
+      (state) => add(
+        _ChannelListForegroundChanged(
+          foreground: state == AppLifecycleState.resumed,
+        ),
+      ),
+    );
+    _updatePolling();
   }
+
+  /// 홈이 보이는 동안 안 읽은 수를 다시 읽는 간격.
+  final Duration unreadPollInterval;
 
   final TeamRepository _teamRepository;
   final ChannelRepository _channelRepository;
   final ProjectRepository _projectRepository;
   final ChatSocket _socket;
   final ProfileRepository _profileRepository;
+  final ChannelUnreadRepository _unreadRepository;
   late final StreamSubscription<ChannelSocketEvent?> _socketEvents;
   late final StreamSubscription<void> _reconnects;
   late final StreamSubscription<int> _invites;
+  StreamSubscription<AppLifecycleState>? _lifecycle;
+
+  /// 보고 있는 팀의 채널 id 별 안 읽은 수. 바꿀 때는 새 Map 으로 갈아 끼운다.
+  /// 화면 상태가 이 Map 을 그대로 들고 있어서다.
+  Map<String, int> _unread = const {};
+
+  /// 마지막으로 시작한 안 읽은 수 읽기 번호. 늦게 끝난 이전 읽기가 새 값을 덮지
+  /// 않도록, 끝났을 때 번호가 그대로인 읽기만 반영한다.
+  int _unreadRequest = 0;
+
+  /// 주기적으로 다시 읽는 동안 소켓으로 온 안 읽은 수. 응답이 그보다 먼저 찍혔을 수
+  /// 있어 응답을 반영한 뒤 다시 덮는다. 읽는 중이 아니면 null.
+  List<UnreadCountChanged>? _unreadDuringPoll;
+
+  /// 홈이 화면에 보이는지와 앱이 앞에 있는지. 둘 다일 때만 주기적으로 다시 읽는다.
+  bool _visible = true;
+  bool _foreground = true;
+  Timer? _unreadTimer;
+
+  /// [close] 가 시작됐다. 그 뒤로는 타이머를 만들지 않는다.
+  bool _closing = false;
 
   /// 마지막으로 읽은 팀 목록. 팀을 바꿀 때는 다시 읽지 않고 여기서 고른다.
   List<TeamSummaryResponse> _teams = const [];
@@ -194,6 +248,8 @@ class ChannelListBloc extends Bloc<ChannelListEvent, ChannelListState> {
     _teams = [..._teams.where((other) => other.id != team.id), team];
     _teamId = team.id;
     _resetProjects();
+    // 채널이 없으니 안 읽은 수도 없다.
+    _resetUnread();
     // 권한도 읽지 않는다. 모르면 메뉴를 다 보이고 서버가 막게 둔다.
     _permissions = null;
     // 만든 사람이 소유자가 된다.
@@ -277,8 +333,10 @@ class ChannelListBloc extends Bloc<ChannelListEvent, ChannelListState> {
     final List<TeamSummaryResponse> teams;
     final List<Channel> channels;
     final List<ProjectSummaryResponse>? projects;
-    // 끊긴 동안 바뀐 프로젝트도 이벤트로 오지 않는다. 채널과 함께 다시 읽는다.
+    final Map<String, int>? unread;
+    // 끊긴 동안 바뀐 프로젝트·안 읽은 수도 이벤트로 오지 않는다. 채널과 함께 다시 읽는다.
     final projectsRequest = _fetchProjects(team.id);
+    final unreadRequest = _fetchUnread(team.id);
     try {
       // 403 만 보고 팀에서 빠졌다고 판단하면 막 만든 팀의 일시적인 403 에도 팀을 떠나
       // 버리므로, 팀 목록으로 확인한다.
@@ -293,8 +351,9 @@ class ChannelListBloc extends Bloc<ChannelListEvent, ChannelListState> {
       channels = await _channelRepository.fetchChannels(team.id);
       // 기다리는 것은 모두 여기서 끝낸다. 아래 확인과 화면 갱신 사이에 기다림이 끼면 그
       // 사이 다른 팀으로 옮겨도 옛 팀 화면을 내보내고, [_resyncChanges] 가 이미 비워져
-      // 그 사이 온 변경을 응답으로 덮어 잃는다. 실패해도 던지지 않는다.
+      // 그 사이 온 변경을 응답으로 덮어 잃는다. 둘 다 실패해도 던지지 않는다.
       projects = await projectsRequest;
+      unread = await unreadRequest;
     } catch (e, s) {
       Logger.e('재연결 후 채널 목록 조회 실패', tag: 'Chat', error: e, stackTrace: s);
       return;
@@ -306,6 +365,7 @@ class ChannelListBloc extends Bloc<ChannelListEvent, ChannelListState> {
 
     _teams = teams;
     _applyProjects(projects);
+    if (unread != null) _unread = unread;
     emit(
       ChannelListState.success(
         _homeOf(teams.firstWhere((other) => other.id == team.id), channels),
@@ -402,7 +462,95 @@ class ChannelListBloc extends Bloc<ChannelListEvent, ChannelListState> {
               if (channel.id != channelId) channel,
           ],
         );
+      case UnreadCountChanged(:final channelId, :final unreadCount):
+        _unreadDuringPoll?.add(change);
+        // 서버는 내가 메시지를 보낼 때마다 보내므로 같은 값이 자주 온다. 화면은 그대로
+        // 두되, 위에서 기록한 것은 다시 읽은 응답을 덮는 데 쓴다.
+        if (_unread[channelId] == unreadCount) return;
+        _unread = {..._unread, channelId: unreadCount};
+        _editChannels(emit, (channels) => channels);
     }
+  }
+
+  /// [teamId] 팀의 안 읽은 수를 읽는다. 실패하면 로그를 남기고 null 을 준다.
+  ///
+  /// 끝났을 때 이보다 나중에 시작한 읽기가 있거나 다른 팀으로 옮겼어도 null 이다.
+  Future<Map<String, int>?> _fetchUnread(int teamId) async {
+    final request = ++_unreadRequest;
+    final Map<String, int> unread;
+    try {
+      unread = await _unreadRepository.fetchTeamUnread(teamId);
+    } catch (e, s) {
+      // 숫자 없이도 채널은 보여 줄 수 있어 홈을 실패로 바꾸지 않는다.
+      Logger.e('안 읽은 수 조회 실패', tag: 'Chat', error: e, stackTrace: s);
+      return null;
+    }
+    if (request != _unreadRequest || teamId != _teamId) return null;
+    return unread;
+  }
+
+  /// 팀이 바뀌었다. 이전 팀의 안 읽은 수와 진행 중인 읽기를 버린다.
+  void _resetUnread() {
+    _unread = const {};
+    _unreadRequest++;
+  }
+
+  /// 홈이 보이는지([visible])·앱이 앞에 있는지([foreground])가 바뀌었다.
+  ///
+  /// 둘 다 참이면 [unreadPollInterval] 마다 다시 읽고, 하나라도 거짓이면 멈춘다.
+  /// 멈춰 있다가 다시 읽게 되면 바로 한 번 읽는다. 가려진 동안 늘었을 수 있어서다.
+  void _updatePolling({bool? visible, bool? foreground}) {
+    // 닫는 중이다. [close] 가 기다리는 사이 처리된 이벤트가 타이머를 다시 만들면 닫힌
+    // 뒤에도 남는다.
+    if (_closing) return;
+    final wasActive = _unreadTimer != null;
+    _visible = visible ?? _visible;
+    _foreground = foreground ?? _foreground;
+    if (!_visible || !_foreground) {
+      _unreadTimer?.cancel();
+      _unreadTimer = null;
+      return;
+    }
+    if (wasActive) return;
+    // 처음 만들 때는 곧 목록과 함께 읽으므로 바로 읽지 않는다.
+    if (visible != null || foreground != null) {
+      add(const _ChannelListUnreadPolled());
+    }
+    _unreadTimer = Timer.periodic(unreadPollInterval, (_) {
+      if (!isClosed) add(const _ChannelListUnreadPolled());
+    });
+  }
+
+  /// 보고 있는 팀의 안 읽은 수만 다시 읽어 바꾼다. 화면을 로딩으로 바꾸지 않는다.
+  ///
+  /// 목록이 없으면(읽는 중·실패·팀 없음) 하지 않는다. 읽기에 실패하면 보던 숫자를
+  /// 둔다. 읽는 사이 소켓으로 온 숫자는 응답 위에 다시 덮는다.
+  Future<void> _onUnreadPolled(
+    _ChannelListUnreadPolled event,
+    Emitter<ChannelListState> emit,
+  ) async {
+    final teamId = _teamId;
+    if (state is! AsyncSuccess<ChannelListData> || teamId == null) return;
+    // 앞 읽기가 아직 안 끝났다. 그 응답이 곧 온다.
+    if (_unreadDuringPoll != null) return;
+
+    final changes = _unreadDuringPoll = <UnreadCountChanged>[];
+    final Map<String, int>? unread;
+    try {
+      unread = await _fetchUnread(teamId);
+    } finally {
+      _unreadDuringPoll = null;
+    }
+    if (isClosed || unread == null || teamId != _teamId) return;
+
+    final next = {
+      ...unread,
+      for (final change in changes) change.channelId: change.unreadCount,
+    };
+    // 30초마다 같은 화면을 다시 그리지 않는다.
+    if (mapEquals(next, _unread)) return;
+    _unread = next;
+    _editChannels(emit, (channels) => channels);
   }
 
   /// 같은 id 가 있으면 그 자리에서 바꾸고, 없으면 끝에 붙인다.
@@ -468,12 +616,14 @@ class ChannelListBloc extends Bloc<ChannelListEvent, ChannelListState> {
     canCreateProjects: false,
     workspaceShortcuts: [],
     channelGroups: [],
+    unreadCounts: {},
   );
 
   void _showNoTeam(Emitter<ChannelListState> emit) {
     _teamId = null;
     _channels = const [];
     _resetProjects();
+    _resetUnread();
     _follow(null);
     emit(const ChannelListState.success(_noTeam));
   }
@@ -496,6 +646,9 @@ class ChannelListBloc extends Bloc<ChannelListEvent, ChannelListState> {
     _permissions = null;
     _isOwner = null;
     final accessRequest = _fetchAccess(team.id);
+    // 안 읽은 수도 같이 읽는다. 실패해도 던지지 않는다.
+    _resetUnread();
+    final unreadRequest = _fetchUnread(team.id);
 
     final List<Channel> channels;
     try {
@@ -508,6 +661,7 @@ class ChannelListBloc extends Bloc<ChannelListEvent, ChannelListState> {
       return;
     }
     final access = await accessRequest;
+    final unread = await unreadRequest;
     // 기다리는 사이 다른 팀으로 옮겼다면(팀에서 빠져 다음 팀을 읽는 등) 늦게 온 이
     // 응답이 지금 팀 화면을 덮지 않게 버린다.
     if (team.id != _teamId) return;
@@ -516,6 +670,7 @@ class ChannelListBloc extends Bloc<ChannelListEvent, ChannelListState> {
 
     _permissions = access.permissions;
     _isOwner = access.isOwner;
+    if (unread != null) _unread = unread;
     emit(ChannelListState.success(_homeOf(team, channels)));
     // 같은 변경이 목록에 이미 들어 있어도 upsert·삭제라 다시 반영해도 결과가 같다.
     final pending = [..._pending];
@@ -613,9 +768,15 @@ class ChannelListBloc extends Bloc<ChannelListEvent, ChannelListState> {
   Future<void> close() async {
     // 방 구독부터 끊는다. 구독 취소(cancel)는 비동기라 기다리는 동안 이벤트가 더 온다.
     _follow(null);
+    // 타이머는 기다리기 전에 끈다. 화면이 닫힐 때 바로 멈춰야 하고, 기다리는 사이
+    // 다시 만들지 않게 [_closing] 으로 막는다.
+    _closing = true;
+    _unreadTimer?.cancel();
+    _unreadTimer = null;
     await _socketEvents.cancel();
     await _reconnects.cancel();
     await _invites.cancel();
+    await _lifecycle?.cancel();
     return super.close();
   }
 
@@ -651,6 +812,7 @@ class ChannelListBloc extends Bloc<ChannelListEvent, ChannelListState> {
             ),
         ],
         channelGroups: _groupsOf(channels),
+        unreadCounts: _unread,
       );
 
   /// 채널을 프로젝트 순서대로 묶고, 어느 프로젝트에도 속하지 않은 채널은 맨 끝

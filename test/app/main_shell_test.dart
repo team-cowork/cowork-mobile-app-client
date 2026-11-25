@@ -29,4 +29,36 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('새 노트'), findsOneWidget);
   });
+
+  testWidgets('다른 탭에 있는 동안 채널 탭은 안 읽은 수를 다시 읽지 않고, 돌아오면 바로 읽는다', (
+    tester,
+  ) async {
+    final server = FakeChatServer();
+    int unreadRequests() => server.requests
+        .where((r) => r == 'GET /chat/chat/teams/1/unread')
+        .length;
+    await tester.pumpWidget(
+      RepositoryProvider.value(
+        value: notesRepositoryOf(FakeNotesServer()),
+        child: chatTestApp(
+          server,
+          theme: AppTheme.dark(),
+          home: const MainShell(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(unreadRequests(), 1);
+
+    final navBar = find.byType(CoworkBottomNavigationBar);
+    await tester.tap(find.descendant(of: navBar, matching: find.text('회의록')));
+    await tester.pumpAndSettle();
+    await tester.pump(const Duration(minutes: 2));
+    await tester.pumpAndSettle();
+    expect(unreadRequests(), 1);
+
+    await tester.tap(find.descendant(of: navBar, matching: find.text('채널')));
+    await tester.pumpAndSettle();
+    expect(unreadRequests(), 2);
+  });
 }

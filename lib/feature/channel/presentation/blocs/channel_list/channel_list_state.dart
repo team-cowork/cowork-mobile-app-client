@@ -7,6 +7,11 @@ part of 'channel_list_bloc.dart';
 /// `canInviteMembers` 는 그 팀에서 멤버를 초대할 권한(`manage_invites`)이 있는지다.
 /// `canCreateChannels`·`canCreateProjects` 는 채널(`manage_channels`)·프로젝트
 /// (`manage_projects`)를 만들 권한이 있는지다. 셋 다 권한을 못 읽었으면 true 다.
+/// `unreadCounts` 는 채널 id 별 안 읽은 메시지 수다. 없는 채널은 0 으로 본다.
+///
+/// 안 읽은 수를 [Channel] 에 넣지 않는 것은 채널은 channel 서비스·`channel:*`
+/// 이벤트로, 안 읽은 수는 chat 서비스·`channel:unread:updated` 로 따로 바뀌기
+/// 때문이다. 채널 이벤트가 [Channel] 을 통째로 바꿔도 숫자를 잃지 않는다.
 typedef ChannelListData = ({
   int? teamId,
   String workspaceName,
@@ -16,6 +21,7 @@ typedef ChannelListData = ({
   bool canCreateProjects,
   List<WorkspaceShortcut> workspaceShortcuts,
   List<ChannelGroup> channelGroups,
+  Map<String, int> unreadCounts,
 });
 
 /// 홈 화면 상태. 성공 시 [ChannelListData]를 담는다.

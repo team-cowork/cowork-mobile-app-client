@@ -28,6 +28,11 @@ sealed class ChannelListEvent extends Equatable {
   /// 팀 설정에서 돌아왔다. 팀 이름이 바뀌었거나 팀이 지워졌을 수 있다.
   const factory ChannelListEvent.teamsRefreshed() = ChannelListTeamsRefreshed;
 
+  /// 홈이 화면에 보이게 됐거나([visible]) 다른 화면·탭에 가려졌다.
+  /// 보이는 동안만 안 읽은 수를 주기적으로 다시 읽는다.
+  const factory ChannelListEvent.visibilityChanged({required bool visible}) =
+      ChannelListVisibilityChanged;
+
   @override
   List<Object?> get props => [];
 }
@@ -83,6 +88,30 @@ final class ChannelListTeamLeft extends ChannelListEvent {
 
 final class ChannelListTeamsRefreshed extends ChannelListEvent {
   const ChannelListTeamsRefreshed();
+}
+
+final class ChannelListVisibilityChanged extends ChannelListEvent {
+  const ChannelListVisibilityChanged({required this.visible});
+
+  final bool visible;
+
+  @override
+  List<Object?> get props => [visible];
+}
+
+/// 앱이 화면 앞으로 왔거나([foreground]) 뒤로 갔다. 화면이 아니라 Bloc 이 스스로 넣는다.
+final class _ChannelListForegroundChanged extends ChannelListEvent {
+  const _ChannelListForegroundChanged({required this.foreground});
+
+  final bool foreground;
+
+  @override
+  List<Object?> get props => [foreground];
+}
+
+/// 안 읽은 수를 다시 읽을 때가 됐다. 화면이 아니라 Bloc 이 스스로 넣는다.
+final class _ChannelListUnreadPolled extends ChannelListEvent {
+  const _ChannelListUnreadPolled();
 }
 
 /// 소켓으로 홈에 반영할 이벤트가 왔다. 화면이 아니라 Bloc 이 스스로 넣는다.

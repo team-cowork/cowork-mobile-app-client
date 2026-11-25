@@ -50,6 +50,7 @@ class ChatSocket {
     'channel:updated',
     'channel:deleted',
     'channel:access:revoked',
+    'channel:unread:updated',
     'team:access:revoked',
     'project:created',
     'project:updated',
