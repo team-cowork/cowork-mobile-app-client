@@ -1,69 +1,73 @@
+import 'package:cowork_design_tokens/cowork_design_tokens.dart';
 import 'package:flutter/material.dart';
 
 /// Cowork 디자인 시스템 색상 토큰.
 ///
 /// Figma `Cowork Color Foundations`의 Primitive Palette와 Semantic Scheme을
 /// Flutter Material 3 [ColorScheme]에 맞춰 노출한다.
+///
+/// 값은 cowork-design-system 레포의 토큰([CoworkPrimitiveColors],
+/// [CoworkLightColors], [CoworkDarkColors])을 그대로 가리킨다.
 class AppColors {
   AppColors._();
 
   // Base
   static const Color black = Color(0xFF000000);
-  static const Color white = Color(0xFFFFFFFF);
-  static const Color ink = Color(0xFF060607);
-  static const Color darkOnSurface = Color(0xFFDBDEE1);
+  static const Color white = CoworkPrimitiveColors.white;
+  static const Color ink = CoworkPrimitiveColors.ink;
+  static const Color darkOnSurface = CoworkPrimitiveColors.fog;
 
   // Red primitive palette
-  static const Color red50 = Color(0xFFFFEEEE);
-  static const Color red100 = Color(0xFFFFD4D6);
-  static const Color red200 = Color(0xFFFEAFB4);
-  static const Color red300 = Color(0xFFFB8890);
-  static const Color red400 = Color(0xFFF66570);
-  static const Color red500 = Color(0xFFF04452);
-  static const Color red600 = Color(0xFFDB2D3D);
-  static const Color red700 = Color(0xFFD22030);
-  static const Color red800 = Color(0xFFBC1B2A);
-  static const Color red900 = Color(0xFFA51926);
+  static const Color red50 = CoworkPrimitiveColors.red50;
+  static const Color red100 = CoworkPrimitiveColors.red100;
+  static const Color red200 = CoworkPrimitiveColors.red200;
+  static const Color red300 = CoworkPrimitiveColors.red300;
+  static const Color red400 = CoworkPrimitiveColors.red400;
+  static const Color red500 = CoworkPrimitiveColors.red500;
+  static const Color red600 = CoworkPrimitiveColors.red600;
+  static const Color red700 = CoworkPrimitiveColors.red700;
+  static const Color red800 = CoworkPrimitiveColors.red800;
+  static const Color red900 = CoworkPrimitiveColors.red900;
 
   // Neutral primitive palette
-  static const Color neutral50 = Color(0xFFF2F3F5);
-  static const Color neutral100 = Color(0xFFE3E5E8);
-  static const Color neutral200 = Color(0xFFB9BBBE);
-  static const Color neutral300 = Color(0xFF949BA4);
-  static const Color neutral400 = Color(0xFF6D6F78);
-  static const Color neutral500 = Color(0xFF4E5058);
-  static const Color neutral600 = Color(0xFF3B3D44);
-  static const Color neutral650 = Color(0xFF313338);
-  static const Color neutral700 = Color(0xFF2B2D31);
-  static const Color neutral750 = Color(0xFF232428);
-  static const Color neutral800 = Color(0xFF1E1F22);
-  static const Color neutral850 = Color(0xFF141517);
-  static const Color neutral900 = Color(0xFF0D0E10);
+  static const Color neutral50 = CoworkPrimitiveColors.neutral50;
+  static const Color neutral100 = CoworkPrimitiveColors.neutral100;
+  static const Color neutral200 = CoworkPrimitiveColors.neutral200;
+  static const Color neutral300 = CoworkPrimitiveColors.neutral300;
+  static const Color neutral400 = CoworkPrimitiveColors.neutral400;
+  static const Color neutral500 = CoworkPrimitiveColors.neutral500;
+  static const Color neutral600 = CoworkPrimitiveColors.neutral600;
+  static const Color neutral650 = CoworkPrimitiveColors.neutral650;
+  static const Color neutral700 = CoworkPrimitiveColors.neutral700;
+  static const Color neutral750 = CoworkPrimitiveColors.neutral750;
+  static const Color neutral800 = CoworkPrimitiveColors.neutral800;
+  static const Color neutral850 = CoworkPrimitiveColors.neutral850;
+  static const Color neutral900 = CoworkPrimitiveColors.neutral900;
 
   // Blue primitive palette
-  static const Color blue50 = Color(0xFFEBF0FF);
-  static const Color blue100 = Color(0xFFD4E0FF);
-  static const Color blue300 = Color(0xFF7FAAFF);
-  static const Color blue400 = Color(0xFF4F8EF7);
-  static const Color blue500 = Color(0xFF3B6FF0);
-  static const Color blue600 = Color(0xFF2F5EC9);
-  static const Color blue900 = Color(0xFF0E2B6E);
+  static const Color blue50 = CoworkPrimitiveColors.blue50;
+  static const Color blue100 = CoworkPrimitiveColors.blue100;
+  static const Color blue300 = CoworkPrimitiveColors.blue300;
+  static const Color blue400 = CoworkPrimitiveColors.blue400;
+  static const Color blue500 = CoworkPrimitiveColors.blue500;
+  static const Color blue600 = CoworkPrimitiveColors.blue600;
+  static const Color blue900 = CoworkPrimitiveColors.blue900;
 
   // Green primitive palette
-  static const Color green50 = Color(0xFFD4F4E2);
-  static const Color green300 = Color(0xFF6BD98E);
-  static const Color green400 = Color(0xFF3BBF70);
-  static const Color green500 = Color(0xFF23A559);
-  static const Color green600 = Color(0xFF1B8A47);
-  static const Color green900 = Color(0xFF0A3D22);
+  static const Color green50 = CoworkPrimitiveColors.green50;
+  static const Color green300 = CoworkPrimitiveColors.green300;
+  static const Color green400 = CoworkPrimitiveColors.green400;
+  static const Color green500 = CoworkPrimitiveColors.green500;
+  static const Color green600 = CoworkPrimitiveColors.green600;
+  static const Color green900 = CoworkPrimitiveColors.green900;
 
   // Amber primitive palette
-  static const Color amber50 = Color(0xFFFFF3D0);
-  static const Color amber300 = Color(0xFFFFCD70);
-  static const Color amber400 = Color(0xFFFFBA3B);
-  static const Color amber500 = Color(0xFFF0A30A);
-  static const Color amber600 = Color(0xFFC98600);
-  static const Color amber900 = Color(0xFF4D3300);
+  static const Color amber50 = CoworkPrimitiveColors.amber50;
+  static const Color amber300 = CoworkPrimitiveColors.amber300;
+  static const Color amber400 = CoworkPrimitiveColors.amber400;
+  static const Color amber500 = CoworkPrimitiveColors.amber500;
+  static const Color amber600 = CoworkPrimitiveColors.amber600;
+  static const Color amber900 = CoworkPrimitiveColors.amber900;
 
   // Legacy semantic aliases
   static const Color primary = red500;
@@ -92,34 +96,34 @@ class AppColors {
         seedColor: primary,
         brightness: Brightness.light,
       ).copyWith(
-        primary: red500,
-        onPrimary: white,
-        primaryContainer: red50,
-        onPrimaryContainer: red900,
-        secondary: red700,
-        onSecondary: white,
-        secondaryContainer: red100,
-        onSecondaryContainer: red900,
-        tertiary: blue500,
-        onTertiary: white,
-        tertiaryContainer: blue50,
-        onTertiaryContainer: blue900,
-        surface: white,
-        onSurface: ink,
-        surfaceContainerHighest: neutral100,
-        onSurfaceVariant: neutral500,
-        surfaceContainer: neutral50,
-        surfaceContainerLow: white,
-        surfaceContainerHigh: neutral100,
-        outline: neutral200,
-        outlineVariant: neutral100,
-        error: red700,
-        onError: white,
-        errorContainer: red50,
-        onErrorContainer: red900,
-        inverseSurface: neutral800,
-        onInverseSurface: neutral100,
-        inversePrimary: red300,
+        primary: CoworkLightColors.primary,
+        onPrimary: CoworkLightColors.onPrimary,
+        primaryContainer: CoworkLightColors.primaryContainer,
+        onPrimaryContainer: CoworkLightColors.onPrimaryContainer,
+        secondary: CoworkLightColors.secondary,
+        onSecondary: CoworkLightColors.onSecondary,
+        secondaryContainer: CoworkLightColors.secondaryContainer,
+        onSecondaryContainer: CoworkLightColors.onSecondaryContainer,
+        tertiary: CoworkLightColors.tertiary,
+        onTertiary: CoworkLightColors.onTertiary,
+        tertiaryContainer: CoworkLightColors.tertiaryContainer,
+        onTertiaryContainer: CoworkLightColors.onTertiaryContainer,
+        surface: CoworkLightColors.surface,
+        onSurface: CoworkLightColors.onSurface,
+        surfaceContainerHighest: CoworkLightColors.surfaceVariant,
+        onSurfaceVariant: CoworkLightColors.onSurfaceVariant,
+        surfaceContainer: CoworkLightColors.surfaceContainer,
+        surfaceContainerLow: CoworkLightColors.surfaceContainerLow,
+        surfaceContainerHigh: CoworkLightColors.surfaceContainerHigh,
+        outline: CoworkLightColors.outline,
+        outlineVariant: CoworkLightColors.outlineVariant,
+        error: CoworkLightColors.error,
+        onError: CoworkLightColors.onError,
+        errorContainer: CoworkLightColors.errorContainer,
+        onErrorContainer: CoworkLightColors.onErrorContainer,
+        inverseSurface: CoworkLightColors.inverseSurface,
+        onInverseSurface: CoworkLightColors.inverseOnSurface,
+        inversePrimary: CoworkLightColors.inversePrimary,
       );
 
   /// Figma Dark Mode Semantic Scheme.
@@ -128,33 +132,33 @@ class AppColors {
         seedColor: primary,
         brightness: Brightness.dark,
       ).copyWith(
-        primary: red400,
-        onPrimary: white,
-        primaryContainer: red900,
-        onPrimaryContainer: red100,
-        secondary: red300,
-        onSecondary: red900,
-        secondaryContainer: red800,
-        onSecondaryContainer: red50,
-        tertiary: blue300,
-        onTertiary: blue900,
-        tertiaryContainer: blue900,
-        onTertiaryContainer: blue100,
-        surface: neutral800,
-        onSurface: darkOnSurface,
-        surfaceContainerHighest: neutral700,
-        onSurfaceVariant: neutral300,
-        surfaceContainer: neutral750,
-        surfaceContainerLow: neutral800,
-        surfaceContainerHigh: neutral700,
-        outline: neutral600,
-        outlineVariant: neutral700,
-        error: red400,
-        onError: white,
-        errorContainer: red900,
-        onErrorContainer: red100,
-        inverseSurface: neutral100,
-        onInverseSurface: neutral800,
-        inversePrimary: red600,
+        primary: CoworkDarkColors.primary,
+        onPrimary: CoworkDarkColors.onPrimary,
+        primaryContainer: CoworkDarkColors.primaryContainer,
+        onPrimaryContainer: CoworkDarkColors.onPrimaryContainer,
+        secondary: CoworkDarkColors.secondary,
+        onSecondary: CoworkDarkColors.onSecondary,
+        secondaryContainer: CoworkDarkColors.secondaryContainer,
+        onSecondaryContainer: CoworkDarkColors.onSecondaryContainer,
+        tertiary: CoworkDarkColors.tertiary,
+        onTertiary: CoworkDarkColors.onTertiary,
+        tertiaryContainer: CoworkDarkColors.tertiaryContainer,
+        onTertiaryContainer: CoworkDarkColors.onTertiaryContainer,
+        surface: CoworkDarkColors.surface,
+        onSurface: CoworkDarkColors.onSurface,
+        surfaceContainerHighest: CoworkDarkColors.surfaceVariant,
+        onSurfaceVariant: CoworkDarkColors.onSurfaceVariant,
+        surfaceContainer: CoworkDarkColors.surfaceContainer,
+        surfaceContainerLow: CoworkDarkColors.surfaceContainerLow,
+        surfaceContainerHigh: CoworkDarkColors.surfaceContainerHigh,
+        outline: CoworkDarkColors.outline,
+        outlineVariant: CoworkDarkColors.outlineVariant,
+        error: CoworkDarkColors.error,
+        onError: CoworkDarkColors.onError,
+        errorContainer: CoworkDarkColors.errorContainer,
+        onErrorContainer: CoworkDarkColors.onErrorContainer,
+        inverseSurface: CoworkDarkColors.inverseSurface,
+        onInverseSurface: CoworkDarkColors.inverseOnSurface,
+        inversePrimary: CoworkDarkColors.inversePrimary,
       );
 }
