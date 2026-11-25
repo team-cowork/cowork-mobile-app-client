@@ -34,12 +34,28 @@ jobs:
           # base 브랜치와의 merge-base 를 구하려면 기록이 필요하다.
           fetch-depth: 0
 
+      # flutter-ci.yaml 과 같은 방식으로 읽는다. 키가 없으면 문자열 null 대신 stable 로 내려간다.
       - name: Read Flutter version from .fvmrc
-        run: echo "FLUTTER_VERSION=$(jq -r '.flutter' .fvmrc)" >> "$GITHUB_ENV"
+        run: |
+          FLUTTER_VERSION=$(jq -r '.flutter // empty' .fvmrc 2>/dev/null || true)
+          if [ -z "$FLUTTER_VERSION" ]; then
+            FLUTTER_VERSION="stable"
+            echo "::notice::.fvmrc 에서 Flutter 버전을 찾지 못해 stable 채널 사용"
+          fi
+          echo "FLUTTER_VERSION=$FLUTTER_VERSION" >> "$GITHUB_ENV"
 
-      - uses: subosito/flutter-action@v2
+      - name: Set up Flutter from .fvmrc
+        if: env.FLUTTER_VERSION != 'stable'
+        uses: subosito/flutter-action@v2
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Set up Flutter stable channel
+        if: env.FLUTTER_VERSION == 'stable'
+        uses: subosito/flutter-action@v2
+        with:
           channel: stable
           cache: true
 
