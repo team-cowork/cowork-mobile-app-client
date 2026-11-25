@@ -516,9 +516,12 @@ class ChannelListBloc extends Bloc<ChannelListEvent, ChannelListState> {
     if (visible != null || foreground != null) {
       add(const _ChannelListUnreadPolled());
     }
-    _unreadTimer = Timer.periodic(unreadPollInterval, (_) {
-      if (!isClosed) add(const _ChannelListUnreadPolled());
-    });
+    // 닫힐 때 [close] 가 먼저 끄고 [_closing] 이 다시 만들지 않게 하므로, 닫힌 뒤에는
+    // 불리지 않는다.
+    _unreadTimer = Timer.periodic(
+      unreadPollInterval,
+      (_) => add(const _ChannelListUnreadPolled()),
+    );
   }
 
   /// 보고 있는 팀의 안 읽은 수만 다시 읽어 바꾼다. 화면을 로딩으로 바꾸지 않는다.
