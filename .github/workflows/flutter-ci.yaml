@@ -15,16 +15,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # fvm 3 은 .fvmrc, 그 전 버전은 .fvm/fvm_config.json 에 버전을 적는다.
+      # 버전은 fvm 3 설정 파일 .fvmrc 에서 읽는다. (.fvm/ 은 .gitignore 라 CI 에 없다.)
       - name: Read FVM config
         run: |
-          if [ -f ".fvmrc" ]; then
-            FLUTTER_VERSION=$(jq -r '.flutter' .fvmrc)
-          elif [ -f ".fvm/fvm_config.json" ]; then
-            FLUTTER_VERSION=$(jq -r '.flutterSdkVersion' .fvm/fvm_config.json)
-          else
+          # 키가 없으면 문자열 null 대신 빈 값을 받아 아래 stable 로 내려간다.
+          FLUTTER_VERSION=$(jq -r '.flutter // empty' .fvmrc 2>/dev/null || true)
+          if [ -z "$FLUTTER_VERSION" ]; then
             FLUTTER_VERSION="stable"
-            echo "::notice::FVM 설정 파일 없음, stable 채널 사용"
+            echo "::notice::FVM 설정에서 Flutter 버전을 찾지 못해 stable 채널 사용"
           fi
           echo "FLUTTER_VERSION=$FLUTTER_VERSION" >> $GITHUB_ENV
 
@@ -42,16 +40,6 @@ jobs:
         with:
           channel: 'stable'
           cache: true
-
-      # FVM 설정 파일이 있을 때만 FVM 설치 및 PATH 주입
-      - name: Set up FVM
-        if: hashFiles('.fvm/fvm_config.json') != ''
-        run: |
-          dart pub global activate fvm
-          echo "$HOME/.pub-cache/bin" >> $GITHUB_PATH
-          fvm install
-          fvm use --force
-          echo "${{ github.workspace }}/.fvm/flutter_sdk/bin" >> $GITHUB_PATH
 
       - name: Check Flutter version
         run: flutter --version
